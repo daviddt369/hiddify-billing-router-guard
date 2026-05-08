@@ -306,10 +306,27 @@ PY
 }
 
 check_routing_endpoints() {
-    local py
+    local py antishare_manifest
     py="$(detect_venv_python)"
-    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
-        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+    antishare_manifest="${ANTISHARE_MANIFEST_PATH:-$INSTALL_ROOT/anti-share-addon.manifest}"
+
+    # If antishare is installed, AntiShareAdmin will be registered — this is expected
+    # on a full-stack install (routing + antishare) and is NOT a routing bug.
+    if [[ -f "$antishare_manifest" ]]; then
+        sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+from hiddifypanel import create_app
+
+app = create_app()
+endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
+assert 'admin.RoutingAdmin:index' in endpoints, 'RoutingAdmin endpoint missing after routing install'
+assert 'admin.BusinessAdmin:index' in endpoints, 'BusinessAdmin endpoint broken after routing install'
+# AntiShareAdmin presence is expected (antishare installed) — not asserting absence
+print('routing-endpoints-ok (full-stack: antishare also present)')
+PY
+    else
+        sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
 from hiddifypanel import create_app
 
 app = create_app()
@@ -319,6 +336,7 @@ assert 'admin.BusinessAdmin:index' in endpoints, 'BusinessAdmin endpoint broken 
 assert 'admin.AntiShareAdmin:index' not in endpoints, 'AntiShareAdmin must not be installed by routing'
 print('routing-endpoints-ok')
 PY
+    fi
 }
 
 _get_admin_proxy_path() {
