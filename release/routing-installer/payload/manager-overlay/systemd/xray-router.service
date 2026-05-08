@@ -1,0 +1,13 @@
+[Unit]
+Description=Local Xray router-core for commercial routing
+After=network.target nss-lookup.target
+
+[Service]
+User=root
+ExecStart=/usr/bin/xray run -config /etc/xray-router/config.json
+Restart=always
+RestartSec=3
+LimitNOFILE=infinity
+
+[Install]
+WantedBy=multi-user.target

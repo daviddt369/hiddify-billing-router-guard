@@ -1,0 +1,1 @@
+hiddify-panel ALL=(root) NOPASSWD: /opt/hiddify-manager/common/commander.py commercial-routing-apply

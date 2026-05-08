@@ -402,6 +402,19 @@ PY
 # hiddify-panel user needs read access; xray creates the log as root:root 600.
 install_xray_log_permissions_override() {
     mkdir -p "$XRAY_LOG_OVERRIDE_DIR"
+
+    # Remove legacy file written by earlier live-debug installs (wrong canonical name).
+    # Only remove if the file contains our specific chmod patch — do not touch foreign overrides.
+    local legacy_file="$XRAY_LOG_OVERRIDE_DIR/log-perms.conf"
+    if [[ -f "$legacy_file" && "$legacy_file" != "$XRAY_LOG_OVERRIDE_FILE" ]]; then
+        if grep -q 'chmod 644.*xray.access.log\|xray.*access.*log.*chmod' "$legacy_file" 2>/dev/null; then
+            log "Removing legacy xray override: $legacy_file (superseded by $XRAY_LOG_OVERRIDE_FILE)"
+            rm -f "$legacy_file"
+        else
+            warn "Legacy $legacy_file exists with unknown content — leaving it, writing canonical file"
+        fi
+    fi
+
     backup_target "$XRAY_LOG_OVERRIDE_FILE"
 
     cat > "$XRAY_LOG_OVERRIDE_FILE" <<EOF

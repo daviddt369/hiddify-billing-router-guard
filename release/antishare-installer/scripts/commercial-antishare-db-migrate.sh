@@ -244,4 +244,21 @@ installed_val="$(mysql "$DB_NAME" -N -B \
     || die "commercial_antishare_installed not set to 1 after migration. Got: '$installed_val'"
 
 log "commercial_antishare_installed=1 confirmed"
+
+# --- Step 11: Remove stale str_config entry for commercial_antishare_installed ---
+# commercial_antishare_installed is a bool-typed ConfigEnum key.
+# get_hconfigs() reads it ONLY from bool_config. A str_config row is ignored by the
+# panel but confuses diagnostics. Clean it up idempotently.
+log "Removing stale str_config.commercial_antishare_installed if present"
+mysql "$DB_NAME" <<'SQL'
+DELETE FROM str_config
+WHERE child_id=0 AND `key`='commercial_antishare_installed';
+SQL
+stale_count="$(mysql "$DB_NAME" -N -B \
+    -e "SELECT COUNT(*) FROM str_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
+    2>/dev/null | head -n1 || echo '-1')"
+[[ "$stale_count" == "0" ]] \
+    || die "str_config.commercial_antishare_installed still present after cleanup. Got: $stale_count rows"
+log "str_config.commercial_antishare_installed cleaned (was stale bool key in wrong table)"
+
 log "Anti-share DB migration completed successfully"

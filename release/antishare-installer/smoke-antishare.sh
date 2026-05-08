@@ -78,10 +78,24 @@ main() {
         -e "SELECT nft_dry_run FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '-1')"
     echo "db-antishare-config-ok nft_enabled=$nft_enabled telegram_enabled=$telegram_enabled nft_dry_run=$nft_dry_run"
 
-    # Warn if unsafe defaults (nft bans active without dry-run)
-    if [[ "$nft_enabled" == "1" && "$nft_dry_run" == "0" ]]; then
-        warn "nft_enabled=1 and nft_dry_run=0 — firewall bans are ACTIVE"
-    fi
+    # Hard-check safe defaults — Stage 1 anti-share must not have enforcement active.
+    # nft enforcement (Stage 4) and Telegram (Stage 3) are opt-in after explicit admin decision.
+    [[ "$nft_enabled"      == "0" ]] \
+        || die "SAFE-DEFAULT VIOLATION: nft_enabled=$nft_enabled (expected 0). nft enforcement is not open yet. Reset: UPDATE anti_share_config SET nft_enabled=0;"
+    [[ "$nft_dry_run"      == "1" ]] \
+        || die "SAFE-DEFAULT VIOLATION: nft_dry_run=$nft_dry_run (expected 1). dry-run must be on. Reset: UPDATE anti_share_config SET nft_dry_run=1;"
+    [[ "$telegram_enabled" == "0" ]] \
+        || die "SAFE-DEFAULT VIOLATION: telegram_enabled=$telegram_enabled (expected 0). Telegram is not open yet. Reset: UPDATE anti_share_config SET telegram_enabled=0;"
+    echo "db-antishare-safe-defaults-ok"
+
+    # --- Check 8b: no stale str_config entry for commercial_antishare_installed ---
+    step "Checking str_config has no stale antishare flag"
+    stale_str="$(mysql "$DB_NAME" -N -B \
+        -e "SELECT COUNT(*) FROM str_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
+        2>/dev/null | head -n1 || echo '-1')"
+    [[ "$stale_str" == "0" ]] \
+        || die "str_config.commercial_antishare_installed still present ($stale_str row) — stale entry from broken install. Run DB migration to clean."
+    echo "db-no-stale-str-config-ok"
 
     # --- Check 9: xray access log enabled and readable ---
     step "Checking xray access log (required by anti-share)"

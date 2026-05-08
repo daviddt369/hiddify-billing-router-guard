@@ -1,0 +1,278 @@
+{% extends 'admin-layout.html' %}
+
+{% block title %}Внешние ноды (Upstream){% endblock %}
+
+{% block body %}
+<section class="content pt-3">
+  <div class="container-fluid">
+    <div class="card card-primary card-outline">
+      <div class="card-header">
+        <h3 class="card-title">
+          {% if action == "list" %}Внешние ноды (Upstream)
+          {% elif action == "add" %}Добавить внешнюю ноду
+          {% else %}Редактировать внешнюю ноду
+          {% endif %}
+        </h3>
+        <div class="card-tools">
+          <a href="{{ routing_admin_url }}" class="btn btn-sm btn-secondary">
+            ← Назад к маршрутизации
+          </a>
+          {% if action == "list" %}
+          <a href="{{ upstreams_url }}add/" class="btn btn-sm btn-primary ml-1">+ Добавить</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-body">
+
+        {# ---- LIST VIEW ---- #}
+        {% if action == "list" %}
+          <div class="alert alert-info mb-3">
+            <strong>Как работают внешние ноды:</strong><br>
+            xray-router получает трафик от основного Hiddify (через SOCKS5 127.0.0.1:20808) и направляет его:<br>
+            — RU-трафик (домены .ru/.su, geoip:ru, ваши правила) → <strong>direct-ru</strong> (напрямую из РФ)<br>
+            — Остальной трафик → <strong>первая включённая нода</strong> по приоритету (наименьший номер = активная нода)<br>
+            Нода применяется только после нажатия <strong>«Применить»</strong> в разделе «Маршрутизация».
+          </div>
+
+          {% if upstreams %}
+          <table class="table table-bordered table-sm">
+            <thead>
+              <tr>
+                <th style="width:40px">ID</th>
+                <th>Метка / Имя</th>
+                <th style="width:100px">Тип туннеля</th>
+                <th style="width:60px">Приор.</th>
+                <th style="width:90px">Статус</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for up in upstreams %}
+              <tr class="{% if not up.enabled %}table-secondary text-muted{% endif %}">
+                <td>{{ up.id }}</td>
+                <td>
+                  <strong>{{ up.label or up.name }}</strong><br>
+                  <small class="text-muted"><code>{{ up.name }}</code></small>
+                </td>
+                <td>{{ up.tunnel_type }}</td>
+                <td class="text-center">{{ up.priority }}</td>
+                <td class="text-center">
+                  {% if loop.first and up.enabled %}
+                    <span class="badge badge-success">Активная</span>
+                  {% elif up.enabled %}
+                    <span class="badge badge-info">Резервная</span>
+                  {% else %}
+                    <span class="badge badge-secondary">Выкл</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ upstreams_url }}{{ up.id }}/edit/" class="btn btn-xs btn-outline-primary">Изменить</a>
+                  <form method="post" action="{{ upstreams_url }}{{ up.id }}/toggle/" style="display:inline">
+                    <button type="submit" class="btn btn-xs {% if up.enabled %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                      {% if up.enabled %}Выключить{% else %}Включить{% endif %}
+                    </button>
+                  </form>
+                  <form method="post" action="{{ upstreams_url }}{{ up.id }}/move-up/" style="display:inline">
+                    <button type="submit" class="btn btn-xs btn-outline-secondary" title="Поднять приоритет (уменьшить номер)">↑</button>
+                  </form>
+                  <form method="post" action="{{ upstreams_url }}{{ up.id }}/move-down/" style="display:inline">
+                    <button type="submit" class="btn btn-xs btn-outline-secondary" title="Снизить приоритет (увеличить номер)">↓</button>
+                  </form>
+                  <form method="post" action="{{ upstreams_url }}{{ up.id }}/delete/" style="display:inline"
+                        onsubmit="return confirm('Удалить «{{ up.label or up.name }}»?')">
+                    <button type="submit" class="btn btn-xs btn-outline-danger">Удалить</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="alert alert-warning">
+            Нод ещё нет. <a href="{{ upstreams_url }}add/" class="btn btn-sm btn-primary ml-2">+ Добавить первую ноду</a>
+          </div>
+          {% endif %}
+
+        {# ---- ADD / EDIT FORM ---- #}
+        {% else %}
+          {% set is_edit = (action == "edit") %}
+          {% set form_action = upstreams_url ~ (upstream_id ~ "/edit/" if is_edit else "add/") %}
+
+          <div class="alert alert-info mb-3">
+            <strong>Что такое внешняя нода (upstream)?</strong><br>
+            Это сервер за пределами РФ, через который xray-router пропускает глобальный трафик.
+            Поддерживаются VLESS, Trojan и WireGuard. «Тестовый blackhole» означает, что трафик будет сброшен —
+            используется только для проверки работы роутера без реальной ноды.
+          </div>
+
+          <form method="post" action="{{ form_action }}">
+
+            <div class="card card-body bg-light mb-3">
+              <h6 class="mb-3">Идентификация ноды</h6>
+
+              <div class="form-group">
+                <label>Системное имя <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control ltr" maxlength="64" required
+                       value="{{ upstream.name if upstream else '' }}"
+                       placeholder="upstream-1">
+                <small class="form-text text-muted">
+                  Уникальный идентификатор: только латиница, цифры, дефис, подчёркивание. Не меняйте после создания.
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label>Отображаемая метка</label>
+                <input type="text" name="label" class="form-control" maxlength="128"
+                       value="{{ upstream.label if upstream else '' }}"
+                       placeholder="Внешняя нода 1 (Амстердам)">
+                <small class="form-text text-muted">Произвольное описание для вашего удобства.</small>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-md-4">
+                  <label>Приоритет</label>
+                  <input type="number" name="priority" class="form-control" min="0" max="9999"
+                         value="{{ upstream.priority if upstream is not none else 0 }}">
+                  <small class="form-text text-muted">
+                    0 = наивысший приоритет. Первая включённая нода с наименьшим числом становится активной.
+                  </small>
+                </div>
+                <div class="form-group col-md-4 d-flex align-items-center">
+                  <div class="form-check mt-3">
+                    <input type="checkbox" class="form-check-input" name="enabled" value="1" id="enabled_check"
+                           {% if upstream is none or upstream.enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="enabled_check">
+                      <strong>Включена</strong>
+                      <small class="d-block text-muted">Выключенная нода игнорируется при выборе активной</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card card-body bg-light mb-3">
+              <h6 class="mb-3">Подключение к внешней ноде</h6>
+
+              <div class="form-group">
+                <label>Тип туннеля <span class="text-danger">*</span></label>
+                <select name="tunnel_type" class="form-control" id="tunnel_type_select">
+                  <option value="test_blackhole" {% if not upstream or upstream.tunnel_type == "test_blackhole" %}selected{% endif %}>
+                    Тестовый blackhole — трафик сбрасывается (без реальной ноды)
+                  </option>
+                  <option value="vless" {% if upstream and upstream.tunnel_type == "vless" %}selected{% endif %}>
+                    VLESS — укажите VLESS URI (vless://...)
+                  </option>
+                  <option value="trojan" {% if upstream and upstream.tunnel_type == "trojan" %}selected{% endif %}>
+                    Trojan — укажите Trojan URI (trojan://...)
+                  </option>
+                  <option value="wireguard" {% if upstream and upstream.tunnel_type == "wireguard" %}selected{% endif %}>
+                    WireGuard — укажите endpoint, публичный и приватный ключи
+                  </option>
+                </select>
+                <small class="form-text text-muted">
+                  VLESS и Trojan подходят для существующих прокси-серверов.
+                  WireGuard — для VPN-туннеля.
+                  Blackhole используйте только для тестирования маршрутизации без реального выхода.
+                </small>
+              </div>
+
+              {# VLESS #}
+              <div class="tunnel-fields" id="fields-vless" style="display:none">
+                <div class="form-group">
+                  <label>VLESS URI <span class="text-danger">*</span></label>
+                  <textarea name="vless_uri" class="form-control ltr" rows="3"
+                            placeholder="vless://uuid@host:443?security=tls&type=tcp&sni=example.com">{{ upstream.vless_uri if upstream else '' }}</textarea>
+                  <small class="form-text text-muted">
+                    Скопируйте VLESS URI из вашего прокси-сервера (например из Marzban, 3x-ui, и т.д.).
+                    Формат: <code>vless://UUID@host:port?параметры</code>
+                  </small>
+                </div>
+              </div>
+
+              {# Trojan #}
+              <div class="tunnel-fields" id="fields-trojan" style="display:none">
+                <div class="form-group">
+                  <label>Trojan URI <span class="text-danger">*</span></label>
+                  <textarea name="trojan_uri" class="form-control ltr" rows="3"
+                            placeholder="trojan://password@host:443?security=tls&sni=example.com">{{ upstream.trojan_uri if upstream else '' }}</textarea>
+                  <small class="form-text text-muted">
+                    Формат: <code>trojan://пароль@host:port?параметры</code>.
+                    Обычно берётся из настроек вашего Trojan-сервера.
+                  </small>
+                </div>
+              </div>
+
+              {# WireGuard #}
+              <div class="tunnel-fields" id="fields-wireguard" style="display:none">
+                <div class="form-group">
+                  <label>Endpoint <span class="text-danger">*</span> <small class="text-muted">(IP или домен:порт)</small></label>
+                  <input type="text" name="wg_endpoint" class="form-control ltr"
+                         placeholder="1.2.3.4:51820"
+                         value="{{ upstream.wg_endpoint if upstream else '' }}">
+                  <small class="form-text text-muted">Адрес WireGuard-сервера, например: <code>1.2.3.4:51820</code></small>
+                </div>
+                <div class="form-group">
+                  <label>Публичный ключ сервера <span class="text-danger">*</span></label>
+                  <input type="text" name="wg_public_key" class="form-control ltr"
+                         placeholder="base64-ключ сервера"
+                         value="{{ upstream.wg_public_key if upstream else '' }}">
+                  <small class="form-text text-muted">Публичный ключ WireGuard-сервера (из конфига сервера, поле PublicKey пира).</small>
+                </div>
+                <div class="form-group">
+                  <label>Приватный ключ клиента <span class="text-danger">*</span></label>
+                  <input type="text" name="wg_private_key_ref" class="form-control ltr"
+                         placeholder="base64-ключ / env:VAR_NAME / file:/path/to/key"
+                         value="{{ upstream.wg_private_key_ref if upstream else '' }}">
+                  <small class="form-text text-muted">
+                    Можно указать: сам ключ в base64, <code>env:ИМЯ_ПЕРЕМЕННОЙ</code> или <code>file:/путь/к/файлу</code>.
+                    Приватный ключ клиента (ваш ключ, не серверный).
+                  </small>
+                </div>
+                <div class="form-row">
+                  <div class="form-group col-md-6">
+                    <label>Адреса WireGuard-интерфейса</label>
+                    <input type="text" name="wg_addresses" class="form-control ltr"
+                           placeholder="10.66.66.2/32"
+                           value="{{ upstream.wg_addresses if upstream else '' }}">
+                    <small class="form-text text-muted">IP-адрес клиента в WireGuard-сети. Обычно назначается сервером.</small>
+                  </div>
+                  <div class="form-group col-md-3">
+                    <label>MTU</label>
+                    <input type="number" name="wg_mtu" class="form-control" min="576" max="9000"
+                           value="{{ upstream.wg_mtu if upstream else 1280 }}">
+                    <small class="form-text text-muted">Обычно 1280 или 1420. Уменьшите если возникают проблемы.</small>
+                  </div>
+                </div>
+              </div>
+            </div>{# card #}
+
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <a href="{{ upstreams_url }}" class="btn btn-secondary ml-2">Отмена</a>
+          </form>
+        {% endif %}
+
+      </div>{# card-body #}
+    </div>{# card #}
+  </div>
+</section>
+{% endblock %}
+
+{% block tail_js %}
+{{ super() }}
+<script>
+(function() {
+  var sel = document.getElementById('tunnel_type_select');
+  if (!sel) return;
+
+  function showFields() {
+    document.querySelectorAll('.tunnel-fields').forEach(function(el) { el.style.display = 'none'; });
+    var active = document.getElementById('fields-' + sel.value);
+    if (active) active.style.display = '';
+  }
+
+  sel.addEventListener('change', showFields);
+  showFields();
+})();
+</script>
+{% endblock %}

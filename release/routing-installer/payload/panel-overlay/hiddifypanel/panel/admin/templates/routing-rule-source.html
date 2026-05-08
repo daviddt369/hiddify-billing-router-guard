@@ -1,0 +1,392 @@
+{% extends "admin-layout.html" %}
+{% block title %}Источники правил маршрутизации{% endblock %}
+{% block body %}
+<div class="container-fluid py-3">
+
+{# Flash messages #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% if action == "list" %}
+<!-- ═══════════════════════════ LIST VIEW ═══════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Источники правил маршрутизации</h4>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ routing_admin_url }}" class="btn btn-outline-secondary btn-sm">← Настройки routing</a>
+    <a href="{{ sources_url }}add/" class="btn btn-outline-primary btn-sm">+ Добавить источник</a>
+    <form action="{{ sources_url }}apply-router/" method="POST"
+          onsubmit="return confirm('Применить конфиг xray-router с текущими правилами?')">
+      <button type="submit" class="btn btn-success btn-sm">▶ Применить xray-router</button>
+    </form>
+  </div>
+</div>
+
+<p class="text-muted small">
+  Каждый источник хранит список доменов или подсетей с политикой (direct / upstream / block).<br>
+  <strong>Re-import</strong> — удаляет старые правила источника и загружает свежие из URL/файла/текста.<br>
+  <strong>Выключить</strong> — деактивирует все правила источника в конфиге (без удаления из БД). Включить — активирует обратно.<br>
+  <strong>Удалить</strong> — удаляет источник и все его правила из БД безвозвратно.<br>
+  После любого изменения нажмите <strong>▶ Применить xray-router</strong>.<br>
+  Примеры: <code>…/Russia/inside-raw.lst</code> (домены), <code>…/Russia/inside-cidr.lst</code> (подсети) — itdoginfo/allow-domains.
+</p>
+
+{% if sources %}
+<div class="table-responsive">
+<table class="table table-bordered table-sm align-middle">
+  <thead class="table-light">
+    <tr>
+      <th>Имя / Метка</th>
+      <th>Тип / Формат</th>
+      <th>Семейство</th>
+      <th>Политика</th>
+      <th>Статус</th>
+      <th>Правил</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for src in sources %}
+    <tr class="{% if not src.enabled %}table-secondary{% endif %}">
+      <td>
+        <strong>{{ src.name }}</strong>
+        {% if src.label %}<br><small class="text-muted">{{ src.label }}</small>{% endif %}
+      </td>
+      <td>
+        {% if src.source_type == 'text' %}Текст
+        {% elif src.source_type == 'external_url' %}URL<br><small class="text-break text-muted" style="font-size:0.75em">{{ src.url[:60] }}{% if src.url|length > 60 %}…{% endif %}</small>
+        {% elif src.source_type == 'local_file' %}Файл<br><small class="text-muted">{{ src.local_path }}</small>
+        {% else %}{{ src.source_type }}
+        {% endif %}
+        <br><span class="badge bg-light text-dark border">{{ src.source_format or 'auto' }}</span>
+      </td>
+      <td>{{ 'Домены' if src.rule_family == 'domain' else 'Подсети' }}</td>
+      <td>
+        {% if src.outbound_policy == 'direct_ru' %}Прямо (RU)
+        {% elif src.outbound_policy == 'to_upstream' %}Upstream
+        {% elif src.outbound_policy == 'block' %}Блок
+        {% else %}{{ src.outbound_policy }}
+        {% endif %}
+      </td>
+      <td>
+        {% if src.last_status == 'ok' %}
+          <span class="badge bg-success">OK</span>
+          {% if src.last_fetched_at %}<br><small class="text-muted">{{ src.last_fetched_at.strftime('%Y-%m-%d %H:%M') }}</small>{% endif %}
+        {% elif src.last_status == 'error' %}
+          <span class="badge bg-danger">Ошибка</span>
+          {% if src.last_error %}<br><small class="text-danger" title="{{ src.last_error }}">{{ src.last_error[:60] }}{% if src.last_error|length > 60 %}…{% endif %}</small>{% endif %}
+        {% else %}
+          <span class="badge bg-secondary">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ src.rules_count }}
+        {% if not src.enabled %}<br><small class="text-muted">⏸ деактивированы</small>{% endif %}
+      </td>
+      <td>
+        <div class="d-flex flex-wrap gap-1">
+          <a href="{{ sources_url }}{{ src.id }}/edit/" class="btn btn-sm btn-outline-primary">Изменить</a>
+          <form action="{{ sources_url }}{{ src.id }}/preview/" method="POST" style="display:inline">
+            <button type="submit" class="btn btn-sm btn-outline-info" title="Загрузить и разобрать — без записи в БД">Preview</button>
+          </form>
+          <form action="{{ sources_url }}{{ src.id }}/import/" method="POST" style="display:inline"
+                onsubmit="return confirm('Импортировать правила из «{{ src.label or src.name }}»?\nСтарые правила этого источника будут заменены новыми.')">
+            <button type="submit" class="btn btn-sm btn-outline-success" title="Удалить старые правила источника и загрузить свежие">Re-import</button>
+          </form>
+          <form action="{{ sources_url }}{{ src.id }}/toggle/" method="POST" style="display:inline"
+                onsubmit="return confirm('{{ 'Выключить' if src.enabled else 'Включить' }} источник «{{ src.label or src.name }}»?\nВсе правила этого источника ({{ src.rules_count }}) будут {{ 'деактивированы' if src.enabled else 'активированы' }}.\nНе забудьте нажать «Применить xray-router».')">
+            <button type="submit" class="btn btn-sm {{ 'btn-warning' if src.enabled else 'btn-outline-secondary' }}" title="{{ 'Деактивирует все правила этого источника в конфиге' if src.enabled else 'Активирует все правила этого источника' }}">
+              {{ 'Выключить' if src.enabled else 'Включить' }}
+            </button>
+          </form>
+          <form action="{{ sources_url }}{{ src.id }}/delete/" method="POST" style="display:inline"
+                onsubmit="return confirm('Удалить источник «{{ src.label or src.name }}»?\nВсе {{ src.rules_count }} правил этого источника будут удалены из таблицы.\nЭто действие необратимо.')">
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удаляет источник и все его правила из БД">Удалить</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  Источники правил не добавлены.
+  <a href="{{ sources_url }}add/">Добавить первый источник</a>.
+</div>
+{% endif %}
+
+{% elif action in ("add", "edit") %}
+<!-- ═══════════════════════════ ADD / EDIT FORM ═══════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>{{ 'Добавить источник правил' if action == 'add' else 'Изменить источник правил' }}</h4>
+  <a href="{{ sources_url }}" class="btn btn-outline-secondary btn-sm">← Список источников</a>
+</div>
+
+<form method="POST" action="">
+  <div class="card mb-3">
+    <div class="card-body">
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Имя <span class="text-danger">*</span></label>
+        <input type="text" name="name" class="form-control"
+               value="{{ source.name if source else '' }}"
+               {% if action == 'edit' %}readonly{% endif %}
+               placeholder="my-ru-domains" required>
+        <div class="form-text">Латинские буквы, цифры, дефис, подчёркивание. Нельзя изменить после создания.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-bold">Метка (отображаемое название)</label>
+        <input type="text" name="label" class="form-control"
+               value="{{ source.label if source else '' }}"
+               placeholder="Российские домены — itdoginfo">
+      </div>
+
+      <!-- Row 1: type + family -->
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Тип источника <span class="text-danger">*</span></label>
+          <select name="source_type" class="form-select" id="source_type_select" onchange="updateSourceFields()">
+            <option value="text"         {% if source and source.source_type == 'text'         %}selected{% endif %}>Текст (вручную)</option>
+            <option value="external_url" {% if source and source.source_type == 'external_url' %}selected{% endif %}>Внешний URL</option>
+            <option value="local_file"   {% if source and source.source_type == 'local_file'   %}selected{% endif %}>Локальный файл</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Семейство правил <span class="text-danger">*</span></label>
+          <select name="rule_family" class="form-select">
+            <option value="domain"  {% if source and source.rule_family == 'domain'  %}selected{% elif not source %}selected{% endif %}>Домены</option>
+            <option value="subnet"  {% if source and source.rule_family == 'subnet'  %}selected{% endif %}>Подсети / IP</option>
+          </select>
+          <div class="form-text">
+            Домены: <code>example.com</code>, <code>full:api.site.ru</code>, <code>regexp:.*\.ru$</code><br>
+            Подсети: <code>1.2.3.4</code>, <code>10.0.0.0/8</code>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Политика outbound <span class="text-danger">*</span></label>
+          <select name="outbound_policy" class="form-select">
+            <option value="direct_ru"  {% if source and source.outbound_policy == 'direct_ru'  %}selected{% elif not source %}selected{% endif %}>Прямо (RU, direct-ru)</option>
+            <option value="to_upstream"{% if source and source.outbound_policy == 'to_upstream'%}selected{% endif %}>Через upstream (балансер)</option>
+            <option value="block"      {% if source and source.outbound_policy == 'block'      %}selected{% endif %}>Блокировать</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 2: format -->
+      <div class="mb-3">
+        <label class="form-label fw-bold">Формат файла</label>
+        <select name="source_format" class="form-select" style="max-width:360px">
+          <option value="auto"                {% if not source or not source.source_format or source.source_format == 'auto'              %}selected{% endif %}>Авто (по расширению файла / содержимому)</option>
+          <option value="plain_text"          {% if source and source.source_format == 'plain_text'          %}selected{% endif %}>Plain text — одно правило на строку</option>
+          <option value="sing_box_source_json"{% if source and source.source_format == 'sing_box_source_json'%}selected{% endif %}>sing-box source JSON (.json)</option>
+          <option value="sing_box_binary_srs" {% if source and source.source_format == 'sing_box_binary_srs' %}selected{% endif %}>sing-box binary SRS (.srs) — не поддержан Stage 2E</option>
+        </select>
+        <div class="form-text">
+          Авто: <code>.json</code> → sing-box JSON, <code>.srs</code> → SRS (заглушка), остальное → plain text.<br>
+          Plain text: пустые строки и строки с <code>#</code> / <code>//</code> игнорируются.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <div class="form-check">
+          <input type="checkbox" name="enabled" value="1" class="form-check-input"
+                 id="enabled_check"
+                 {% if source is none or (source and source.enabled) %}checked{% endif %}>
+          <label class="form-check-label" for="enabled_check">Источник активен</label>
+        </div>
+      </div>
+
+      <!-- Text area (shown for source_type=text) -->
+      <div id="field_text" class="mb-3" style="display:none">
+        <label class="form-label fw-bold">Содержимое (по одному правилу на строку)</label>
+        <textarea name="content_text" class="form-control font-monospace" rows="14"
+                  placeholder="# Комментарии (строки с # или // игнорируются)&#10;&#10;# Обычные домены:&#10;mediaserv.site&#10;.sub.mediaserv.site&#10;&#10;# Точное совпадение:&#10;full:api.telegram.org&#10;&#10;# Regexp:&#10;regexp:.*\.ru$&#10;&#10;# Подсети (для семейства Подсети/IP):&#10;1.2.3.4&#10;10.0.0.0/8">{{ source.content_text if source else '' }}</textarea>
+        <div class="form-text">
+          <strong>Домены:</strong>
+          <code>example.com</code> или <code>.example.com</code> → suffix,
+          <code>full:exact.com</code> → exact,
+          <code>regexp:.*\.ru$</code> → regex<br>
+          <strong>Подсети:</strong>
+          <code>1.2.3.4</code> → ip,
+          <code>10.0.0.0/8</code> → cidr,
+          <code>cidr:192.168.0.0/16</code>,
+          <code>ip:5.6.7.8</code>
+        </div>
+      </div>
+
+      <!-- URL field (shown for source_type=external_url) -->
+      <div id="field_url" class="mb-3" style="display:none">
+        <label class="form-label fw-bold">URL списка правил</label>
+        <input type="url" name="url" class="form-control"
+               value="{{ source.url if source else '' }}"
+               placeholder="https://raw.githubusercontent.com/itdoginfo/allow-domains/main/Russia/inside-raw.lst">
+        <div class="form-text">
+          Только <strong>http://</strong> или <strong>https://</strong>. Локальные и приватные IP запрещены.
+          Таймаут 15 с, максимум 512 KB.<br>
+          Домены: <a href="#" onclick="return false">…/Russia/inside-raw.lst</a> —
+          Подсети CIDR: <a href="#" onclick="return false">…/Russia/inside-cidr.lst</a>
+          (itdoginfo/allow-domains).
+        </div>
+      </div>
+
+      <!-- Local file field (shown for source_type=local_file) -->
+      <div id="field_file" class="mb-3" style="display:none">
+        <label class="form-label fw-bold">Путь к локальному файлу</label>
+        <input type="text" name="local_path" class="form-control"
+               value="{{ source.local_path if source else '' }}"
+               placeholder="/opt/hiddify-manager/routing-lists/my-domains.txt">
+        <div class="form-text">
+          Разрешён только каталог <code>/opt/hiddify-manager/routing-lists/</code>.
+          Создайте файл: <code>sudo mkdir -p /opt/hiddify-manager/routing-lists/ && sudo nano /opt/hiddify-manager/routing-lists/my-domains.txt</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a href="{{ sources_url }}" class="btn btn-outline-secondary">Отмена</a>
+    {% if action == 'edit' and source_id %}
+    <form action="{{ sources_url }}{{ source_id }}/preview/" method="POST" class="ms-2">
+      <button type="submit" class="btn btn-outline-info">Preview (последнее сохранённое)</button>
+    </form>
+    {% endif %}
+  </div>
+</form>
+
+{% elif action == "preview" %}
+<!-- ═══════════════════════════ PREVIEW RESULT ═══════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Preview: {{ source.label or source.name }}</h4>
+  <div>
+    <a href="{{ sources_url }}" class="btn btn-outline-secondary btn-sm me-2">← Список</a>
+    <a href="{{ sources_url }}{{ source_id }}/edit/" class="btn btn-outline-primary btn-sm">Изменить</a>
+  </div>
+</div>
+
+{% if preview_result %}
+
+{% if preview_result.fetch_error %}
+<div class="alert alert-danger">
+  <strong>Ошибка загрузки:</strong> {{ preview_result.fetch_error }}
+</div>
+{% else %}
+
+{% if preview_result.detected_format %}
+<div class="alert alert-light border mb-3 py-2">
+  Обнаруженный формат: <strong>{{ preview_result.detected_format }}</strong>
+  {% if preview_result.detected_format == 'sing_box_binary_srs' %}
+  &nbsp;<span class="badge bg-warning text-dark">Не поддержан</span>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="row mb-3">
+  <div class="col-6 col-md-2">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <h5 class="mb-0 text-success">{{ preview_result.rules_count }}</h5>
+        <small class="text-muted">Правил</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <h5 class="mb-0 text-warning">{{ preview_result.duplicates }}</h5>
+        <small class="text-muted">Дублей в файле</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <h5 class="mb-0 text-danger">{{ preview_result.errors_count }}</h5>
+        <small class="text-muted">Ошибок строк</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <h5 class="mb-0">{{ preview_result.lines_total }}</h5>
+        <small class="text-muted">Всего строк</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <h5 class="mb-0 text-muted">{{ preview_result.lines_skipped }}</h5>
+        <small class="text-muted">Комментарии/пустые</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if preview_result.rules_count > 0 %}
+<form action="{{ sources_url }}{{ source_id }}/import/" method="POST"
+      onsubmit="return confirm('Импортировать {{ preview_result.rules_count }} правил в пользовательские правила?')">
+  <button type="submit" class="btn btn-success mb-3">
+    ✓ Импортировать {{ preview_result.rules_count }} правил
+  </button>
+</form>
+{% endif %}
+
+{% if preview_result.sample_warnings %}
+<div class="alert alert-warning py-2">
+  <strong>Предупреждения:</strong>
+  <ul class="mb-0 small">
+    {% for w in preview_result.sample_warnings %}<li>{{ w }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if preview_result.sample_rules %}
+<h6>Первые {{ preview_result.sample_rules|length }} правил:</h6>
+<table class="table table-sm table-bordered">
+  <thead class="table-light"><tr><th>Тип</th><th>Значение</th></tr></thead>
+  <tbody>
+    {% for r in preview_result.sample_rules %}
+    <tr><td><code>{{ r.rule_type }}</code></td><td>{{ r.normalized_value }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if preview_result.sample_errors %}
+<h6 class="text-danger">Первые {{ preview_result.sample_errors|length }} ошибок:</h6>
+<ul class="list-group list-group-flush mb-3">
+  {% for err in preview_result.sample_errors %}
+  <li class="list-group-item list-group-item-danger py-1 small">{{ err }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% endif %}{# end if fetch_error #}
+{% endif %}{# end if preview_result #}
+
+{% endif %}{# end action blocks #}
+
+
+<script>
+function updateSourceFields() {
+  var t = document.getElementById('source_type_select').value;
+  document.getElementById('field_text').style.display = (t === 'text')         ? '' : 'none';
+  document.getElementById('field_url').style.display  = (t === 'external_url') ? '' : 'none';
+  document.getElementById('field_file').style.display = (t === 'local_file')   ? '' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function() { updateSourceFields(); });
+</script>
+{% endblock %}
