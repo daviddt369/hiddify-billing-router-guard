@@ -226,21 +226,22 @@ cfg_count="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM anti_share_config;"
 [[ "$cfg_count" -ge 1 ]] || die "anti_share_config seed failed: table is still empty"
 log "anti_share_config seeded (rows: $cfg_count)"
 
-# --- Step 10: Set commercial_antishare_installed=True in str_config ---
-# commercial_antishare_installed is registered in str_config ConfigEnum.
-# Capabilities check: antishare_enabled() reads str_config OR checks manifest file.
-log "Setting commercial_antishare_installed=True in str_config"
+# --- Step 10: Set commercial_antishare_installed=1 in bool_config ---
+# commercial_antishare_installed.type == bool in ConfigEnum.
+# get_hconfigs() reads BoolConfig rows for bool-typed keys (same as commercial_routing_installed).
+# Writing to str_config is a no-op for capabilities.antishare_enabled() — must use bool_config.
+log "Setting commercial_antishare_installed=1 in bool_config"
 mysql "$DB_NAME" <<'SQL'
-INSERT INTO str_config (child_id, `key`, value)
-VALUES (0, 'commercial_antishare_installed', 'True')
-ON DUPLICATE KEY UPDATE value = 'True';
+INSERT INTO bool_config (child_id, `key`, value)
+VALUES (0, 'commercial_antishare_installed', 1)
+ON DUPLICATE KEY UPDATE value = 1;
 SQL
 
 installed_val="$(mysql "$DB_NAME" -N -B \
-    -e "SELECT value FROM str_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
+    -e "SELECT value FROM bool_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
     2>/dev/null | head -n1 || echo '')"
-[[ "$installed_val" == "True" ]] \
-    || die "commercial_antishare_installed not set after migration. Got: '$installed_val'"
+[[ "$installed_val" == "1" ]] \
+    || die "commercial_antishare_installed not set to 1 after migration. Got: '$installed_val'"
 
-log "commercial_antishare_installed=True confirmed"
+log "commercial_antishare_installed=1 confirmed"
 log "Anti-share DB migration completed successfully"
