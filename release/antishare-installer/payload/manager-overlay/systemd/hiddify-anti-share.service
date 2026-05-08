@@ -1,0 +1,16 @@
+[Unit]
+Description=Hiddify Anti-Share cycle runner
+After=network.target mariadb.service
+
+[Service]
+Type=oneshot
+User=hiddify-panel
+WorkingDirectory=/opt/hiddify-manager/hiddify-panel
+ExecStart=/opt/hiddify-manager/.venv313/bin/python -m hiddifypanel.antishare.runner
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hiddify-anti-share
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

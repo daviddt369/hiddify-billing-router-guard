@@ -1,0 +1,230 @@
+{% extends 'admin-layout.html' %}
+{% block title %}Anti-share{% endblock %}
+{% block body %}
+<section class="content-header">
+  <h1>Anti-share</h1>
+  <p class="text-muted">Отдельная политика anti-share поверх baseline 12.4. Коммерция остаётся источником лимита через user.max_ips.</p>
+</section>
+
+<section class="content">
+  <div class="row">
+    <div class="col-md-3">
+      <div class="small-box bg-info">
+        <div class="inner">
+          <h3>{{ summary.users_tracked }}</h3>
+          <p>Пользователей под наблюдением</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="small-box bg-warning">
+        <div class="inner">
+          <h3>{{ summary.warn_count_7d }}</h3>
+          <p>Предупреждений за 7 дней</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="small-box bg-danger">
+        <div class="inner">
+          <h3>{{ summary.block_count_7d }}</h3>
+          <p>Блокировок за 7 дней</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="small-box bg-success">
+        <div class="inner">
+          <h3>{{ summary.states.get('learning', 0) }}</h3>
+          <p>Пользователей в обучении</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box box-primary">
+    <div class="box-header with-border">
+      <h3 class="box-title">Policy</h3>
+    </div>
+    <form method="post">
+      <div class="box-body">
+        {{ form.hidden_tag() }}
+        <div class="row">
+          <div class="col-md-4"><div class="form-group"><label>Anti-share включён</label><div>{{ form.enabled() }}</div><div class="text-muted small">Главный переключатель защиты от шаринга.</div></div></div>
+          <div class="col-md-4"><div class="form-group"><label>Уведомления в Telegram</label><div>{{ form.telegram_enabled() }}</div><div class="text-muted small">Сообщения отправляются при переходе в warned и blocked.</div></div></div>
+          <div class="col-md-4"><div class="form-group"><label>NFT-блокировки включены</label><div>{{ form.nft_enabled() }}</div><div class="text-muted small">Точечная блокировка только лишних IP на уровне хоста.</div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>Окно учёта IP, сек</label>{{ form.window_seconds(class_="form-control") }}<div class="text-muted small">За какой интервал считаем одновременно активные IP.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Дней обучения</label>{{ form.learning_days(class_="form-control") }}<div class="text-muted small">Период, когда профиль набирает историю без обычных санкций.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Хранение истории, дней</label>{{ form.retention_days(class_="form-control") }}<div class="text-muted small">Через сколько дней старые IP-профили можно чистить.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Актуальность доверенных IP, дней</label>{{ form.trusted_recent_days(class_="form-control") }}<div class="text-muted small">Сколько дней IP считаем свежим и актуально доверенным.</div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>Старение доверия в день</label>{{ form.trust_decay_per_day(class_="form-control") }}<div class="text-muted small">На сколько уменьшается trust_score за день без активности IP.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Снижение score в чистом цикле</label>{{ form.score_decay_clean(class_="form-control") }}<div class="text-muted small">На сколько уменьшаем подозрительность без превышения лимита.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Штраф за +1 лишний IP</label>{{ form.score_plus1(class_="form-control") }}</div></div>
+          <div class="col-md-3"><div class="form-group"><label>Штраф за +2 лишних IP</label>{{ form.score_plus2(class_="form-control") }}</div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>Штраф за +3 и более IP</label>{{ form.score_plus3(class_="form-control") }}</div></div>
+          <div class="col-md-3"><div class="form-group"><label>Порог suspect</label>{{ form.suspect_score(class_="form-control") }}<div class="text-muted small">Пользователь подозрителен, но ещё без жёсткой санкции.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Порог warned</label>{{ form.warn_score(class_="form-control") }}<div class="text-muted small">Шлём предупреждение в Telegram.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Порог blocked</label>{{ form.block_score(class_="form-control") }}<div class="text-muted small">Лишние IP получают временную блокировку.</div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>Порог грубой аномалии по новым IP</label>{{ form.severe_new_ip_threshold(class_="form-control") }}<div class="text-muted small">Если новых IP слишком много сразу, реакция ускоряется.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Порог грубой аномалии по трафику</label>{{ form.severe_traffic_ratio(class_="form-control") }}<div class="text-muted small">Множитель всплеска трафика относительно обычного поведения.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Время бана, сек</label>{{ form.ban_seconds(class_="form-control") }}<div class="text-muted small">Сколько длится блокировка лишнего IP.</div></div></div>
+          <div class="col-md-3"><div class="form-group"><label>Лимит пользователей за цикл</label>{{ form.scan_limit(class_="form-control") }}<div class="text-muted small">Сколько пользователей максимум обрабатываем за один проход.</div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><div class="form-group"><label>Только симуляция блокировок</label><div>{{ form.nft_dry_run() }}</div><div class="text-muted small">Проверка логики без реального добавления IP в nftables.</div></div></div>
+        </div>
+      </div>
+      <div class="box-footer">
+        {{ form.submit(class_="btn btn-primary") }}
+      </div>
+    </form>
+  </div>
+
+  <div class="box box-default">
+    <div class="box-header with-border">
+      <h3 class="box-title">Пользователи</h3>
+    </div>
+    <div class="box-body table-responsive">
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Пользователь</th>
+            <th>Состояние</th>
+            <th>Score</th>
+            <th>Лимит IP</th>
+            <th>Текущие / Разрешённые</th>
+            <th>Среднее IP за 3 дня</th>
+            <th>Среднее IP за 7 дней</th>
+            <th>Предупреждения</th>
+            <th>Блокировки</th>
+            <th>Текущие IP</th>
+            <th>Профили IP</th>
+            <th>Обучение до</th>
+            <th>Бан до</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in user_rows %}
+          <tr>
+            <td>{{ row.user_id }}</td>
+            <td>{{ row.name }}</td>
+            <td>
+              {% if row.state == 'learning' %}обучение{% elif row.state == 'normal' %}норма{% elif row.state == 'suspect' %}подозрение{% elif row.state == 'warned' %}предупреждён{% elif row.state == 'blocked' %}заблокирован{% else %}{{ row.state }}{% endif %}
+            </td>
+            <td>{{ row.score }}</td>
+            <td>{{ row.max_ips }}</td>
+            <td>{{ row.current_ip_count }} / {{ row.allowed_ip_count }}</td>
+            <td>{{ row.avg_ips_3d }}</td>
+            <td>{{ row.avg_ips_7d }}</td>
+            <td>{{ row.warn_count }}</td>
+            <td>{{ row.block_count }}</td>
+            <td>
+              <details>
+                <summary>Показать IP ({{ row.current_ips|length }})</summary>
+                <div class="text-muted small" style="margin-top:6px;">Текущие IP, замеченные в активном окне.</div>
+                <ul style="margin-top:6px; padding-left:18px;">
+                  {% for current_ip in row.current_ips %}
+                  <li style="margin-bottom:4px;">
+                    <code>{{ current_ip.ip }}</code>
+                    <span class="label {{ current_ip.badge_class }}">{{ current_ip.state_label }}</span>
+                    {% if current_ip.is_banned and current_ip.last_ban_until %}
+                    <span class="text-muted small">до {{ current_ip.last_ban_until }}</span>
+                    {% endif %}
+                  </li>
+                  {% else %}
+                  <li class="text-muted">Нет IP в текущем окне.</li>
+                  {% endfor %}
+                </ul>
+              </details>
+            </td>
+            <td>
+              {% set trusted_count = row.profiles | selectattr('is_trusted') | list | length %}
+              <details>
+                <summary>Показать профили ({{ row.profiles|length }}, trusted: {{ trusted_count }})</summary>
+                <div class="text-muted small" style="margin-top:6px;">История и доверие по IP пользователя. Блок разворачивается только по запросу.</div>
+                <div style="margin-top:8px;">
+                  {% for profile in row.profiles %}
+                  <div style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <div>
+                      <strong>{{ profile.ip }}</strong>
+                      <span class="label {{ profile.badge_class }}">{{ profile.state_label }}</span>
+                    </div>
+                    <div class="text-muted small">
+                      trust={{ profile.trust_score }},
+                      last_seen={{ profile.last_seen_at or '' }}
+                      {% if profile.is_banned and profile.last_ban_until %}
+                      , ban_until={{ profile.last_ban_until }}
+                      {% endif %}
+                    </div>
+                    <div style="margin-top:4px;">
+                      {% if profile.can_trust %}
+                      <form method="post" style="display:inline-block;">
+                        {{ form.csrf_token }}
+                        <input type="hidden" name="action" value="trust_ip">
+                        <input type="hidden" name="target_user_id" value="{{ row.user_id }}">
+                        <input type="hidden" name="target_ip" value="{{ profile.ip }}">
+                        <button type="submit" class="btn btn-xs btn-success">Доверять</button>
+                      </form>
+                      {% endif %}
+                      {% if profile.can_untrust %}
+                      <form method="post" style="display:inline-block;">
+                        {{ form.csrf_token }}
+                        <input type="hidden" name="action" value="untrust_ip">
+                        <input type="hidden" name="target_user_id" value="{{ row.user_id }}">
+                        <input type="hidden" name="target_ip" value="{{ profile.ip }}">
+                        <button type="submit" class="btn btn-xs btn-default">Убрать доверие</button>
+                      </form>
+                      {% endif %}
+                      {% if profile.can_unban %}
+                      <form method="post" style="display:inline-block;">
+                        {{ form.csrf_token }}
+                        <input type="hidden" name="action" value="unban_ip">
+                        <input type="hidden" name="target_user_id" value="{{ row.user_id }}">
+                        <input type="hidden" name="target_ip" value="{{ profile.ip }}">
+                        <button type="submit" class="btn btn-xs btn-warning">Снять бан</button>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% else %}
+                  <div class="text-muted">Профили IP ещё не накоплены.</div>
+                  {% endfor %}
+                </div>
+              </details>
+            </td>
+            <td>{{ row.learning_until or '' }}</td>
+            <td>{{ row.ban_until or '' }}</td>
+            <td>
+              <form method="post" style="display:inline-block; margin-bottom:6px;">
+                {{ form.csrf_token }}
+                <input type="hidden" name="action" value="reset_score">
+                <input type="hidden" name="target_user_id" value="{{ row.user_id }}">
+                <button type="submit" class="btn btn-xs btn-primary">Сбросить score</button>
+              </form>
+              <form method="post" style="display:inline-block; margin-bottom:6px;">
+                {{ form.csrf_token }}
+                <input type="hidden" name="action" value="toggle_disable">
+                <input type="hidden" name="target_user_id" value="{{ row.user_id }}">
+                <button type="submit" class="btn btn-xs {{ 'btn-success' if row.override_disabled else 'btn-danger' }}">
+                  {{ 'Включить anti-share' if row.override_disabled else 'Выключить anti-share' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

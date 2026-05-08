@@ -1,0 +1,4 @@
+# Hiddify Anti-Share: allow panel user to invoke nft helper as root without password
+# Installed by antishare-installer
+Defaults!/opt/hiddify-manager/common/hiddify-antishare-nft.sh !requiretty
+hiddify-panel ALL=(root) NOPASSWD: /opt/hiddify-manager/common/hiddify-antishare-nft.sh
