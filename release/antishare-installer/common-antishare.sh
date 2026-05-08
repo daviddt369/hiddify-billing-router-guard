@@ -23,6 +23,14 @@ readonly PAYLOAD_DIR="$SCRIPT_DIR/payload"
 readonly DB_MIGRATE_SCRIPT="$SCRIPT_DIR/scripts/commercial-antishare-db-migrate.sh"
 readonly DB_NAME="${DB_NAME:-hiddifypanel}"
 
+# xray access log — required by anti-share collect_recent_ips()
+readonly XRAY_LOG_CONFIG="$INSTALL_ROOT/xray/configs/00_log.json"
+readonly XRAY_ACCESS_LOG="$INSTALL_ROOT/log/system/xray.access.log"
+readonly XRAY_ACCESS_STATE="$INSTALL_ROOT/log/system/xray.access.state.json"
+readonly XRAY_SERVICE="${XRAY_SERVICE:-hiddify-xray}"
+readonly XRAY_LOG_OVERRIDE_DIR="/etc/systemd/system/${XRAY_SERVICE}.service.d"
+readonly XRAY_LOG_OVERRIDE_FILE="$XRAY_LOG_OVERRIDE_DIR/antishare-log-perms.conf"
+
 BACKUP_DIR=""
 INSTALL_BLOCK=""
 INSTALL_SUCCESS=0
@@ -339,4 +347,107 @@ rollback_backup_dir() {
     if [[ "$services_restarted" == "1" ]]; then
         systemctl restart "$SERVICE_PANEL" "$SERVICE_BG" 2>/dev/null || true
     fi
+}
+
+# Patch xray 00_log.json to enable access log.
+# Anti-share collect_recent_ips() reads this log to detect active IPs.
+# Idempotent: skips if already pointing to the correct path.
+# NOTE: apply_configs.sh regenerates xray configs and will overwrite this patch.
+# The antishare-installer installs a systemd override to re-apply permissions
+# after each xray restart.
+patch_xray_access_log() {
+    local log_config="$XRAY_LOG_CONFIG"
+    [[ -f "$log_config" ]] || die "xray log config not found: $log_config"
+
+    local py
+    py="$(detect_venv_python)"
+
+    # Check if already patched
+    local current_access
+    current_access="$("$py" -c "
+import json, sys
+with open('$log_config') as f:
+    d = json.load(f)
+print(d.get('log', {}).get('access', 'none'))
+" 2>/dev/null || echo 'none')"
+
+    if [[ "$current_access" == "$XRAY_ACCESS_LOG" ]]; then
+        log "xray access log already enabled, skipping"
+        return 0
+    fi
+
+    backup_target "$log_config"
+
+    "$py" - "$log_config" "$XRAY_ACCESS_LOG" <<'PY'
+import json, sys
+path, access_path = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    cfg = json.load(f)
+cfg.setdefault('log', {})
+cfg['log']['access'] = access_path
+if cfg['log'].get('loglevel') == 'critical':
+    cfg['log']['loglevel'] = 'warning'
+with open(path, 'w') as f:
+    json.dump(cfg, f, indent=2)
+print(f"Patched {path}: access={access_path}")
+PY
+
+    record_installed_file "$log_config"
+    printf 'true\n' > "$BACKUP_DIR/xray-log-patched.flag"
+    log "xray access log enabled: $XRAY_ACCESS_LOG"
+}
+
+# Install systemd override for xray service that chmod 644 the access log after start.
+# This survives xray restarts and apply_configs.sh (which does not touch systemd overrides).
+# hiddify-panel user needs read access; xray creates the log as root:root 600.
+install_xray_log_permissions_override() {
+    mkdir -p "$XRAY_LOG_OVERRIDE_DIR"
+    backup_target "$XRAY_LOG_OVERRIDE_FILE"
+
+    cat > "$XRAY_LOG_OVERRIDE_FILE" <<EOF
+[Service]
+ExecStartPost=/bin/bash -c 'sleep 2 && chmod 644 $XRAY_ACCESS_LOG 2>/dev/null || true'
+EOF
+
+    record_installed_file "$XRAY_LOG_OVERRIDE_FILE"
+    systemctl daemon-reload
+    log "xray log permissions override installed: $XRAY_LOG_OVERRIDE_FILE"
+}
+
+# Ensure xray access state.json is writable by hiddify-panel.
+# collect_recent_ips() writes a cursor file alongside the log.
+prepare_xray_access_state() {
+    local state="$XRAY_ACCESS_STATE"
+    local log_dir
+    log_dir="$(dirname "$state")"
+    mkdir -p "$log_dir"
+
+    [[ -f "$state" ]] || touch "$state"
+    chown "$PANEL_USER" "$state" 2>/dev/null \
+        || chmod 666 "$state" 2>/dev/null \
+        || warn "Could not set ownership on $state — anti-share state writes may fail"
+    log "xray access state file ready: $state"
+}
+
+# Restart main xray and wait for log file to appear.
+restart_xray_for_access_log() {
+    local xray_service="$XRAY_SERVICE"
+    if ! systemctl cat "$xray_service" >/dev/null 2>&1; then
+        warn "xray service '$xray_service' not found — skipping restart"
+        return 0
+    fi
+
+    systemctl restart "$xray_service"
+    log "xray restarted to apply access log config"
+
+    # Wait up to 10s for log file to appear (created on first connection)
+    # The log is created lazily — absence here is normal on clean VM
+    local i=0
+    while [[ $i -lt 5 && ! -f "$XRAY_ACCESS_LOG" ]]; do
+        sleep 2; ((i++))
+    done
+
+    # Apply chmod manually in case ExecStartPost hasn't run yet
+    [[ -f "$XRAY_ACCESS_LOG" ]] && chmod 644 "$XRAY_ACCESS_LOG" 2>/dev/null || true
+    log "xray access log state: $(ls -la "$XRAY_ACCESS_LOG" 2>/dev/null || echo 'not yet created — normal on clean VM')"
 }

@@ -45,6 +45,15 @@ main() {
     systemctl stop  "$ANTISHARE_SERVICE" 2>/dev/null || true
     systemctl disable "$ANTISHARE_TIMER" 2>/dev/null || true
 
+    # Remove xray log permissions override if it was created by this install
+    if [[ -f "$backup_dir/created-files.txt" ]]; then
+        if grep -q "$XRAY_LOG_OVERRIDE_FILE" "$backup_dir/created-files.txt" 2>/dev/null; then
+            step "Removing xray log permissions override"
+            rm -f "$XRAY_LOG_OVERRIDE_FILE"
+            rmdir "$XRAY_LOG_OVERRIDE_DIR" 2>/dev/null || true
+        fi
+    fi
+
     # Remove systemd unit files if they were created by this install
     if [[ -f "$backup_dir/created-files.txt" ]]; then
         for unit_file in "$ANTISHARE_SERVICE_FILE" "$ANTISHARE_TIMER_FILE"; do

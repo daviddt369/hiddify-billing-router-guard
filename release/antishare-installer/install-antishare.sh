@@ -74,6 +74,26 @@ main() {
     export BACKUP_DIR DB_NAME
     bash "$DB_MIGRATE_SCRIPT"
 
+    # --- Step 3b: Enable xray access log ---
+    # Anti-share collect_recent_ips() reads xray access log to detect active IPs.
+    # Without this, anti-share sees 0 IPs and user online status never updates.
+    step "Enabling xray access log (required by anti-share)"
+    patch_xray_access_log
+
+    # --- Step 3c: Install xray log permissions systemd override ---
+    # xray creates the log as root:root 600; hiddify-panel needs to read it.
+    # Systemd override runs chmod 644 after each xray restart, surviving apply_configs.sh.
+    step "Installing xray log permissions override (survives apply_configs.sh)"
+    install_xray_log_permissions_override
+
+    # --- Step 3d: Prepare xray access state file ---
+    step "Preparing xray access state file"
+    prepare_xray_access_state
+
+    # --- Step 3e: Restart xray to apply log config ---
+    step "Restarting xray to activate access log"
+    restart_xray_for_access_log
+
     # --- Step 4: Install nft helper ---
     step "Installing nft helper"
     install_payload_file \

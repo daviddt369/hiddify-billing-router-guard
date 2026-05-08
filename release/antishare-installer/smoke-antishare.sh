@@ -83,7 +83,40 @@ main() {
         warn "nft_enabled=1 and nft_dry_run=0 — firewall bans are ACTIVE"
     fi
 
-    # --- Check 9: nft helper exists and executable ---
+    # --- Check 9: xray access log enabled and readable ---
+    step "Checking xray access log (required by anti-share)"
+    [[ -f "$XRAY_LOG_CONFIG" ]] || die "xray log config missing: $XRAY_LOG_CONFIG"
+    local log_access_val
+    log_access_val="$(python3 -c "
+import json
+with open('$XRAY_LOG_CONFIG') as f:
+    d = json.load(f)
+print(d.get('log', {}).get('access', 'none'))
+" 2>/dev/null || echo 'none')"
+    [[ "$log_access_val" == "$XRAY_ACCESS_LOG" ]] \
+        || die "xray access log not enabled in $XRAY_LOG_CONFIG (got: '$log_access_val'). anti-share requires access=$XRAY_ACCESS_LOG"
+    echo "xray-access-log-config-ok"
+
+    [[ -f "$XRAY_LOG_OVERRIDE_FILE" ]] \
+        || die "xray log permissions override missing: $XRAY_LOG_OVERRIDE_FILE"
+    echo "xray-log-override-ok"
+
+    # Check that hiddify-panel can read the log (if file exists)
+    if [[ -f "$XRAY_ACCESS_LOG" ]]; then
+        sudo -u "$PANEL_USER" test -r "$XRAY_ACCESS_LOG" \
+            || die "hiddify-panel cannot read $XRAY_ACCESS_LOG — check permissions"
+        echo "xray-access-log-readable-ok"
+    else
+        warn "xray access log not yet created (no traffic) — will be created on first connection"
+    fi
+
+    # Check state file is writable by hiddify-panel
+    [[ -f "$XRAY_ACCESS_STATE" ]] || touch "$XRAY_ACCESS_STATE"
+    sudo -u "$PANEL_USER" test -w "$XRAY_ACCESS_STATE" \
+        || die "hiddify-panel cannot write $XRAY_ACCESS_STATE"
+    echo "xray-access-state-writable-ok"
+
+    # --- Check 9d: nft helper exists and executable ---
     step "Checking nft helper"
     [[ -f "$NFT_HELPER_PATH" ]] || die "nft helper not found: $NFT_HELPER_PATH"
     [[ -x "$NFT_HELPER_PATH" ]] || die "nft helper not executable: $NFT_HELPER_PATH"
