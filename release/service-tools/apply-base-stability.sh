@@ -37,17 +37,38 @@ fi
 NET_PY="${candidates[0]}"
 log "Found: $NET_PY"
 
-# --- Step 2: Check if already patched ---
-if grep -q "ident\.me.*timeout=5\|timeout=5.*ident\.me" "$NET_PY" 2>/dev/null; then
-    log "Already patched — timeout=5 already present in net.py. Nothing to do."
+# --- Step 2: Check if already protected ---
+# Three protection states:
+#   a) IDENT_ME_TIMEOUT constant defined — panel natively handles timeout (e.g. v12 prod servers)
+#   b) timeout=5 literal present on ident.me urlopen — our patch already applied
+#   c) any urlopen(ident.me) with explicit timeout= — some other protection in place
+# In all three cases: nothing to do.
+
+if grep -q 'IDENT_ME_TIMEOUT\s*=' "$NET_PY" 2>/dev/null; then
+    timeout_line=$(grep 'IDENT_ME_TIMEOUT\s*=' "$NET_PY" 2>/dev/null | head -1 | tr -d ' ')
+    log "net.py ident timeout already protected via constant: $timeout_line"
+    log "No patch needed — IDENT_ME_TIMEOUT already guards ident.me calls."
     exit 0
 fi
 
-# Verify the expected pattern exists before patching
+if grep -E "urlopen\(.*ident\.me.*timeout=|timeout=.*urlopen\(.*ident\.me" "$NET_PY" 2>/dev/null | grep -q .; then
+    log "net.py ident timeout already protected — existing timeout= on ident.me urlopen."
+    exit 0
+fi
+
+# Verify the patchable pattern exists before attempting to patch
 if ! grep -q "urlopen.*ident\.me" "$NET_PY" 2>/dev/null; then
     warn "Expected pattern 'urlopen.*ident.me' not found in $NET_PY"
     warn "Panel may have been updated and this patch no longer applies."
     warn "Check net.py manually: $NET_PY"
+    warn "Do NOT force-patch — leaving file unchanged to avoid corruption."
+    exit 0
+fi
+
+# Sanity check: ensure lines don't already have timeout= in any form
+# (catches edge cases not matched above)
+if grep "urlopen.*ident\.me" "$NET_PY" 2>/dev/null | grep -q 'timeout='; then
+    log "net.py ident timeout already protected (unknown form) — leaving file unchanged."
     exit 0
 fi
 

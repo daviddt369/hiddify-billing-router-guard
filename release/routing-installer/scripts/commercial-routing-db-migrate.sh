@@ -21,6 +21,56 @@ need_cmd mysqldump
 
 log "Starting routing DB migration for database: $DB_NAME"
 
+# --- Step 0: Pre-migration state snapshot (read-only, informational) ---
+# Documents existing data before any changes. No DROP or DELETE ever runs in this migration.
+log "Pre-migration state snapshot:"
+
+# custom_rules
+if mysql "$DB_NAME" -N -B -e "SHOW TABLES LIKE 'commercial_routing_custom_rule';" 2>/dev/null | grep -q .; then
+    existing_rules="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM commercial_routing_custom_rule;" 2>/dev/null | head -1 || echo '?')"
+    log "  commercial_routing_custom_rule: EXISTS  rows=$existing_rules (will be preserved)"
+    # source_id column
+    has_source_id="$(mysql "$DB_NAME" -N -B \
+        -e "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA='$DB_NAME'
+              AND TABLE_NAME='commercial_routing_custom_rule'
+              AND COLUMN_NAME='source_id';" 2>/dev/null | head -1 || echo '0')"
+    if [[ "${has_source_id:-0}" -ge 1 ]]; then
+        log "  commercial_routing_custom_rule.source_id: EXISTS (Stage 2F already applied)"
+    else
+        log "  commercial_routing_custom_rule.source_id: MISSING (will be added in Step 13)"
+    fi
+else
+    log "  commercial_routing_custom_rule: MISSING (will be created)"
+fi
+
+# upstreams table
+if mysql "$DB_NAME" -N -B -e "SHOW TABLES LIKE 'commercial_routing_upstream';" 2>/dev/null | grep -q .; then
+    existing_upstreams="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM commercial_routing_upstream;" 2>/dev/null | head -1 || echo '?')"
+    log "  commercial_routing_upstream: EXISTS  rows=$existing_upstreams"
+else
+    log "  commercial_routing_upstream: MISSING (will be created in Step 7)"
+    # Check legacy upstream config for seed decision
+    legacy_tunnel="$(mysql "$DB_NAME" -N -B \
+        -e "SELECT value FROM str_config WHERE child_id=0 AND \`key\`='commercial_de_tunnel_type' LIMIT 1;" \
+        2>/dev/null | head -1 || echo '')"
+    if [[ -n "$legacy_tunnel" && "$legacy_tunnel" != "test_blackhole" ]]; then
+        log "  legacy commercial_de_tunnel_type='$legacy_tunnel' — Step 9 will seed upstream-1 from legacy config"
+    else
+        log "  legacy commercial_de_tunnel_type='${legacy_tunnel:-empty}' — Step 9 will skip legacy seed"
+    fi
+fi
+
+# rule_source table
+if mysql "$DB_NAME" -N -B -e "SHOW TABLES LIKE 'commercial_routing_rule_source';" 2>/dev/null | grep -q .; then
+    existing_sources="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM commercial_routing_rule_source;" 2>/dev/null | head -1 || echo '?')"
+    log "  commercial_routing_rule_source: EXISTS  rows=$existing_sources"
+else
+    log "  commercial_routing_rule_source: MISSING (will be created in Step 10)"
+fi
+
+log "Pre-migration snapshot complete — proceeding with idempotent migration"
+
 # --- Step 1: DB dump before any changes ---
 log "Backing up database to $BACKUP_DIR/db-dump.sql"
 mysqldump "$DB_NAME" > "$BACKUP_DIR/db-dump.sql"

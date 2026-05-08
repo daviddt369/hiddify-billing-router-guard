@@ -195,12 +195,25 @@ log "anti_share_user_override schema OK"
 log "All 5 anti-share table schemas verified"
 
 # --- Step 9: Seed anti_share_config with safe defaults (only if empty) ---
-# Safe defaults:
-#   enabled=1         — runner is active but takes no action without nft/telegram
-#   nft_enabled=0     — NO firewall bans (must be explicitly enabled by admin)
-#   nft_dry_run=1     — extra safety: even if nft_enabled is toggled on, dry-run first
-#   telegram_enabled=0 — no Telegram spam (must be explicitly enabled by admin)
-log "Seeding anti_share_config safe defaults if table is empty"
+# Safe defaults applied ONLY on first install (empty table).
+# On upgrade, existing admin settings are intentional and MUST NOT be overwritten:
+#   nft_enabled, nft_dry_run, telegram_enabled may be set to production values.
+# The WHERE NOT EXISTS guard ensures this is always idempotent.
+existing_cfg_count="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM anti_share_config;" 2>/dev/null | head -n1 || echo '0')"
+
+if [[ "$existing_cfg_count" -ge 1 ]]; then
+    # Existing config found — log current admin settings and skip seeding.
+    existing_nft="$(mysql "$DB_NAME" -N -B -e "SELECT nft_enabled FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
+    existing_dry="$(mysql "$DB_NAME" -N -B -e "SELECT nft_dry_run FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
+    existing_tg="$(mysql "$DB_NAME" -N -B -e "SELECT telegram_enabled FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
+    log "existing anti_share_config found, preserving admin settings:"
+    log "  nft_enabled=$existing_nft  nft_dry_run=$existing_dry  telegram_enabled=$existing_tg"
+    log "  (safe defaults NOT applied — this is an upgrade, not a fresh install)"
+else
+    log "anti_share_config table is empty — seeding safe defaults for fresh install"
+    log "  nft_enabled=0 (no bans), nft_dry_run=1 (extra safety), telegram_enabled=0"
+fi
+
 mysql "$DB_NAME" <<'SQL'
 INSERT INTO anti_share_config (
   enabled, window_seconds, learning_days, retention_days,
@@ -224,7 +237,7 @@ SQL
 
 cfg_count="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM anti_share_config;" 2>/dev/null | head -n1 || echo '0')"
 [[ "$cfg_count" -ge 1 ]] || die "anti_share_config seed failed: table is still empty"
-log "anti_share_config seeded (rows: $cfg_count)"
+log "anti_share_config rows: $cfg_count"
 
 # --- Step 10: Set commercial_antishare_installed=1 in bool_config ---
 # commercial_antishare_installed.type == bool in ConfigEnum.

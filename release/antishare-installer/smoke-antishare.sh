@@ -20,6 +20,21 @@ main() {
     INSTALL_BLOCK="smoke-antishare"
     require_root
 
+    # Parse arguments
+    local upgrade_mode=0
+    local args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --upgrade-existing-config)
+                upgrade_mode=1
+                warn "Upgrade mode: nft/telegram safe-default checks skipped (existing production config preserved)"
+                ;;
+            *) args+=("$1") ;;
+        esac
+        shift
+    done
+    set -- "${args[@]+"${args[@]}"}"
+
     # --- Check 1: Panel services active ---
     step "Checking main Hiddify panel services"
     check_services_active
@@ -78,15 +93,27 @@ main() {
         -e "SELECT nft_dry_run FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '-1')"
     echo "db-antishare-config-ok nft_enabled=$nft_enabled telegram_enabled=$telegram_enabled nft_dry_run=$nft_dry_run"
 
-    # Hard-check safe defaults — Stage 1 anti-share must not have enforcement active.
-    # nft enforcement (Stage 4) and Telegram (Stage 3) are opt-in after explicit admin decision.
-    [[ "$nft_enabled"      == "0" ]] \
-        || die "SAFE-DEFAULT VIOLATION: nft_enabled=$nft_enabled (expected 0). nft enforcement is not open yet. Reset: UPDATE anti_share_config SET nft_enabled=0;"
-    [[ "$nft_dry_run"      == "1" ]] \
-        || die "SAFE-DEFAULT VIOLATION: nft_dry_run=$nft_dry_run (expected 1). dry-run must be on. Reset: UPDATE anti_share_config SET nft_dry_run=1;"
-    [[ "$telegram_enabled" == "0" ]] \
-        || die "SAFE-DEFAULT VIOLATION: telegram_enabled=$telegram_enabled (expected 0). Telegram is not open yet. Reset: UPDATE anti_share_config SET telegram_enabled=0;"
-    echo "db-antishare-safe-defaults-ok"
+    if [[ "$upgrade_mode" -eq 1 ]]; then
+        # Upgrade mode: existing production config is intentional, do not enforce clean-install defaults.
+        # Warn but never die — nft/telegram settings are preserved from admin decisions.
+        warn "existing production anti_share_config preserved:"
+        warn "  nft_enabled=$nft_enabled nft_dry_run=$nft_dry_run telegram_enabled=$telegram_enabled"
+        [[ "$nft_enabled" == "1" && "$nft_dry_run" == "0" ]] && \
+            warn "  nft enforcement is ACTIVE (live bans running) — verify this is intentional"
+        [[ "$telegram_enabled" == "1" ]] && \
+            warn "  Telegram notifications are ACTIVE — verify bot is configured"
+        echo "db-antishare-upgrade-config-preserved-ok"
+    else
+        # Clean install mode: enforce safe defaults — enforcement must not be active.
+        # nft enforcement (Stage 4) and Telegram (Stage 3) are opt-in after explicit admin decision.
+        [[ "$nft_enabled"      == "0" ]] \
+            || die "SAFE-DEFAULT VIOLATION: nft_enabled=$nft_enabled (expected 0). nft enforcement is not open yet. Reset: UPDATE anti_share_config SET nft_enabled=0;"
+        [[ "$nft_dry_run"      == "1" ]] \
+            || die "SAFE-DEFAULT VIOLATION: nft_dry_run=$nft_dry_run (expected 1). dry-run must be on. Reset: UPDATE anti_share_config SET nft_dry_run=1;"
+        [[ "$telegram_enabled" == "0" ]] \
+            || die "SAFE-DEFAULT VIOLATION: telegram_enabled=$telegram_enabled (expected 0). Telegram is not open yet. Reset: UPDATE anti_share_config SET telegram_enabled=0;"
+        echo "db-antishare-safe-defaults-ok"
+    fi
 
     # --- Check 8b: no stale str_config entry for commercial_antishare_installed ---
     step "Checking str_config has no stale antishare flag"
@@ -111,9 +138,23 @@ print(d.get('log', {}).get('access', 'none'))
         || die "xray access log not enabled in $XRAY_LOG_CONFIG (got: '$log_access_val'). anti-share requires access=$XRAY_ACCESS_LOG"
     echo "xray-access-log-config-ok"
 
-    [[ -f "$XRAY_LOG_OVERRIDE_FILE" ]] \
-        || die "xray log permissions override missing: $XRAY_LOG_OVERRIDE_FILE"
-    echo "xray-log-override-ok"
+    # Accept any known-compatible override file name.
+    # antishare-log-perms.conf  — written by this installer (canonical)
+    # anti-share-access.conf    — written by v0.12.5 addon (production/upgrade)
+    # log-perms.conf            — written by live-debug sessions
+    local override_found=0
+    for candidate in \
+            "$XRAY_LOG_OVERRIDE_FILE" \
+            "$XRAY_LOG_OVERRIDE_DIR/anti-share-access.conf" \
+            "$XRAY_LOG_OVERRIDE_DIR/log-perms.conf"; do
+        if [[ -f "$candidate" ]] && grep -q 'xray.access.log\|xray.*access' "$candidate" 2>/dev/null; then
+            echo "xray-log-override-ok ($(basename "$candidate"))"
+            override_found=1
+            break
+        fi
+    done
+    [[ $override_found -eq 1 ]] \
+        || die "xray log permissions override missing: no compatible override file found in $XRAY_LOG_OVERRIDE_DIR"
 
     # Check that hiddify-panel can read the log (if file exists)
     if [[ -f "$XRAY_ACCESS_LOG" ]]; then

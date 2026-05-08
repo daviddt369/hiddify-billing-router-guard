@@ -425,15 +425,42 @@ PY
 install_xray_log_permissions_override() {
     mkdir -p "$XRAY_LOG_OVERRIDE_DIR"
 
-    # Remove legacy file written by earlier live-debug installs (wrong canonical name).
-    # Only remove if the file contains our specific chmod patch — do not touch foreign overrides.
+    # Check if any existing override already handles xray.access.log permissions.
+    # Known compatible overrides from prior installer versions:
+    #   anti-share-access.conf  (v0.12.5 addon — creates log with chown/chmod)
+    #   log-perms.conf          (live-debug sessions)
+    # If found and compatible, skip writing our override to avoid redundancy.
+    # Two override files coexist harmlessly, but the production one may be more
+    # sophisticated (e.g., creates log file with proper group ownership).
+    local existing_compat_override=""
+    for candidate in \
+            "$XRAY_LOG_OVERRIDE_DIR/anti-share-access.conf" \
+            "$XRAY_LOG_OVERRIDE_DIR/log-perms.conf"; do
+        if [[ -f "$candidate" && "$candidate" != "$XRAY_LOG_OVERRIDE_FILE" ]]; then
+            if grep -q 'xray.access.log\|xray.*access' "$candidate" 2>/dev/null; then
+                existing_compat_override="$candidate"
+                break
+            fi
+        fi
+    done
+
+    if [[ -n "$existing_compat_override" ]]; then
+        log "Compatible xray log override already exists: $existing_compat_override"
+        log "Skipping creation of $XRAY_LOG_OVERRIDE_FILE (would be redundant)"
+        log "Existing override handles xray.access.log permissions — no changes needed"
+        systemctl daemon-reload
+        return 0
+    fi
+
+    # No existing compatible override — remove our own legacy file (wrong canonical name)
+    # if present and containing only our simple patch, then write the canonical file.
     local legacy_file="$XRAY_LOG_OVERRIDE_DIR/log-perms.conf"
     if [[ -f "$legacy_file" && "$legacy_file" != "$XRAY_LOG_OVERRIDE_FILE" ]]; then
         if grep -q 'chmod 644.*xray.access.log\|xray.*access.*log.*chmod' "$legacy_file" 2>/dev/null; then
             log "Removing legacy xray override: $legacy_file (superseded by $XRAY_LOG_OVERRIDE_FILE)"
             rm -f "$legacy_file"
         else
-            warn "Legacy $legacy_file exists with unknown content — leaving it, writing canonical file"
+            warn "Legacy $legacy_file exists with unknown content — leaving it, writing canonical file alongside"
         fi
     fi
 
