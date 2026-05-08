@@ -260,10 +260,17 @@ admin_antishare_route_smoke() {
 }
 
 check_antishare_endpoints() {
-    local py
+    local py attempt max_attempts=3
     py="$(detect_venv_python)"
-    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
-        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+
+    # Retry loop: panel DB connections may still be settling after restart.
+    # create_app() inside the check subprocess reads hconfigs from DB;
+    # if the panel's init_db() is still running, antishare_enabled() may see
+    # an incomplete hconfigs dict and silently disable AntiShareAdmin.
+    for attempt in 1 2 3; do
+        local result
+        result="$(sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY' 2>&1
 from hiddifypanel import create_app
 
 app = create_app()
@@ -276,6 +283,21 @@ assert 'admin.BusinessAdmin:index' in endpoints, \
 
 print('antishare-endpoints-ok')
 PY
+        )"
+        local rc=$?
+        if [[ $rc -eq 0 && "$result" == *"antishare-endpoints-ok"* ]]; then
+            echo "$result"
+            return 0
+        fi
+        if [[ $attempt -lt $max_attempts ]]; then
+            warn "endpoint check attempt $attempt/$max_attempts failed — panel may still be initializing, retrying in 15s"
+            sleep 15
+        else
+            # Print the last result for diagnostics before dying
+            echo "$result"
+            die "AntiShareAdmin:index not registered after $max_attempts attempts. Check panel logs."
+        fi
+    done
 }
 
 write_antishare_manifest() {
