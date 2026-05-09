@@ -154,6 +154,34 @@ check_services_active() {
     log "Core panel services active"
 }
 
+check_port_9000() {
+    if ss -lntp 2>/dev/null | grep -q ':9000'; then
+        log "port 9000 listening"
+    else
+        die "port 9000 is not listening"
+    fi
+}
+
+stop_panel_for_upgrade() {
+    step "Stopping panel services for schema migration window"
+    systemctl stop "$SERVICE_PANEL" "$SERVICE_BG"
+    for svc in "$SERVICE_PANEL" "$SERVICE_BG"; do
+        if [[ "$(systemctl is-active "$svc" 2>/dev/null || true)" == "active" ]]; then
+            die "Failed to stop service $svc before schema migration"
+        fi
+    done
+    log "Panel services stopped for upgrade"
+}
+
+start_panel_after_upgrade() {
+    step "Starting panel services after schema migration window"
+    systemctl start "$SERVICE_PANEL" "$SERVICE_BG"
+    sleep 8
+    check_services_active
+    check_port_9000
+    log "Panel services started after upgrade"
+}
+
 # ---------------------------------------------------------------------------
 # Hiddify version
 # ---------------------------------------------------------------------------

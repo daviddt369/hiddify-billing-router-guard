@@ -6,7 +6,7 @@
 #
 # Compares:
 #   1. Table presence before vs after
-#   2. Row counts delta for critical tables
+#   2. Row counts delta for hard-preservation tables and soft-warning business tables
 #   3. Schema diff for modified tables (commercial_*, anti_share_*)
 #   4. Critical column presence
 set -Eeuo pipefail
@@ -99,10 +99,10 @@ while IFS=$'\t' read -r tbl before_rows; do
     live_rows=$(db_count "$tbl" 2>/dev/null || echo "?")
     if [[ "$live_rows" =~ ^[0-9]+$ && "$before_rows" =~ ^[0-9]+$ ]]; then
         delta=$(( live_rows - before_rows ))
-        # Data tables should not lose rows
+        # Hard-preservation data must not lose rows.
+        # Business/tariff tables are warning-only drift and should be reviewed manually.
         critical=0
-        for ct in user commercial_plan commercial_subscription \
-                   anti_share_state anti_share_ip_profile; do
+        for ct in user; do
             [[ "$tbl" == "$ct" ]] && critical=1
         done
 

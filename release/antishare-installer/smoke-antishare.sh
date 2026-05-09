@@ -182,6 +182,12 @@ print(d.get('log', {}).get('access', 'none'))
     step "Checking nft helper"
     [[ -f "$NFT_HELPER_PATH" ]] || die "nft helper not found: $NFT_HELPER_PATH"
     [[ -x "$NFT_HELPER_PATH" ]] || die "nft helper not executable: $NFT_HELPER_PATH"
+    head -1 "$NFT_HELPER_PATH" | od -An -tx1 | grep -qi '0d' \
+        && die "nft helper has CRLF line endings: $NFT_HELPER_PATH"
+    local helper_shebang
+    helper_shebang="$(head -n 1 "$NFT_HELPER_PATH")"
+    [[ "$helper_shebang" == '#!/usr/bin/env bash' ]] \
+        || die "unexpected nft helper shebang: $helper_shebang"
     echo "nft-helper-ok $NFT_HELPER_PATH"
 
     # --- Check 10: sudoers rule ---

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # check-user-link-preservation.sh — snapshot user/subscription data before and
-# after upgrade, then compare to verify nothing critical was lost.
+# after upgrade, then compare to verify hard-preservation data was not lost.
 #
 # Usage:
 #   sudo bash check-user-link-preservation.sh --before
@@ -237,10 +237,10 @@ compare_snapshots() {
 
     # ── SOFT warnings — log but do not fail ───────────────────────────────────
     SOFT_CHECKS=(
-        "plans:ge:Plans count (soft — plans may be added/removed by admin)"
-        "subscriptions:ge:Subscriptions count (soft — may change during upgrade)"
+        "plans:ge:Plans count (soft — tariff inventory may change and is not a blocker)"
+        "subscriptions:ge:Subscriptions count (soft — may drift on a live server)"
         "subscriptions_active:ge:Active subscriptions (soft)"
-        "state_rows:ge:Anti-share state rows (soft — may change during upgrade)"
+        "state_rows:ge:Anti-share state rows (soft — telemetry may change during upgrade)"
     )
 
     printf "%-42s %-16s %-16s %s\n" "CHECK" "BEFORE" "AFTER" "RESULT"
@@ -306,7 +306,7 @@ compare_snapshots() {
     echo
     if [[ $failures -eq 0 ]]; then
         echo "PRESERVATION CHECK: PASSED — 0 hard failures, $soft_warns soft warnings"
-        echo "All critical user/subscription/config data preserved"
+        echo "All hard-preservation user/link/config data preserved"
     else
         echo "PRESERVATION CHECK: FAILED — $failures hard failure(s), $soft_warns soft warning(s)"
         echo "Review FAIL/DIFF rows — do NOT proceed to production until resolved"

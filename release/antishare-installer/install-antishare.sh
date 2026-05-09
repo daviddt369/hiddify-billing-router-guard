@@ -4,6 +4,25 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-antishare.sh"
 
+DEFER_RESTART=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --defer-restart|--no-restart) DEFER_RESTART=1 ;;
+        --help|-h)
+            cat <<'EOF'
+Usage: sudo bash install-antishare.sh [--defer-restart|--no-restart]
+
+  --defer-restart   Install files/schema only; skip panel restart and anti-share smoke
+  --no-restart      Alias for --defer-restart
+EOF
+            exit 0
+            ;;
+        *) die "Unknown argument: $1" ;;
+    esac
+    shift
+done
+
 # Anti-share Python files to install into panel runtime
 PANEL_PYTHON_FILES=(
     "panel-overlay/hiddifypanel/antishare/__init__.py"
@@ -129,25 +148,29 @@ main() {
     # Start timer — runner will fire after OnBootSec (5min) or OnUnitActiveSec (2min)
     systemctl start "$ANTISHARE_TIMER" || warn "hiddify-anti-share.timer start failed (non-fatal)"
 
-    # --- Step 8: Restart panel services to activate anti-share module ---
+    # --- Step 8: Restart panel services only when readiness is not deferred ---
     # anti-share module is auto-loaded by panel/admin/__init__.py when
     # antishare_enabled() returns True (which happens after str_config flag is set).
-    step "Restarting panel services to activate anti-share module"
-    systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
-    SERVICES_RESTARTED=1
+    if [[ $DEFER_RESTART -eq 0 ]]; then
+        step "Restarting panel services to activate anti-share module"
+        systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
+        SERVICES_RESTARTED=1
 
-    sleep 30
-    check_services_active
-    check_port_9000
+        sleep 30
+        check_services_active
+        check_port_9000
 
-    # --- Step 9: Import smoke (safe now — tables exist, services up) ---
-    step "Running anti-share import smoke"
-    create_app_smoke
-    import_antishare_smoke "${ANTISHARE_IMPORTS[@]}"
+        # --- Step 9: Import smoke (safe now — tables exist, services up) ---
+        step "Running anti-share import smoke"
+        create_app_smoke
+        import_antishare_smoke "${ANTISHARE_IMPORTS[@]}"
 
-    # --- Step 10: Endpoint smoke ---
-    step "Verifying anti-share admin endpoint is registered"
-    check_antishare_endpoints
+        # --- Step 10: Endpoint smoke ---
+        step "Verifying anti-share admin endpoint is registered"
+        check_antishare_endpoints
+    else
+        log "Deferred restart mode: skipping panel restart, port 9000 check, and anti-share smoke"
+    fi
 
     # --- Step 11: Write manifest and collect checkpoint ---
     step "Writing anti-share manifest"
@@ -157,17 +180,24 @@ main() {
     collect_antishare_checkpoint "$BACKUP_DIR/status"
 
     finish_install
-    echo "Anti-share addon install OK"
-    echo ""
-    echo "IMPORTANT — safe defaults applied:"
-    echo "  nft_enabled=0     : no firewall bans until explicitly enabled in UI"
-    echo "  nft_dry_run=1     : dry-run mode for extra safety"
-    echo "  telegram_enabled=0: no Telegram notifications until explicitly enabled"
-    echo ""
-    echo "To enable anti-share enforcement:"
-    echo "  1. Add max_ips to user plans (or user.max_ips field)"
-    echo "  2. Enable anti-share in /<proxy_path>/admin/anti-share-admin/"
-    echo "  3. Enable nft_enabled after verifying scoring is working"
+
+    if [[ $DEFER_RESTART -eq 1 ]]; then
+        echo "Anti-share addon files upgraded"
+        echo "Panel restart deferred by --defer-restart"
+        echo "Run final smoke/readiness checks after all upgrade layers"
+    else
+        echo "Anti-share addon install OK"
+        echo ""
+        echo "IMPORTANT — safe defaults applied:"
+        echo "  nft_enabled=0     : no firewall bans until explicitly enabled in UI"
+        echo "  nft_dry_run=1     : dry-run mode for extra safety"
+        echo "  telegram_enabled=0: no Telegram notifications until explicitly enabled"
+        echo ""
+        echo "To enable anti-share enforcement:"
+        echo "  1. Add max_ips to user plans (or user.max_ips field)"
+        echo "  2. Enable anti-share in /<proxy_path>/admin/anti-share-admin/"
+        echo "  3. Enable nft_enabled after verifying scoring is working"
+    fi
 }
 
 main "$@"

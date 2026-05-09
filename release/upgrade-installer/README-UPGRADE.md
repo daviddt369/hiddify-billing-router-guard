@@ -13,7 +13,8 @@ Upgrade an existing production Hiddify stack to the current validated release.
 
 Use `upgrade-installer/` when:
 - The server already has business + routing + antishare installed (any version)
-- Users, subscription links, and tariffs must be preserved
+- Users, UUIDs, subscription links, proxy paths, domains, routing rules, and anti-share config must be preserved
+- Tariffs and subscriptions should be preserved when possible, but count drift is a warning, not a hard blocker
 - anti_share_config (nft_enabled, telegram_enabled) must NOT be reset
 - You cannot or should not do a clean reinstall
 
@@ -41,7 +42,8 @@ Reviews:
 - Service states and failed units
 - Addon manifests and versions
 - DB tables and db_version
-- Users, subscriptions, plans counts
+- Users, UUIDs, Telegram links, proxy paths, domains, routing, and anti-share preservation baseline
+- Plans and subscriptions as soft-warning business drift
 - Anti-share config (nft_enabled, telegram state)
 - Runtime file checksums
 - Net.py timeout status
@@ -76,23 +78,66 @@ Records critical user/subscription data for before/after comparison.
 
 ### Step 6 — Upgrade
 
+**Validated order (routing → antishare → business).** This exact sequence passed
+full rehearsal on production clone with real data (16 users, 448 routing rules,
+anti_share_config preserved). Do not change the order without a new rehearsal.
+
 ```bash
-sudo bash upgrade-existing-stack.sh [--dry-run]
+# Pre-upgrade (preflight + backup already done above)
+
+# Stage B: Base stability (idempotent, panel stays running)
+sudo bash ../service-tools/apply-base-stability.sh
+sudo bash ../service-tools/stabilize-celery-beat.sh
+
+# Stage C: Routing upgrade (idempotent — panel restarts internally)
+sudo bash ../routing-installer/install-routing.sh
+
+# Stage D: Antishare upgrade (panel restarts internally)
+sudo bash ../antishare-installer/install-antishare.sh
+
+# Stage E: Business layer upgrade (panel restarts internally)
+sudo bash upgrade-business-layer.sh
 ```
 
-Run `--dry-run` first to preview what will be done.
+Or use the wrapper (equivalent):
 
-The upgrade:
-- Runs service-tools base stability
-- Runs routing installer (idempotent: adds Stage 2D/2E, fixes FK, advances db_version)
-- Runs antishare installer (replaces addon files, preserves anti_share_config)
-- Does NOT reset anti_share_config
-- Does NOT run apply_configs.sh
+```bash
+sudo bash upgrade-existing-stack.sh
+sudo bash upgrade-business-layer.sh
+```
+
+Notes:
+- `install-business.sh` must NOT be used on an existing production server
+- `upgrade-business-layer.sh` is the business-layer upgrade entrypoint for an existing stack
+- Each installer restarts panel services internally — no manual quiesce needed
+- `apply_configs.sh` must NOT run automatically
+- A quiesce/defer order (stop panel → all upgrades → start) is architecturally sound
+  but has NOT been validated end-to-end — do not use it in production without a
+  full rehearsal pass
+
+### Local packaging validation before sync
+
+Run these checks from the repo root before copying a release to clone or production-like hosts:
+
+```bash
+bash release/service-tools/check-line-endings.sh
+bash -n release/upgrade-installer/*.sh
+bash -n release/upgrade-installer/scripts/*.sh
+bash -n release/service-tools/*.sh
+git diff --check
+```
+
+Reason:
+- shell scripts must be LF-only and BOM-free
+- Linux shebang parsing breaks on UTF-8 BOM and CRLF
 
 ### Step 7 — Smoke
 
 ```bash
 sudo bash smoke-upgrade.sh
+sudo bash ../business-installer/smoke-business.sh --upgrade-existing-config
+sudo bash ../routing-installer/smoke-routing.sh
+sudo bash ../antishare-installer/smoke-antishare.sh --upgrade-existing-config
 ```
 
 Upgrade-aware smoke tests:
@@ -113,9 +158,18 @@ sudo bash scripts/compare-db-preservation.sh
 
 Hard-fails if:
 - Users were lost
-- Subscription UUIDs decreased
-- Plans/subscriptions were removed
+- UUID uniqueness changed or duplicates appeared
+- Proxy paths changed
+- Domains disappeared
+- Telegram-linked users decreased
+- Routing custom rules decreased
 - anti_share_config nft_enabled was accidentally reset
+- anti_share_config nft_dry_run or telegram_enabled changed unexpectedly
+
+Warns but does not block if:
+- Plans/subscriptions counts changed
+- Tariff names/prices/status changed
+- anti_share_state or anti_share_ip_profile changed
 
 ### Step 9 — Decision
 
@@ -146,8 +200,8 @@ CONFIRM_RESTORE_DB=YES sudo bash rollback-upgrade.sh --restore-db
 | Subscription links | YES | proxy_path unchanged |
 | telegram_id | YES | Not touched |
 | max_ips / device limits | YES | Not touched |
-| Commercial plans | YES | Not touched |
-| Commercial subscriptions | YES | Not touched |
+| Commercial plans | Best-effort | Count/name drift is warning, not blocker |
+| Commercial subscriptions | Best-effort | Count/status drift is warning, not blocker |
 | YooKassa / payment config | YES | str_config preserved |
 | Telegram bot token | YES | str_config preserved |
 | Admin Telegram config | YES | str_config preserved |
@@ -176,27 +230,30 @@ CONFIRM_RESTORE_DB=YES sudo bash rollback-upgrade.sh --restore-db
 ## What NOT to do
 
 - **Do NOT** run `install-business.sh` over an existing production stack
+- **Do** use `upgrade-business-layer.sh` for business-layer refresh on an existing stack
+- `install-routing.sh` and `install-antishare.sh` are idempotent upgrade/install scripts for an existing stack
 - **Do NOT** run `apply_configs.sh` automatically (may regenerate 00_log.json, disable access log)
 - **Do NOT** reset anti_share_config (users may be under active bans)
 - **Do NOT** change Telegram bot token or webhook during upgrade
 - **Do NOT** change YooKassa or payment settings
 - **Do NOT** change DNS or domain settings
 - **Do NOT** manually enable/disable nft_enabled without explicit decision
+- **Do NOT** `TRUNCATE`, destructive-`DELETE`, or recreate `commercial_plan` / `commercial_subscription`
 - **Do NOT** clean the database (`DROP TABLE`, `DELETE FROM user`, etc.)
 - **Do NOT** skip the backup step
 
 ---
 
-## Known compatibility issues (see compatibility-fixes.md)
+## Known compatibility fixes included in this release
 
-Before running upgrade on a production server, apply these fixes to the release scripts:
+These fixes are already included in the current release:
 
-| Fix | Script | Issue |
-|-----|--------|-------|
-| A | service-tools/apply-base-stability.sh | Must recognize `IDENT_ME_TIMEOUT` as already-compatible |
-| B | antishare-installer/smoke-antishare.sh | Add `--upgrade-existing-config` mode |
-| C | antishare-installer/install-antishare.sh | Confirm anti_share_config not overwritten |
-| D | antishare-installer/common-antishare.sh | Accept `anti-share-access.conf` as compatible |
-| E | routing-installer/scripts/commercial-routing-db-migrate.sh | Verify idempotent upstream seed |
+- `IDENT_ME_TIMEOUT` compatible check
+- `smoke-business.sh --upgrade-existing-config`
+- `smoke-antishare.sh --upgrade-existing-config`
+- `anti-share-access.conf` compatibility
+- routing enum migration for existing stacks
+- `check_port_9000`
+- CRLF/shebang nft helper fix
 
-Run `sudo bash preflight-upgrade-audit.sh` first to see which fixes apply to your server.
+Run `sudo bash preflight-upgrade-audit.sh` first to verify the target state before production execution.

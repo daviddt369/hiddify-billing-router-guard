@@ -33,6 +33,7 @@ BD="$UPGRADE_BACKUP_DIR"
 # ─── Check 1: Core services active ───────────────────────────────────────────
 step "Checking core services"
 check_services_active
+check_port_9000
 echo "core-services-ok"
 
 # ─── Check 2: DB accessible ──────────────────────────────────────────────────
@@ -59,7 +60,7 @@ fi
 # ─── Check 4: Business smoke ─────────────────────────────────────────────────
 step "Running business smoke"
 if [[ -f "$SCRIPT_DIR/../business-installer/smoke-business.sh" ]]; then
-    bash "$SCRIPT_DIR/../business-installer/smoke-business.sh" 2>&1 \
+    bash "$SCRIPT_DIR/../business-installer/smoke-business.sh" --upgrade-existing-config 2>&1 \
         && echo "smoke-business-ok" \
         || warn "smoke-business failed — check output above"
 else
@@ -121,13 +122,11 @@ else
 
     echo "antishare-config-preserved-ok"
 
-    # Run antishare-specific smoke if --upgrade-existing-config mode exists
-    # For now, run with known skip since production has enforcement active
+    # Run antishare-specific smoke in upgrade-aware mode
     if [[ -f "$SCRIPT_DIR/../antishare-installer/smoke-antishare.sh" ]]; then
-        warn "Note: smoke-antishare.sh hard-checks nft_enabled=0 which WILL fail on production."
-        warn "Skipping direct smoke-antishare.sh call. Endpoint and import checks done separately."
-        # TODO: implement --upgrade-existing-config mode in smoke-antishare.sh
-        # See compatibility-fixes.md section B
+        bash "$SCRIPT_DIR/../antishare-installer/smoke-antishare.sh" --upgrade-existing-config 2>&1 \
+            && echo "smoke-antishare-ok" \
+            || warn "smoke-antishare failed вЂ” check output above"
     fi
 fi
 

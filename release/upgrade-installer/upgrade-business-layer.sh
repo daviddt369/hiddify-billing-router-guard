@@ -6,7 +6,7 @@
 # re-applied idempotently.
 #
 # Usage:
-#   sudo bash upgrade-business-layer.sh [--dry-run]
+#   sudo bash upgrade-business-layer.sh [--dry-run] [--defer-restart|--no-restart]
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +24,26 @@ PAYLOAD_DIR="$BUSINESS_INSTALLER_DIR/payload/panel-overlay/hiddifypanel"
 SCRIPTS_DIR="$BUSINESS_INSTALLER_DIR/payload/manager-overlay/scripts"
 
 DRY_RUN=0
-[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
+DEFER_RESTART=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run) DRY_RUN=1 ;;
+        --defer-restart|--no-restart) DEFER_RESTART=1 ;;
+        --help|-h)
+            cat <<'EOF'
+Usage: sudo bash upgrade-business-layer.sh [--dry-run] [--defer-restart|--no-restart]
+
+  --dry-run         Show planned operations without making changes
+  --defer-restart   Upgrade files/schema checks only; skip panel restart/readiness
+  --no-restart      Alias for --defer-restart
+EOF
+            exit 0
+            ;;
+        *) die "Unknown argument: $1" ;;
+    esac
+    shift
+done
 
 BACKUP_DIR=""
 
@@ -317,7 +336,13 @@ fi
 
 step "Restarting panel services"
 if [[ $DRY_RUN -eq 1 ]]; then
-    echo "  [DRY-RUN] WOULD RESTART: $SERVICE_PANEL $SERVICE_BG"
+    if [[ $DEFER_RESTART -eq 1 ]]; then
+        echo "  [DRY-RUN] restart deferred by --defer-restart"
+    else
+        echo "  [DRY-RUN] WOULD RESTART: $SERVICE_PANEL $SERVICE_BG"
+    fi
+elif [[ $DEFER_RESTART -eq 1 ]]; then
+    log "panel restart deferred by --defer-restart"
 else
     systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
     sleep 8
@@ -328,9 +353,11 @@ fi
 # ─── Step 9: Smoke checks ─────────────────────────────────────────────────────
 
 step "Running business smoke"
-if [[ $DRY_RUN -eq 0 ]]; then
+if [[ $DRY_RUN -eq 0 && $DEFER_RESTART -eq 0 ]]; then
     bash "$BUSINESS_INSTALLER_DIR/smoke-business.sh" \
         || warn "smoke-business reported issues — review output"
+elif [[ $DEFER_RESTART -eq 1 ]]; then
+    log "smoke-business skipped: restart deferred mode"
 fi
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
@@ -384,5 +411,11 @@ if [[ $DRY_RUN -eq 1 ]]; then
     echo " VERDICT: Safe to run upgrade-business-layer.sh"
     echo "════════════════════════════════════════════════════════"
 else
-    echo "upgrade-business-layer OK"
+    if [[ $DEFER_RESTART -eq 1 ]]; then
+        echo "business layer files upgraded"
+        echo "panel restart deferred by --defer-restart"
+        echo "run routing + antishare layers before final smoke/readiness"
+    else
+        echo "upgrade-business-layer OK"
+    fi
 fi

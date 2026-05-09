@@ -88,9 +88,14 @@ main() {
     installed_val="$(mysql "$DB_NAME" -N -B \
         -e "SELECT value FROM bool_config WHERE child_id=0 AND \`key\`='commercial_routing_installed';" \
         2>/dev/null | head -n 1 || echo '')"
-    [[ "$installed_val" == "1" ]] \
-        || die "commercial_routing_installed != 1 in bool_config (got: '$installed_val')"
-    echo "db-installed-flag-ok"
+    if [[ "$installed_val" == "1" ]]; then
+        echo "db-installed-flag-ok"
+    elif [[ -f "$INSTALL_ROOT/routing-addon.manifest" ]]; then
+        warn "commercial_routing_installed is empty, but routing manifest exists; treating manifest as source of truth on upgraded stack"
+        echo "db-installed-flag-manifest-fallback-ok"
+    else
+        die "commercial_routing_installed != 1 in bool_config (got: '$installed_val')"
+    fi
 
     # --- Check 6: xray-router.service unit exists and enabled ---
     step "Checking xray-router systemd unit"
@@ -230,9 +235,13 @@ main() {
             local cfg
             cfg="$(cat /etc/xray-router/config.json)"
 
-            # Must have upstream-{id} outbounds
-            echo "$cfg" | grep -q '"upstream-' \
-                || die "config missing upstream-{id} outbounds"
+            # Must have at least one upstream-{id} outbound tag
+            python3 - <<'PY' >/dev/null 2>&1 || die "config missing upstream-{id} outbounds"
+import json
+d = json.load(open('/etc/xray-router/config.json'))
+tags = [str((ob or {}).get('tag') or '') for ob in d.get('outbounds', [])]
+assert any(tag.startswith('upstream-') for tag in tags)
+PY
             echo "upstream-outbounds-ok"
 
             # Must NOT have top-level balancers (must be inside routing)

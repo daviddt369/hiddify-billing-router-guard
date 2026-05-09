@@ -25,6 +25,7 @@ main() {
   log "Collecting hiddify-cli baseline into $OUT_DIR"
 
   systemctl is-active hiddify-panel hiddify-panel-background-tasks hiddify-cli > "$OUT_DIR/is-active.txt" 2>&1 || true
+  systemctl cat hiddify-cli.service > "$OUT_DIR/unit.txt" 2>&1 || true
   systemctl status hiddify-cli --no-pager -l > "$OUT_DIR/status.txt" 2>&1 || true
   systemctl show hiddify-cli -p ActiveState -p SubState -p Result -p NRestarts > "$OUT_DIR/show.txt" 2>&1 || true
   journalctl -u hiddify-cli -n 200 --no-pager -o cat > "$OUT_DIR/journal.txt" 2>&1 || true

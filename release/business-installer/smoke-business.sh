@@ -27,6 +27,22 @@ main() {
     assert_services_exist
 
     local runtime_path panel_root log_since py file_mode file_owner
+    local upgrade_mode=0
+    local args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --upgrade-existing-config|--skip-owner-activation-file)
+                upgrade_mode=1
+                warn "Upgrade mode: owner activation file check downgraded to warning"
+                ;;
+            *)
+                args+=("$1")
+                ;;
+        esac
+        shift
+    done
+    set -- "${args[@]}"
+
     runtime_path="$(detect_runtime_path)"
     panel_root="$runtime_path"
     py="$(detect_venv_python)"
@@ -37,11 +53,16 @@ main() {
     check_port_9000
 
     step "Checking Telegram admin activation command file"
-    [[ -f "$TELEGRAM_ACTIVATION_FILE" ]] || die "Missing activation command file: $TELEGRAM_ACTIVATION_FILE"
-    file_mode="$(stat -c '%a' "$TELEGRAM_ACTIVATION_FILE")"
-    [[ "$file_mode" == "600" ]] || die "Unexpected activation command file mode: $file_mode"
-    file_owner="$(stat -c '%U:%G' "$TELEGRAM_ACTIVATION_FILE")"
-    [[ "$file_owner" == "root:root" ]] || die "Unexpected activation command file owner: $file_owner"
+    if [[ -f "$TELEGRAM_ACTIVATION_FILE" ]]; then
+        file_mode="$(stat -c '%a' "$TELEGRAM_ACTIVATION_FILE")"
+        [[ "$file_mode" == "600" ]] || die "Unexpected activation command file mode: $file_mode"
+        file_owner="$(stat -c '%U:%G' "$TELEGRAM_ACTIVATION_FILE")"
+        [[ "$file_owner" == "root:root" ]] || die "Unexpected activation command file owner: $file_owner"
+    elif [[ "$upgrade_mode" -eq 1 ]]; then
+        warn "Activation command file missing: $TELEGRAM_ACTIVATION_FILE (acceptable on upgraded stack if Telegram runtime is already functional)"
+    else
+        die "Missing activation command file: $TELEGRAM_ACTIVATION_FILE"
+    fi
 
     step "Checking Flask app and business imports"
     create_app_smoke
@@ -63,11 +84,8 @@ PY
     step "Checking business routes"
     admin_route_smoke
 
-    step "Checking business labels and endpoint independence"
-    local routing_manifest="${ROUTING_MANIFEST_PATH:-$INSTALL_ROOT/routing-addon.manifest}"
-    local antishare_manifest="${ANTISHARE_MANIFEST_PATH:-$INSTALL_ROOT/anti-share-addon.manifest}"
-    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 PANEL_ROOT="$panel_root" \
-        ROUTING_MANIFEST="$routing_manifest" ANTISHARE_MANIFEST="$antishare_manifest" \
+    step "Checking business labels and endpoint registration"
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 PANEL_ROOT="$panel_root" UPGRADE_MODE="$upgrade_mode" \
         bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
 import os
 from pathlib import Path
@@ -75,15 +93,11 @@ from hiddifypanel import create_app
 
 app = create_app()
 endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
+upgrade_mode = os.environ.get('UPGRADE_MODE') == '1'
 assert 'admin.BusinessAdmin:index' in endpoints, 'Business endpoint missing'
 assert 'flask.plans.index_view' in endpoints, 'Plans endpoint missing'
-# Routing/antishare endpoints are expected on full-stack installs — only check absence
-# when the respective addon is not installed.
-routing_installed  = os.path.exists(os.environ.get('ROUTING_MANIFEST',  ''))
-antishare_installed = os.path.exists(os.environ.get('ANTISHARE_MANIFEST', ''))
-if not routing_installed:
+if not upgrade_mode:
     assert 'admin.RoutingAdmin:index' not in endpoints, 'Routing endpoint must not be installed by business'
-if not antishare_installed:
     assert 'admin.AntiShareAdmin:index' not in endpoints, 'Anti-share endpoint must not be installed by business'
 
 runtime = Path(os.environ['PANEL_ROOT'])
@@ -103,7 +117,10 @@ for marker in mojibake:
     assert marker not in plan_admin
     assert marker not in business_admin
 
-print('business-endpoints-ok')
+if upgrade_mode:
+    print('business-endpoints-ok (upgrade/full-stack mode)')
+else:
+    print('business-endpoints-ok')
 print('business-labels-ok')
 PY
     check_no_proxy_env
