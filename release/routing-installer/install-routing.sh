@@ -189,7 +189,7 @@ main() {
     systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
     SERVICES_RESTARTED=1
 
-    sleep 30
+    sleep 10
     check_services_active
     check_port_9000
 

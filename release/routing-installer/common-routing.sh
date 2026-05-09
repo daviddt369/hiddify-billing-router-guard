@@ -388,7 +388,19 @@ check_services_active() {
 }
 
 check_port_9000() {
-    ss -lntp | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000' || die "Port 9000 is not listening"
+    # Poll for port 9000 with backoff — production servers may take >30s to start
+    # (more DB data, longer init_db/create_all cycle).
+    local max_wait=120 interval=5 elapsed=0
+    while [[ $elapsed -lt $max_wait ]]; do
+        if ss -lntp 2>/dev/null | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000|\*:9000'; then
+            log "Port 9000 ready after ${elapsed}s"
+            return 0
+        fi
+        sleep "$interval"
+        elapsed=$(( elapsed + interval ))
+        log "Waiting for port 9000... ${elapsed}s/${max_wait}s"
+    done
+    die "Port 9000 not listening after ${max_wait}s — panel failed to start"
 }
 
 # Returns 0 if active, 1 if inactive (no upstream config), 2 if failed (config error)
@@ -1184,13 +1196,22 @@ rollback_backup_dir() {
         log "commander.py routing patch removed"
     fi
 
-    # Restore patched __init__.py if needed (sed fallback before file restore)
+    # Restore patched __init__.py if needed.
+    # Priority: file restore from backup (reliable) > sed fallback (unreliable with nested markers).
     if [[ -f "$backup_dir/upstream-admin-init-patched.flag" && -f "$backup_dir/upstream-admin-init-path.txt" ]]; then
         local init_py
         init_py="$(cat "$backup_dir/upstream-admin-init-path.txt")"
         if [[ -f "$init_py" ]]; then
-            sed -i '/# ROUTING_UPSTREAM_ADMIN_BEGIN/,/# ROUTING_UPSTREAM_ADMIN_END/d' "$init_py" || true
-            log "__init__.py RoutingUpstreamAdmin patch removed (sed fallback)"
+            # Try file-level restore first (backup_target saves to files/ subdir)
+            local init_backup="$backup_dir/files/${init_py#/}"
+            if [[ -f "$init_backup" ]]; then
+                cp -a "$init_backup" "$init_py"
+                log "__init__.py RoutingUpstreamAdmin patch removed (file restore from backup)"
+            else
+                # Fallback to sed if no backup file exists
+                sed -i '/# ROUTING_UPSTREAM_ADMIN_BEGIN/,/# ROUTING_UPSTREAM_ADMIN_END/d' "$init_py" || true
+                log "__init__.py RoutingUpstreamAdmin patch removed (sed fallback)"
+            fi
         fi
     fi
 
@@ -1219,8 +1240,15 @@ rollback_backup_dir() {
         local init_py
         init_py="$(cat "$backup_dir/rule-source-admin-init-path.txt")"
         if [[ -f "$init_py" ]]; then
-            sed -i '/# ROUTING_RULE_SOURCE_ADMIN_BEGIN/,/# ROUTING_RULE_SOURCE_ADMIN_END/d' "$init_py" || true
-            log "__init__.py RoutingRuleSourceAdmin patch removed (sed fallback)"
+            # Try file-level restore first — sed on nested markers is unreliable
+            local init_backup="$backup_dir/files/${init_py#/}"
+            if [[ -f "$init_backup" ]]; then
+                cp -a "$init_backup" "$init_py"
+                log "__init__.py RoutingRuleSourceAdmin patch removed (file restore from backup)"
+            else
+                sed -i '/# ROUTING_RULE_SOURCE_ADMIN_BEGIN/,/# ROUTING_RULE_SOURCE_ADMIN_END/d' "$init_py" || true
+                log "__init__.py RoutingRuleSourceAdmin patch removed (sed fallback)"
+            fi
         fi
     fi
 
