@@ -158,12 +158,23 @@ print(d.get('log',{}).get('access','none'))
     fi
 fi
 
-# Check override files
-if ls "$XRAY_OVERRIDE_DIR/"*antishare* 2>/dev/null | grep -q .; then
-    echo "xray-override-ok"
-else
-    warn "No antishare xray override found in $XRAY_OVERRIDE_DIR — check anti-share-access.conf"
-fi
+# Check override files — accept both naming conventions from different installer versions:
+#   antishare-log-perms.conf  (our installer)
+#   anti-share-access.conf    (v0.12.5 addon — hyphenated form)
+#   log-perms.conf            (live-debug sessions)
+_xray_override_found=0
+for _candidate in \
+        "$XRAY_OVERRIDE_DIR/"*antishare* \
+        "$XRAY_OVERRIDE_DIR/anti-share-access.conf" \
+        "$XRAY_OVERRIDE_DIR/log-perms.conf"; do
+    if [[ -f "$_candidate" ]]; then
+        echo "xray-override-ok ($(basename "$_candidate"))"
+        _xray_override_found=1
+        break
+    fi
+done
+[[ "$_xray_override_found" -eq 1 ]] \
+    || warn "No antishare xray override found in $XRAY_OVERRIDE_DIR"
 
 echo
 echo "smoke-upgrade OK"
