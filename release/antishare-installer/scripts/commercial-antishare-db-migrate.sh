@@ -169,7 +169,8 @@ log "anti_share_config schema OK"
 log "Verifying anti_share_state schema"
 state_schema="$(mysql "$DB_NAME" -e "SHOW CREATE TABLE anti_share_state\G" 2>&1)"
 echo "$state_schema" | grep -q 'PRIMARY KEY'                     || die "anti_share_state: PRIMARY KEY missing"
-echo "$state_schema" | grep -q 'uq_anti_share_state_user_id'     || die "anti_share_state: UNIQUE user_id missing"
+echo "$state_schema" | grep -qE 'UNIQUE KEY.*user_id' \
+    || die "anti_share_state: UNIQUE user_id missing"
 echo "$state_schema" | grep -q 'fk_anti_share_state_user\|FOREIGN KEY' || die "anti_share_state: FK user missing"
 log "anti_share_state schema OK"
 
