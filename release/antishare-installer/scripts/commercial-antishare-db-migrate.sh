@@ -204,7 +204,10 @@ log "All 5 anti-share table schemas verified"
 existing_cfg_count="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM anti_share_config;" 2>/dev/null | head -n1 || echo '0')"
 
 if [[ "$existing_cfg_count" -ge 1 ]]; then
-    # Existing config found — log current admin settings and skip seeding.
+    # Existing config found — log current admin settings and skip seeding entirely.
+    # Do NOT run the INSERT: production tables may lack default values for columns
+    # added after the initial install (e.g. created_at NOT NULL), causing MySQL
+    # ERROR 1364 even when WHERE NOT EXISTS prevents actual row insertion.
     existing_nft="$(mysql "$DB_NAME" -N -B -e "SELECT nft_enabled FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
     existing_dry="$(mysql "$DB_NAME" -N -B -e "SELECT nft_dry_run FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
     existing_tg="$(mysql "$DB_NAME" -N -B -e "SELECT telegram_enabled FROM anti_share_config LIMIT 1;" 2>/dev/null | head -n1 || echo '?')"
@@ -214,9 +217,7 @@ if [[ "$existing_cfg_count" -ge 1 ]]; then
 else
     log "anti_share_config table is empty — seeding safe defaults for fresh install"
     log "  nft_enabled=0 (no bans), nft_dry_run=1 (extra safety), telegram_enabled=0"
-fi
-
-mysql "$DB_NAME" <<'SQL'
+    mysql "$DB_NAME" <<'SQL'
 INSERT INTO anti_share_config (
   enabled, window_seconds, learning_days, retention_days,
   trusted_recent_days, trust_decay_per_day, score_decay_clean,
@@ -224,18 +225,21 @@ INSERT INTO anti_share_config (
   suspect_score, warn_score, block_score,
   severe_new_ip_threshold, severe_traffic_ratio,
   ban_seconds, telegram_enabled, nft_enabled, nft_dry_run,
-  nft_helper, scan_limit, current_ip_snapshot_limit, service_name
+  nft_helper, scan_limit, current_ip_snapshot_limit, service_name,
+  created_at
 )
-SELECT
+VALUES (
   1, 120, 7, 45,
   7, 0.15, 0.25,
   0.25, 0.50, 1.00,
   0.50, 0.75, 1.00,
   3, 5.0,
   3600, 0, 0, 1,
-  '/opt/hiddify-manager/common/hiddify-antishare-nft.sh', 1000, 32, 'hiddify-anti-share'
-WHERE NOT EXISTS (SELECT 1 FROM anti_share_config LIMIT 1);
+  '/opt/hiddify-manager/common/hiddify-antishare-nft.sh', 1000, 32, 'hiddify-anti-share',
+  NOW()
+);
 SQL
+fi
 
 cfg_count="$(mysql "$DB_NAME" -N -B -e "SELECT COUNT(*) FROM anti_share_config;" 2>/dev/null | head -n1 || echo '0')"
 [[ "$cfg_count" -ge 1 ]] || die "anti_share_config seed failed: table is still empty"
