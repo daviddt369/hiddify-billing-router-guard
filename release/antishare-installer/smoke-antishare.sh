@@ -72,13 +72,20 @@ main() {
 
     # --- Check 7: commercial_antishare_installed flag ---
     # Key is bool-typed: stored in bool_config (value=1), not str_config.
+    # On production servers with db_version < 136 the bool_config.key ENUM lacks
+    # 'commercial_antishare_installed' — migration skips INSERT, antishare_enabled()
+    # falls back to manifest file. Accept manifest as proof of install in that case.
     step "Checking commercial_antishare_installed flag"
     installed_val="$(mysql "$DB_NAME" -N -B \
         -e "SELECT value FROM bool_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
         2>/dev/null | head -n1 || echo '')"
-    [[ "$installed_val" == "1" ]] \
-        || die "commercial_antishare_installed != 1 in bool_config (got: '$installed_val')"
-    echo "db-antishare-installed-ok"
+    if [[ "$installed_val" == "1" ]]; then
+        echo "db-antishare-installed-ok"
+    elif [[ -f "$MANIFEST_PATH" ]]; then
+        echo "db-antishare-installed-ok (bool_config ENUM pre-v136; manifest fallback active)"
+    else
+        die "commercial_antishare_installed != 1 in bool_config (got: '$installed_val') and no manifest"
+    fi
 
     # --- Check 8: anti_share_config row exists ---
     step "Checking anti_share_config seed row"
