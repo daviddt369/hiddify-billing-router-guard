@@ -127,7 +127,7 @@ echo "── CRITICAL COLUMNS ────────────────�
 declare -A REQUIRED_COLS=(
     ["user:id"]="user table primary key"
     ["user:uuid"]="subscription UUID"
-    ["user:is_active"]="active flag"
+    ["user:enable"]="active flag (Hiddify uses enable, not is_active)"
     ["user:telegram_id"]="telegram link"
     ["commercial_subscription:user_id"]="subscription FK"
     ["commercial_subscription:status"]="subscription status"
