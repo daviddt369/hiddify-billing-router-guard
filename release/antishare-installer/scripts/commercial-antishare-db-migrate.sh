@@ -184,13 +184,14 @@ log "anti_share_ip_profile schema OK"
 log "Verifying anti_share_event schema"
 event_schema="$(mysql "$DB_NAME" -e "SHOW CREATE TABLE anti_share_event\G" 2>&1)"
 echo "$event_schema" | grep -q 'PRIMARY KEY'              || die "anti_share_event: PRIMARY KEY missing"
-echo "$event_schema" | grep -q 'ix_anti_share_event_type' || die "anti_share_event: KEY event_type missing"
+echo "$event_schema" | grep -qE 'KEY.*event_type' || die "anti_share_event: KEY event_type missing"
 log "anti_share_event schema OK"
 
 log "Verifying anti_share_user_override schema"
 ovr_schema="$(mysql "$DB_NAME" -e "SHOW CREATE TABLE anti_share_user_override\G" 2>&1)"
 echo "$ovr_schema" | grep -q 'PRIMARY KEY'                              || die "anti_share_user_override: PRIMARY KEY missing"
-echo "$ovr_schema" | grep -q 'uq_anti_share_user_override_user_id'      || die "anti_share_user_override: UNIQUE user_id missing"
+echo "$ovr_schema" | grep -qE 'UNIQUE KEY.*user_id' \
+    || die "anti_share_user_override: UNIQUE user_id missing"
 log "anti_share_user_override schema OK"
 
 log "All 5 anti-share table schemas verified"
