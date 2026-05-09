@@ -107,7 +107,8 @@ table_exists() {
 # ---------------------------------------------------------------------------
 detect_venv_python() {
     local found
-    found=$(find "$INSTALL_ROOT" -name 'python3*' -path '*venv*/bin/*' -type f 2>/dev/null | sort | head -1)
+    # python binaries in venv are typically symlinks (-type l), not regular files
+    found=$(find "$INSTALL_ROOT" -name 'python3*' -path '*venv*/bin/*' \( -type f -o -type l \) 2>/dev/null | sort | head -1)
     [[ -n "$found" ]] || die "Cannot find venv python under $INSTALL_ROOT"
     echo "$found"
 }
