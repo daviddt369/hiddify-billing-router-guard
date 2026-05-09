@@ -12,6 +12,12 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-upgrade.sh"
 
+# Routing common cannot be sourced directly — it declares the same readonly vars.
+# Patch functions are called via clean subshells instead.
+ROUTING_COMMON="$SCRIPT_DIR/../routing-installer/common-routing.sh"
+ROUTING_PATCHES_AVAILABLE=0
+[[ -f "$ROUTING_COMMON" ]] && ROUTING_PATCHES_AVAILABLE=1
+
 # Locate business-installer payload relative to this script
 BUSINESS_INSTALLER_DIR="$(cd "$SCRIPT_DIR/../business-installer" && pwd)"
 PAYLOAD_DIR="$BUSINESS_INSTALLER_DIR/payload/panel-overlay/hiddifypanel"
@@ -22,7 +28,7 @@ DRY_RUN=0
 
 BACKUP_DIR=""
 
-# ─── helpers ──────────────────────────────────────────────────────────────────
+# ─── helpers (override routing's log/step/die/warn) ───────────────────────────
 
 log()  { echo "[business-upgrade] $*"; }
 step() { echo ""; echo "[business-upgrade][STEP] $*"; }
@@ -41,18 +47,7 @@ require_root() {
     [[ $EUID -eq 0 ]] || die "Must run as root"
 }
 
-detect_runtime() {
-    python3 -c "
-import sys
-sys.path.insert(0, '$INSTALL_ROOT/hiddify-panel')
-try:
-    import hiddifypanel
-    import os
-    print(os.path.dirname(hiddifypanel.__file__))
-except Exception as e:
-    print('', end='')
-" 2>/dev/null
-}
+# detect_runtime_path and detect_venv_python are provided by common-upgrade.sh
 
 backup_file() {
     local src="$1"
@@ -90,7 +85,7 @@ require_root
     || die "business-installer payload not found: $PAYLOAD_DIR"
 
 step "Detecting runtime path"
-RUNTIME="$(detect_runtime)"
+RUNTIME="$(detect_runtime_path)"
 [[ -n "$RUNTIME" ]] || die "Cannot detect hiddifypanel runtime path"
 log "Runtime: $RUNTIME"
 
@@ -103,22 +98,7 @@ log "Using backup: $BACKUP_DIR"
 step "Verifying panel services are active"
 check_services_active
 
-# ─── Source routing+antishare patch functions ──────────────────────────────────
-# Re-use patch functions from installers so patched files can be upgraded
-# and re-patched without code duplication.
-
-ROUTING_COMMON="$SCRIPT_DIR/../routing-installer/common-routing.sh"
-ANTISHARE_COMMON="$SCRIPT_DIR/../antishare-installer/common-antishare.sh"
-
-if [[ -f "$ROUTING_COMMON" ]]; then
-    # shellcheck source=/dev/null
-    source "$ROUTING_COMMON"
-    ROUTING_PATCHES_AVAILABLE=1
-else
-    warn "routing common not found — patched file re-patching disabled"
-    ROUTING_PATCHES_AVAILABLE=0
-fi
-
+[[ "$ROUTING_PATCHES_AVAILABLE" -eq 0 ]] && warn "routing common not found at $ROUTING_COMMON — patched file re-patching disabled"
 # antishare does not patch any shared files — no source needed
 
 # ─── DRY-RUN header ───────────────────────────────────────────────────────────
@@ -209,15 +189,17 @@ INIT_PY="$RUNTIME/panel/admin/__init__.py"
 install_file "$PAYLOAD_DIR/panel/admin/__init__.py" "$INIT_PY" 0644
 
 if [[ $DRY_RUN -eq 0 ]]; then
-    if [[ -f "$ROUTING_MANIFEST_PATH" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
+    if [[ -f "$ROUTING_MANIFEST" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
         log "  Re-applying routing patches to admin/__init__.py"
-        patch_routing_upstream_admin "$INIT_PY"
-        patch_routing_rule_source_admin "$INIT_PY"
+        bash -c "source '$ROUTING_COMMON'; patch_routing_upstream_admin '$INIT_PY'" \
+            || die "patch_routing_upstream_admin failed"
+        bash -c "source '$ROUTING_COMMON'; patch_routing_rule_source_admin '$INIT_PY'" \
+            || die "patch_routing_rule_source_admin failed"
     fi
     # Note: antishare does NOT patch admin/__init__.py — it is auto-loaded
     # by panel when antishare_enabled() returns True (manifest-based check).
 else
-    [[ -f "$ROUTING_MANIFEST_PATH" ]] && echo "  [DRY-RUN] WOULD re-patch admin/__init__.py: routing (RoutingUpstreamAdmin + RoutingRuleSourceAdmin)"
+    [[ -f "$ROUTING_MANIFEST" ]] && echo "  [DRY-RUN] WOULD re-patch admin/__init__.py: routing (RoutingUpstreamAdmin + RoutingRuleSourceAdmin)"
 fi
 
 step "Upgrading patched files: admin-layout.html"
@@ -225,12 +207,13 @@ LAYOUT_HTML="$RUNTIME/templates/admin-layout.html"
 install_file "$PAYLOAD_DIR/templates/admin-layout.html" "$LAYOUT_HTML" 0644
 
 if [[ $DRY_RUN -eq 0 ]]; then
-    if [[ -f "$ROUTING_MANIFEST_PATH" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
+    if [[ -f "$ROUTING_MANIFEST" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
         log "  Re-applying routing sidebar to admin-layout.html"
-        patch_admin_layout_routing_sidebar "$LAYOUT_HTML"
+        bash -c "source '$ROUTING_COMMON'; patch_admin_layout_routing_sidebar '$LAYOUT_HTML'" \
+            || die "patch_admin_layout_routing_sidebar failed"
     fi
 else
-    [[ -f "$ROUTING_MANIFEST_PATH" ]] && echo "  [DRY-RUN] WOULD re-patch admin-layout.html: routing sidebar links"
+    [[ -f "$ROUTING_MANIFEST" ]] && echo "  [DRY-RUN] WOULD re-patch admin-layout.html: routing sidebar links"
 fi
 
 step "Upgrading patched files: business-settings.html"
@@ -238,23 +221,24 @@ BIZ_HTML="$RUNTIME/templates/business-settings.html"
 install_file "$PAYLOAD_DIR/templates/business-settings.html" "$BIZ_HTML" 0644
 
 if [[ $DRY_RUN -eq 0 ]]; then
-    if [[ -f "$ROUTING_MANIFEST_PATH" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
+    if [[ -f "$ROUTING_MANIFEST" && "$ROUTING_PATCHES_AVAILABLE" -eq 1 ]]; then
         log "  Re-applying routing patches to business-settings.html"
-        patch_business_settings_upstream_link "$BIZ_HTML"
-        patch_business_settings_hide_legacy_upstream "$BIZ_HTML"
-        patch_business_settings_rule_source_link "$BIZ_HTML"
-        patch_business_settings_compact_info "$BIZ_HTML"
-        patch_business_settings_direct_labels "$BIZ_HTML"
+        bash -c "source '$ROUTING_COMMON'
+            patch_business_settings_upstream_link '$BIZ_HTML'
+            patch_business_settings_hide_legacy_upstream '$BIZ_HTML'
+            patch_business_settings_rule_source_link '$BIZ_HTML'
+            patch_business_settings_compact_info '$BIZ_HTML'
+            patch_business_settings_direct_labels '$BIZ_HTML'" \
+            || die "business-settings.html routing patches failed"
     fi
 else
-    [[ -f "$ROUTING_MANIFEST_PATH" ]] && echo "  [DRY-RUN] WOULD re-patch business-settings.html: routing upstream/rules/compact-info/labels"
+    [[ -f "$ROUTING_MANIFEST" ]] && echo "  [DRY-RUN] WOULD re-patch business-settings.html: routing upstream/rules/compact-info/labels"
 fi
 
 # ─── Step 5: Python syntax check ──────────────────────────────────────────────
 
 step "Syntax-checking installed Python files"
-PY="$(cd "$INSTALL_ROOT/hiddify-panel" && ./../.venv313/bin/python)" 2>/dev/null \
-    || PY="$INSTALL_ROOT/.venv313/bin/python"
+PY="$(detect_venv_python)"
 
 if [[ $DRY_RUN -eq 0 ]]; then
     ALL_PY=("${SIMPLE_FILES[@]}" "${NEW_FILES[@]}" "panel/init_db.py" "panel/admin/__init__.py")
