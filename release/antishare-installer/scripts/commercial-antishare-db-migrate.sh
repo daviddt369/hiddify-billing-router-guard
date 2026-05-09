@@ -247,22 +247,39 @@ log "anti_share_config rows: $cfg_count"
 
 # --- Step 10: Set commercial_antishare_installed=1 in bool_config ---
 # commercial_antishare_installed.type == bool in ConfigEnum.
-# get_hconfigs() reads BoolConfig rows for bool-typed keys (same as commercial_routing_installed).
-# Writing to str_config is a no-op for capabilities.antishare_enabled() — must use bool_config.
-log "Setting commercial_antishare_installed=1 in bool_config"
-mysql "$DB_NAME" <<'SQL'
+# On production servers with db_version < 136, the bool_config.key ENUM may not yet
+# include 'commercial_antishare_installed' (added in panel _v136 migration).
+# Check INFORMATION_SCHEMA first; skip INSERT if key not in ENUM to avoid ERROR 1265.
+# antishare_enabled() will fall back to manifest file in that case.
+log "Setting commercial_antishare_installed marker"
+enum_has_antishare_key="$(mysql "$DB_NAME" -N -B -e \
+    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA='$DB_NAME' AND TABLE_NAME='bool_config'
+       AND COLUMN_NAME='key' AND COLUMN_TYPE LIKE '%commercial_antishare_installed%';" \
+    2>/dev/null | head -1 || echo 0)"
+
+if [[ "${enum_has_antishare_key:-0}" -ge 1 ]]; then
+    mysql "$DB_NAME" <<'SQL'
 INSERT INTO bool_config (child_id, `key`, value)
 VALUES (0, 'commercial_antishare_installed', 1)
 ON DUPLICATE KEY UPDATE value = 1;
 SQL
+    log "commercial_antishare_installed=1 set in bool_config"
+else
+    log "commercial_antishare_installed not in bool_config ENUM (db_version < 136 schema)"
+    log "antishare_enabled() will use antishare-addon.manifest fallback — this is expected on upgrade"
+fi
 
 installed_val="$(mysql "$DB_NAME" -N -B \
     -e "SELECT value FROM bool_config WHERE child_id=0 AND \`key\`='commercial_antishare_installed';" \
     2>/dev/null | head -n1 || echo '')"
-[[ "$installed_val" == "1" ]] \
-    || die "commercial_antishare_installed not set to 1 after migration. Got: '$installed_val'"
-
-log "commercial_antishare_installed=1 confirmed"
+if [[ "${enum_has_antishare_key:-0}" -ge 1 ]]; then
+    [[ "$installed_val" == "1" ]] \
+        || die "commercial_antishare_installed not set to 1 after migration. Got: '$installed_val'"
+    log "commercial_antishare_installed=1 confirmed"
+else
+    log "commercial_antishare_installed in bool_config: '$installed_val' (manifest fallback active)"
+fi
 
 # --- Step 11: Remove stale str_config entry for commercial_antishare_installed ---
 # commercial_antishare_installed is a bool-typed ConfigEnum key.
