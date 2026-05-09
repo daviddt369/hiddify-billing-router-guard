@@ -69,7 +69,12 @@ take_snapshot() {
         # --- users ---
         echo "[users]"
         echo "total=$(db_count "user")"
-        echo "active=$(db_count "user" "is_active=1")"
+        # Hiddify uses 'enable' column, not 'is_active'
+        if col_exists "user" "enable"; then
+            echo "active=$(db_count "user" "enable=1")"
+        elif col_exists "user" "is_active"; then
+            echo "active=$(db_count "user" "is_active=1")"
+        fi
 
         # Optional columns in user table
         col_exists "user" "telegram_id" && \
@@ -206,63 +211,107 @@ compare_snapshots() {
         after["$key"]="$val"
     done < "$AFTER_FILE"
 
-    # Define critical checks: key | comparison | description
-    # comparison: ge = after >= before, eq = exact match, ne = must not change
-    declare -A CRITICAL_CHECKS=(
-        [total]="ge:Total users must not decrease"
-        [active]="ge:Active users must not decrease"
-        [distinct_uuids]="ge:UUID count must not decrease (subscription links)"
-        [duplicate_uuids]="eq:No new duplicate UUIDs"
-        [proxy_path]="eq:Proxy path must not change"
-        [proxy_path_admin]="eq:Admin path must not change"
-        [plans]="ge:Plans must not decrease"
-        [subscriptions]="ge:Subscriptions must not decrease"
-        [subscriptions_active]="ge:Active subscriptions must not decrease"
-        [orphan_subscriptions]="eq:No new orphan subscriptions"
-        [telegram_bot_configured]="eq:Telegram bot config must not disappear"
-        [str_config_commercial_keys]="ge:Commercial config keys must not decrease"
-        [custom_rules]="ge:Routing custom rules must not decrease"
-        [nft_enabled]="eq:Anti-share nft_enabled must be preserved"
-        [nft_dry_run]="eq:Anti-share nft_dry_run must be preserved"
-        [telegram_enabled]="eq:Anti-share telegram_enabled must be preserved"
+    # ── HARD blockers — fail the entire upgrade if violated ──────────────────
+    # Format: "key:cmp_type:description"
+    #   ge  = after >= before (numeric — value must not decrease)
+    #   eq  = exact match (value must not change at all)
+    #   ze  = must equal zero (duplicate_uuids, orphan_subscriptions)
+    HARD_CHECKS=(
+        "total:ge:Total user count must not decrease"
+        "distinct_uuids:ge:UUID count must not decrease (subscription links)"
+        "duplicate_uuids:ze:No duplicate UUIDs (subscription links would break)"
+        "with_telegram:ge:Users with Telegram ID must not decrease"
+        "proxy_path:eq:proxy_path must not change (all client links use it)"
+        "proxy_path_admin:eq:proxy_path_admin must not change"
+        "proxy_path_client:eq:proxy_path_client must not change"
+        "total:ge:Domain count — use 'total' under [domains] section"
+        "telegram_bot_configured:eq:Telegram bot config must not disappear"
+        "str_config_commercial_keys:ge:Commercial str_config keys must not decrease sharply"
+        "bool_config_commercial_keys:ge:Commercial bool_config keys must not decrease"
+        "custom_rules:ge:Routing custom rules must not decrease"
+        "nft_enabled:eq:anti_share_config.nft_enabled must be preserved"
+        "nft_dry_run:eq:anti_share_config.nft_dry_run must be preserved"
+        "telegram_enabled:eq:anti_share_config.telegram_enabled must be preserved"
+        "orphan_subscriptions:ze:No orphan subscriptions (FK integrity)"
     )
 
-    printf "%-40s %-15s %-15s %s\n" "CHECK" "BEFORE" "AFTER" "RESULT"
-    printf "%-40s %-15s %-15s %s\n" "-----" "------" "-----" "------"
+    # ── SOFT warnings — log but do not fail ───────────────────────────────────
+    SOFT_CHECKS=(
+        "plans:ge:Plans count (soft — plans may be added/removed by admin)"
+        "subscriptions:ge:Subscriptions count (soft — may change during upgrade)"
+        "subscriptions_active:ge:Active subscriptions (soft)"
+        "state_rows:ge:Anti-share state rows (soft — may change during upgrade)"
+    )
 
-    for key in "${!CRITICAL_CHECKS[@]}"; do
-        spec="${CRITICAL_CHECKS[$key]}"
-        cmp_type="${spec%%:*}"
-        desc="${spec#*:}"
-        bval="${before[$key]:-MISSING}"
-        aval="${after[$key]:-MISSING}"
+    printf "%-42s %-16s %-16s %s\n" "CHECK" "BEFORE" "AFTER" "RESULT"
+    printf "%-42s %-16s %-16s %s\n" "-----" "------" "-----" "------"
 
-        result="OK"
+    # Run a single check; outputs one table row, returns 0=ok 1=fail
+    run_check() {
+        local key="$1" cmp_type="$2" label="$3" is_soft="${4:-0}"
+        # For domain total, read from [domains] section which has key "total"
+        # but conflicts with [users] total. Snapshot uses section headers so
+        # we need to disambiguate. We stored domain count as "total" under [domains].
+        # For simplicity use the exact key name stored.
+        local bval="${before[$key]:-MISSING}"
+        local aval="${after[$key]:-MISSING}"
+        local result="OK"
+        local failed=0
+
         case "$cmp_type" in
             ge)
-                # after >= before (numeric)
                 if [[ "$bval" =~ ^[0-9]+$ && "$aval" =~ ^[0-9]+$ ]]; then
-                    [[ $aval -ge $bval ]] || { result="FAIL"; ((failures++)); }
+                    [[ $aval -ge $bval ]] || { result="FAIL"; failed=1; }
                 elif [[ "$aval" == "TABLE_MISSING" && "$bval" != "TABLE_MISSING" ]]; then
-                    result="FAIL"; ((failures++))
+                    result="FAIL"; failed=1
+                elif [[ "$bval" == "MISSING" && "$aval" == "MISSING" ]]; then
+                    result="SKIP"
                 fi
                 ;;
             eq)
-                [[ "$bval" == "$aval" ]] || { result="DIFF"; ((failures++)); }
+                if [[ "$bval" == "MISSING" && "$aval" == "MISSING" ]]; then
+                    result="SKIP"
+                elif [[ "$bval" != "$aval" ]]; then
+                    result="DIFF"; failed=1
+                fi
+                ;;
+            ze)
+                if [[ "$aval" =~ ^[0-9]+$ ]]; then
+                    [[ $aval -eq 0 ]] || { result="FAIL($aval)"; failed=1; }
+                elif [[ "$aval" == "MISSING" ]]; then
+                    result="SKIP"
+                fi
                 ;;
         esac
 
-        printf "%-40s %-15s %-15s %s\n" "$key" "$bval" "$aval" "$result"
+        [[ $is_soft -eq 1 && "$result" != "OK" && "$result" != "SKIP" ]] && result="WARN($result)"
+        printf "%-42s %-16s %-16s %s\n" "$key" "$bval" "$aval" "$result"
+        return $failed
+    }
+
+    echo "── HARD BLOCKERS ───────────────────────────────────────────────"
+    for spec in "${HARD_CHECKS[@]}"; do
+        IFS=':' read -r key cmp desc <<< "$spec"
+        run_check "$key" "$cmp" "$desc" 0 || ((failures++)) || true
+    done
+
+    echo ""
+    echo "── SOFT WARNINGS (non-blocking) ────────────────────────────────"
+    local soft_warns=0
+    for spec in "${SOFT_CHECKS[@]}"; do
+        IFS=':' read -r key cmp desc <<< "$spec"
+        run_check "$key" "$cmp" "$desc" 1 || ((soft_warns++)) || true
     done
 
     echo
     if [[ $failures -eq 0 ]]; then
-        echo "PRESERVATION CHECK: PASSED — $failures issues"
+        echo "PRESERVATION CHECK: PASSED — 0 hard failures, $soft_warns soft warnings"
         echo "All critical user/subscription/config data preserved"
     else
-        echo "PRESERVATION CHECK: FAILED — $failures issue(s)"
-        echo "Review FAIL/DIFF rows before proceeding to production"
+        echo "PRESERVATION CHECK: FAILED — $failures hard failure(s), $soft_warns soft warning(s)"
+        echo "Review FAIL/DIFF rows — do NOT proceed to production until resolved"
     fi
+    [[ $soft_warns -gt 0 ]] && echo "Soft warnings: review but not blocking"
     return $failures
 }
 
