@@ -127,6 +127,15 @@ def _send_first_link_welcome(chat_id: int, user: User) -> bool:
                 bot.send_message(chat_id, message, reply_markup=_user_menu_keyboard(), parse_mode="HTML", disable_web_page_preview=True)
         except Exception:
             bot.send_message(chat_id, message, reply_markup=_user_menu_keyboard(), disable_web_page_preview=True)
+    try:
+        bot.send_message(
+            chat_id,
+            _subscription_links_message(user),
+            reply_markup=_subscription_link_keyboard(user),
+            disable_web_page_preview=True,
+        )
+    except Exception:
+        pass
     user.telegram_welcome_sent = True
     db.session.add(user)
     db.session.commit()
@@ -756,17 +765,7 @@ def _handle_phone_lookup(message, phone: str, allow_rebind: bool = False):
             f"Статус: выдан тест 1 ГБ / 1 день"
         ),
     )
-    bot.send_message(
-        message.chat.id,
-        get_usage_msg(user.uuid),
-        reply_markup=user_keyboard(user.uuid),
-    )
-    bot.send_message(
-        message.chat.id,
-        _subscription_links_message(user),
-        reply_markup=_subscription_link_keyboard(user),
-        disable_web_page_preview=True,
-    )
+    _send_first_link_welcome(message.chat.id, user)
     plans_markup = _plans_keyboard()
     if plans_markup:
         bot.send_message(
