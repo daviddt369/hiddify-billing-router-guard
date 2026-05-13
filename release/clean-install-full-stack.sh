@@ -79,7 +79,7 @@ preflight() {
     done
 
     _log "--- DB connectivity ---"
-    mysql "$DB_NAME" -e "SELECT db_version FROM str_config LIMIT 1;" >/dev/null 2>&1 \
+    mysql "$DB_NAME" -e "SELECT 1 FROM str_config LIMIT 1;" >/dev/null 2>&1 \
         || _die "Cannot connect to DB '$DB_NAME' — is MariaDB running and hiddifypanel DB accessible?"
 
     _log "--- DB version ---"
