@@ -72,6 +72,20 @@
             </form>
           </div>
 
+          {# find upstream_id with lowest latency among enabled+online nodes #}
+          {% set best = namespace(id=None, ms=None) %}
+          {% for up in upstreams %}
+            {% if up.enabled %}
+              {% set hs = routing_status.get(up.id|string, {}) %}
+              {% if hs.get('status') in ('online', 'degraded') and hs.get('latency_ms') is not none %}
+                {% if best.ms is none or hs.latency_ms < best.ms %}
+                  {% set best.ms = hs.latency_ms %}
+                  {% set best.id = up.id %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+
           {% if upstreams %}
           <table class="table table-bordered table-sm">
             <thead>
@@ -80,15 +94,15 @@
                 <th>Метка / Имя</th>
                 <th style="width:100px">Тип туннеля</th>
                 <th style="width:60px">Приор.</th>
-                <th style="width:90px">Статус</th>
-                <th style="width:130px">Health</th>
+                <th style="width:160px">Health</th>
                 <th>Действия</th>
               </tr>
             </thead>
             <tbody>
               {% for up in upstreams %}
               {% set hs = routing_status.get(up.id|string, {}) %}
-              <tr class="{% if not up.enabled %}table-secondary text-muted{% endif %}">
+              {% set is_best = up.enabled and up.id == best.id %}
+              <tr class="{% if not up.enabled %}table-secondary text-muted{% elif is_best %}table-success{% endif %}">
                 <td>{{ up.id }}</td>
                 <td>
                   <strong>{{ up.label or up.name }}</strong><br>
@@ -97,21 +111,16 @@
                 <td>{{ up.tunnel_type }}</td>
                 <td class="text-center">{{ up.priority }}</td>
                 <td class="text-center">
-                  {% if loop.first and up.enabled %}
-                    <span class="badge badge-success">Активная</span>
-                  {% elif up.enabled %}
-                    <span class="badge badge-info">Резервная</span>
-                  {% else %}
+                  {% if not up.enabled %}
                     <span class="badge badge-secondary">Выкл</span>
-                  {% endif %}
-                </td>
-                <td class="text-center">
-                  {% if hs.get('status') == 'online' %}
+                  {% elif hs.get('status') == 'online' %}
+                    {% if is_best %}<span class="badge badge-primary">★ Лучшая</span><br>{% endif %}
                     <span class="badge badge-success">✓ online</span>
-                    {% if hs.get('latency_ms') %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
+                    {% if hs.get('latency_ms') is not none %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
                   {% elif hs.get('status') == 'degraded' %}
+                    {% if is_best %}<span class="badge badge-primary">★ Лучшая</span><br>{% endif %}
                     <span class="badge badge-warning">⚡ slow</span>
-                    {% if hs.get('latency_ms') %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
+                    {% if hs.get('latency_ms') is not none %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
                   {% elif hs.get('status') == 'offline' %}
                     <span class="badge badge-danger">✗ offline</span>
                     {% if hs.get('last_error') %}<br><small class="text-danger" title="{{ hs.last_error }}">{{ hs.last_error[:30] }}</small>{% endif %}
