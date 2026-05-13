@@ -89,6 +89,7 @@ class RoutingAdmin(_BaseRoutingAdmin):
 
     @route("/upstreams/", methods=["GET"])
     def upstream_list(self):
+        from hiddifypanel.models import hconfig, ConfigEnum
         from hiddifypanel.models.commercial_routing_upstream import CommercialRoutingUpstream
         upstreams = (
             CommercialRoutingUpstream.query
@@ -104,7 +105,28 @@ class RoutingAdmin(_BaseRoutingAdmin):
             routing_admin_url=_routing_admin_url(),
             upstreams_url=_upstreams_url(),
             routing_status=_load_routing_status(),
+            probe_url=hconfig(ConfigEnum.commercial_router_probe_url) or "https://1.1.1.1/",
+            probe_interval=hconfig(ConfigEnum.commercial_router_probe_interval) or "1m",
+            probe_tolerance=hconfig(ConfigEnum.commercial_router_probe_tolerance) or "0",
         )
+
+    # --- URLTest probe settings save ---
+
+    @route("/upstreams/probe/", methods=["POST"])
+    def probe_settings_post(self):
+        from hiddifypanel.models import ConfigEnum, set_hconfig
+        from flask import flash
+        probe_url = (request.form.get("probe_url") or "https://1.1.1.1/").strip()
+        probe_interval = (request.form.get("probe_interval") or "1m").strip()
+        try:
+            probe_tolerance = str(max(0, int((request.form.get("probe_tolerance") or "0").strip() or "0")))
+        except ValueError:
+            probe_tolerance = "0"
+        set_hconfig(ConfigEnum.commercial_router_probe_url, probe_url)
+        set_hconfig(ConfigEnum.commercial_router_probe_interval, probe_interval)
+        set_hconfig(ConfigEnum.commercial_router_probe_tolerance, probe_tolerance)
+        flash("Настройки URLTest сохранены.", "success")
+        return redirect(_upstreams_url())
 
     # --- Add ---
 

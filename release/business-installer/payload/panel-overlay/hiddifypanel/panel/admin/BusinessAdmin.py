@@ -210,18 +210,6 @@ class BusinessSettingsForm(FlaskForm):
     commercial_ru_geoip_enabled = wtf.BooleanField("Включить geoip:ru для трафика текущей страны")
     commercial_default_global_policy = wtf.SelectField("Куда отправлять остальной трафик", choices=[("to_de", "Внешняя нода / Upstream")], validate_choice=False)
     commercial_router_core_type = wtf.SelectField("Движок маршрутизации", choices=[("xray", "Xray")], validate_choice=False)
-    commercial_router_probe_url = wtf.SelectField("URL для проверки нод", choices=[
-        ("https://1.1.1.1/", "https://1.1.1.1/ (Cloudflare)"),
-        ("https://captive.apple.com/", "https://captive.apple.com/ (Apple)"),
-        ("https://www.google.com/generate_204", "https://www.google.com/generate_204 (Google)"),
-    ], validate_choice=False)
-    commercial_router_probe_interval = wtf.SelectField("Интервал проверки нод", choices=[
-        ("30s", "Каждые 30 секунд"),
-        ("1m",  "Каждую минуту"),
-        ("3m",  "Каждые 3 минуты"),
-        ("5m",  "Каждые 5 минут"),
-    ], validate_choice=False)
-    commercial_router_probe_tolerance = wtf.StringField("Допустимое отклонение (мс)", validators=[wtf.validators.Optional()])
 
 
     # BEGIN COMMERCIAL ROUTING EDITABLE UI FIELDS
@@ -339,9 +327,6 @@ class BusinessAdmin(FlaskView):
             commercial_ru_geoip_enabled=bool(hconfig(ConfigEnum.commercial_ru_geoip_enabled)),
             commercial_default_global_policy=hconfig(ConfigEnum.commercial_default_global_policy) or "to_de",
             commercial_router_core_type=hconfig(ConfigEnum.commercial_router_core_type) or "xray",
-            commercial_router_probe_url=hconfig(ConfigEnum.commercial_router_probe_url) or "https://1.1.1.1/",
-            commercial_router_probe_interval=hconfig(ConfigEnum.commercial_router_probe_interval) or "1m",
-            commercial_router_probe_tolerance=hconfig(ConfigEnum.commercial_router_probe_tolerance) or "0",
             commercial_blocked_domains=_commercial_routing_config_text(COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY, DEFAULT_COMMERCIAL_ROUTING_BLOCKED_DOMAINS),
             commercial_direct_dns_servers=_commercial_routing_config_text(COMMERCIAL_ROUTING_DIRECT_DNS_KEY, DEFAULT_COMMERCIAL_ROUTING_DIRECT_DNS),
             commercial_proxy_dns_servers=_commercial_routing_config_text(COMMERCIAL_ROUTING_PROXY_DNS_KEY, DEFAULT_COMMERCIAL_ROUTING_PROXY_DNS),
@@ -412,9 +397,6 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.commercial_ru_geoip_enabled: bool(form.commercial_ru_geoip_enabled.data),
             ConfigEnum.commercial_default_global_policy: (form.commercial_default_global_policy.data or "to_de").strip(),
             ConfigEnum.commercial_router_core_type: (form.commercial_router_core_type.data or "xray").strip(),
-            ConfigEnum.commercial_router_probe_url: (form.commercial_router_probe_url.data or "https://1.1.1.1/").strip(),
-            ConfigEnum.commercial_router_probe_interval: (form.commercial_router_probe_interval.data or "1m").strip(),
-            ConfigEnum.commercial_router_probe_tolerance: str(max(0, int((form.commercial_router_probe_tolerance.data or "0").strip() or "0"))),
             COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY: (form.commercial_blocked_domains.data or "").strip(),
             COMMERCIAL_ROUTING_DIRECT_DNS_KEY: (form.commercial_direct_dns_servers.data or "").strip(),
             COMMERCIAL_ROUTING_PROXY_DNS_KEY: (form.commercial_proxy_dns_servers.data or "").strip(),
@@ -450,9 +432,6 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.commercial_ru_geoip_enabled,
             ConfigEnum.commercial_default_global_policy,
             ConfigEnum.commercial_router_core_type,
-            ConfigEnum.commercial_router_probe_url,
-            ConfigEnum.commercial_router_probe_interval,
-            ConfigEnum.commercial_router_probe_tolerance,
             COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY,
             COMMERCIAL_ROUTING_DIRECT_DNS_KEY,
             COMMERCIAL_ROUTING_PROXY_DNS_KEY,

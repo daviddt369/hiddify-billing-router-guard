@@ -35,6 +35,43 @@
             Нода применяется только после нажатия <strong>«Применить»</strong> в разделе «Маршрутизация».
           </div>
 
+          {# URLTest settings card #}
+          <div class="card card-body bg-light mb-3">
+            <h6 class="mb-3">Проверка нод (URLTest)</h6>
+            <form method="post" action="{{ upstreams_url }}probe/">
+              <div class="form-row align-items-end">
+                <div class="form-group col-md-4">
+                  <label>URL для проверки</label>
+                  <select name="probe_url" class="form-control">
+                    <option value="https://1.1.1.1/" {% if probe_url == "https://1.1.1.1/" %}selected{% endif %}>https://1.1.1.1/ (Cloudflare)</option>
+                    <option value="https://captive.apple.com/" {% if probe_url == "https://captive.apple.com/" %}selected{% endif %}>https://captive.apple.com/ (Apple)</option>
+                    <option value="https://www.google.com/generate_204" {% if probe_url == "https://www.google.com/generate_204" %}selected{% endif %}>https://www.google.com/generate_204 (Google)</option>
+                  </select>
+                  <small class="form-text text-muted">Адрес по которому xray-router проверяет задержку через каждую ноду.</small>
+                </div>
+                <div class="form-group col-md-3">
+                  <label>Интервал проверки</label>
+                  <select name="probe_interval" class="form-control">
+                    <option value="30s" {% if probe_interval == "30s" %}selected{% endif %}>Каждые 30 секунд</option>
+                    <option value="1m"  {% if probe_interval == "1m"  %}selected{% endif %}>Каждую минуту</option>
+                    <option value="3m"  {% if probe_interval == "3m"  %}selected{% endif %}>Каждые 3 минуты</option>
+                    <option value="5m"  {% if probe_interval == "5m"  %}selected{% endif %}>Каждые 5 минут</option>
+                  </select>
+                  <small class="form-text text-muted">Как часто xray-router измеряет пинг через каждую ноду.</small>
+                </div>
+                <div class="form-group col-md-2">
+                  <label>Отклонение (мс)</label>
+                  <input type="number" name="probe_tolerance" class="form-control ltr" min="0" max="5000"
+                         value="{{ probe_tolerance }}" placeholder="50">
+                  <small class="form-text text-muted">0 = всегда лучшую. Рекомендуется 50.</small>
+                </div>
+                <div class="form-group col-md-2">
+                  <button type="submit" class="btn btn-primary btn-block">Сохранить</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
           {% if upstreams %}
           <table class="table table-bordered table-sm">
             <thead>
