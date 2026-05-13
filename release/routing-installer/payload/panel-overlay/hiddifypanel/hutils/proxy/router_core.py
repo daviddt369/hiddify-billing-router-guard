@@ -479,10 +479,14 @@ def render_xray_router_config(
     }
 
     if use_balancer:
+        tolerance_ms = int(hconfigs.get("commercial_router_probe_tolerance") or 0)
+        balancer_strategy: dict = {"type": "leastPing"}
+        if tolerance_ms > 0:
+            balancer_strategy["settings"] = {"baselines": [f"{tolerance_ms}ms"]}
         routing["balancers"] = [{
             "tag": "upstream-balancer",
             "selector": selector,
-            "strategy": {"type": "leastPing"},
+            "strategy": balancer_strategy,
         }]
 
     config: dict[str, Any] = {
@@ -513,11 +517,12 @@ def render_xray_router_config(
     }
 
     if use_balancer:
-        # Observatory at top level (validated on xray 26.2.6: works when balancers are inside routing)
+        probe_url = (hconfigs.get("commercial_router_probe_url") or "https://1.1.1.1/").strip()
+        probe_interval = (hconfigs.get("commercial_router_probe_interval") or "1m").strip()
         config["observatory"] = {
             "subjectSelector": selector,
-            "probeUrl": "https://1.1.1.1/",
-            "probeInterval": "1m",
+            "probeUrl": probe_url,
+            "probeInterval": probe_interval,
             "enableConcurrency": True,
         }
 
