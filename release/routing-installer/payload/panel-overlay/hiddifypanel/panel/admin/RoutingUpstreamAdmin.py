@@ -7,6 +7,8 @@ of the base RoutingAdmin.
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 
 from flask import abort, flash, g, redirect, render_template, request
@@ -16,6 +18,17 @@ from hiddifypanel.database import db
 from hiddifypanel.models import Role
 
 from .BusinessAdmin import RoutingAdmin as _BaseRoutingAdmin
+
+_HEALTH_STATUS_FILE = "/opt/hiddify-manager/var/commercial-routing-status.json"
+
+
+def _load_routing_status() -> dict:
+    try:
+        with open(_HEALTH_STATUS_FILE) as f:
+            data = json.load(f)
+        return data.get("upstreams", {})
+    except Exception:
+        return {}
 
 _NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,62}$")
 _VALID_TUNNEL_TYPES = {"test_blackhole", "vless", "trojan", "wireguard"}
@@ -90,6 +103,7 @@ class RoutingAdmin(_BaseRoutingAdmin):
             action="list",
             routing_admin_url=_routing_admin_url(),
             upstreams_url=_upstreams_url(),
+            routing_status=_load_routing_status(),
         )
 
     # --- Add ---

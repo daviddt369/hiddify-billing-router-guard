@@ -44,11 +44,13 @@
                 <th style="width:100px">Тип туннеля</th>
                 <th style="width:60px">Приор.</th>
                 <th style="width:90px">Статус</th>
+                <th style="width:130px">Health</th>
                 <th>Действия</th>
               </tr>
             </thead>
             <tbody>
               {% for up in upstreams %}
+              {% set hs = routing_status.get(up.id|string, {}) %}
               <tr class="{% if not up.enabled %}table-secondary text-muted{% endif %}">
                 <td>{{ up.id }}</td>
                 <td>
@@ -64,6 +66,20 @@
                     <span class="badge badge-info">Резервная</span>
                   {% else %}
                     <span class="badge badge-secondary">Выкл</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if hs.get('status') == 'online' %}
+                    <span class="badge badge-success">✓ online</span>
+                    {% if hs.get('latency_ms') %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
+                  {% elif hs.get('status') == 'degraded' %}
+                    <span class="badge badge-warning">⚡ slow</span>
+                    {% if hs.get('latency_ms') %}<br><small class="text-muted">{{ hs.latency_ms }} мс</small>{% endif %}
+                  {% elif hs.get('status') == 'offline' %}
+                    <span class="badge badge-danger">✗ offline</span>
+                    {% if hs.get('last_error') %}<br><small class="text-danger" title="{{ hs.last_error }}">{{ hs.last_error[:30] }}</small>{% endif %}
+                  {% else %}
+                    <span class="badge badge-secondary text-muted">— —</span>
                   {% endif %}
                 </td>
                 <td>
