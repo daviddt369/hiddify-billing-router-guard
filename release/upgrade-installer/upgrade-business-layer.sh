@@ -149,6 +149,7 @@ SIMPLE_FILES=(
     "panel/commercial/restapi/v2/telegram/__init__.py"
     "panel/commercial/restapi/v2/telegram/tgbot.py"
     "panel/commercial/telegrambot/Usage.py"
+    "panel/commercial/telegrambot/runtime.py"
     "panel/commercial/telegrambot/secrets.py"
     "panel/custom_widgets.py"
     "panel/hiddify.py"
@@ -169,7 +170,6 @@ step "Installing new files not present on clone"
 
 NEW_FILES=(
     "panel/commercial/capabilities.py"
-    "panel/commercial/telegrambot/runtime.py"
 )
 
 for rel in "${NEW_FILES[@]}"; do
@@ -385,7 +385,6 @@ if [[ $DRY_RUN -eq 1 ]]; then
     echo ""
     echo " Files that are NEW (missing on clone):"
     echo "   panel/commercial/capabilities.py"
-    echo "   panel/commercial/telegrambot/runtime.py"
     echo ""
     echo " Files UNCHANGED (identical md5):"
     echo "   hutils/flask.py, models/__init__.py, models/user.py"
