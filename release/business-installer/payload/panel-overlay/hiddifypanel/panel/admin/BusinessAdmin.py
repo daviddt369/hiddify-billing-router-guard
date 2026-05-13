@@ -381,10 +381,6 @@ class BusinessAdmin(FlaskView):
             if not self._routing_available(old_configs):
                 hutils.flask.flash("Модуль «Маршрутизация» не установлен.", "danger")
                 return self._render_settings(form, commercial_routing_notice=None, test_result=None)
-            upstream_error = _validate_routing_upstream_form(form)
-            if upstream_error:
-                hutils.flask.flash(upstream_error, "danger")
-                return self._render_settings(form, commercial_routing_notice=None, test_result=None)
 
         telegram_registration_mode = (form.telegram_registration_mode.data or "admin_only").strip().lower()
         if telegram_registration_mode not in {"auto", "admin_only"}:
