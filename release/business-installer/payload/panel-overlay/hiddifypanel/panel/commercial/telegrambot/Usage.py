@@ -90,12 +90,20 @@ def _admin_contact_keyboard():
     )
 
 
+def _sanitize_tg_html(text: str) -> str:
+    """Replace <br> variants with newlines — Telegram HTML mode doesn't support <br>."""
+    import re as _re
+    return _re.sub(r'<br\s*/?>', '\n', text, flags=_re.IGNORECASE)
+
+
 def _telegram_welcome_message() -> str:
-    return ((hconfig(ConfigEnum.telegram_welcome_message) or "").strip())
+    return _sanitize_tg_html((hconfig(ConfigEnum.telegram_welcome_message) or "").strip())
 
 
 def _telegram_instruction_message() -> str:
-    return ((hconfig(ConfigEnum.telegram_instruction_message) or "").strip()) or _telegram_welcome_message()
+    return _sanitize_tg_html(
+        ((hconfig(ConfigEnum.telegram_instruction_message) or "").strip()) or _telegram_welcome_message()
+    )
 
 
 def _telegram_instruction_button_text() -> str:
