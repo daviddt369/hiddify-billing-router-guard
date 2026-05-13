@@ -151,6 +151,7 @@ SIMPLE_FILES=(
     "panel/commercial/telegrambot/Usage.py"
     "panel/commercial/telegrambot/secrets.py"
     "panel/custom_widgets.py"
+    "panel/hiddify.py"
     "panel/user/user.py"
     "templates/macros.html"
 )
