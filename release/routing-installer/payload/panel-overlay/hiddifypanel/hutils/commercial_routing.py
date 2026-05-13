@@ -466,7 +466,6 @@ def apply_router_core_config() -> RouterApplyResult:
 
     hconfigs = get_hconfigs()
     custom_rules = load_enabled_custom_rules()
-    # Load enabled upstreams from new table; fall back to legacy commercial_de_* if unavailable
     upstreams = None
     try:
         from hiddifypanel.models.commercial_routing_upstream import CommercialRoutingUpstream

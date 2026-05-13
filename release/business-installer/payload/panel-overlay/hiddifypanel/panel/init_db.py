@@ -307,12 +307,6 @@ def _v136(child_id):
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_url, "https://1.1.1.1/")
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_interval, "1m")
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_tolerance, "0")
-    add_config_if_not_exist(ConfigEnum.commercial_de_tunnel_type, "test_blackhole")
-    add_config_if_not_exist(ConfigEnum.commercial_de_endpoint, "")
-    add_config_if_not_exist(ConfigEnum.commercial_de_public_key, "")
-    add_config_if_not_exist(ConfigEnum.commercial_de_private_key_ref, "")
-    add_config_if_not_exist(ConfigEnum.commercial_de_vless_uri, "")
-    add_config_if_not_exist(ConfigEnum.commercial_de_trojan_uri, "")
 
 
 def _v111(child_id):

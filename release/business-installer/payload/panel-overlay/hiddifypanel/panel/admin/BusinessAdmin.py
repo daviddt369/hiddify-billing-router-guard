@@ -164,44 +164,6 @@ def _validate_telegram_proxy_url(form, field):
         raise ValidationError("Proxy URL must start with socks5h://, socks5://, http://, or https://")
 
 
-def _validate_routing_upstream_form(form):
-    tunnel_type = (form.commercial_de_tunnel_type.data or "test_blackhole").strip().lower()
-    if tunnel_type == "test_blackhole":
-        return None
-
-    try:
-        from hiddifypanel.hutils.proxy import router_core
-
-        upstream_cfg = {
-            "commercial_de_tunnel_type": tunnel_type,
-            "commercial_de_endpoint": (form.commercial_de_endpoint.data or "").strip(),
-            "commercial_de_public_key": (form.commercial_de_public_key.data or "").strip(),
-            "commercial_de_private_key_ref": (form.commercial_de_private_key_ref.data or "").strip(),
-            "commercial_de_vless_uri": (form.commercial_de_vless_uri.data or "").strip(),
-            "commercial_de_trojan_uri": (form.commercial_de_trojan_uri.data or "").strip(),
-        }
-        router_core._build_to_de_outbound(upstream_cfg)
-        return None
-    except Exception as exc:
-        msg = str(exc).strip()
-        mapping = {
-            "commercial_de_vless_uri is empty": "Укажите VLESS URI внешней ноды.",
-            "DE VLESS URI must start with vless://": "VLESS URI внешней ноды должен начинаться с vless://",
-            "VLESS UUID is empty": "В VLESS URI внешней ноды пустой UUID.",
-            "commercial_de_trojan_uri is empty": "Укажите Trojan URI внешней ноды.",
-            "DE Trojan URI must start with trojan://": "Trojan URI внешней ноды должен начинаться с trojan://",
-            "Trojan password is empty": "В Trojan URI внешней ноды пустой пароль.",
-            "commercial_de_endpoint is required for wireguard": "Для WireGuard укажите endpoint внешней ноды.",
-            "commercial_de_public_key is required for wireguard": "Для WireGuard укажите публичный ключ внешней ноды.",
-            "commercial_de_private_key_ref is empty": "Для WireGuard укажите ссылку на приватный ключ.",
-        }
-        if msg in mapping:
-            return mapping[msg]
-        if "invalid UUID" in msg:
-            return "В VLESS URI внешней ноды указан невалидный UUID."
-        return "Проверьте настройки внешней ноды: " + msg
-
-
 def _format_routing_apply_error(msg: str) -> str:
     text = (msg or "").strip()
     if not text:
@@ -210,10 +172,6 @@ def _format_routing_apply_error(msg: str) -> str:
         return "на сервере не установлена команда commercial-routing-apply"
     if "invalid UUID" in text:
         return "в VLESS URI внешней ноды указан невалидный UUID"
-    if "commercial_de_vless_uri is empty" in text:
-        return "не заполнен VLESS URI внешней ноды"
-    if "commercial_de_trojan_uri is empty" in text:
-        return "не заполнен Trojan URI внешней ноды"
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return lines[-1][-300:] if lines else "неизвестная ошибка"
 
@@ -264,12 +222,6 @@ class BusinessSettingsForm(FlaskForm):
         ("5m",  "Каждые 5 минут"),
     ], validate_choice=False)
     commercial_router_probe_tolerance = wtf.StringField("Допустимое отклонение (мс)", validators=[wtf.validators.Optional()])
-    commercial_de_tunnel_type = wtf.SelectField("Тип туннеля до внешней ноды", choices=[("test_blackhole", "Тестовый blackhole"), ("vless", "VLESS"), ("trojan", "Trojan"), ("wireguard", "WireGuard")], validate_choice=False)
-    commercial_de_endpoint = wtf.StringField("Endpoint внешней ноды (для WireGuard)")
-    commercial_de_public_key = wtf.StringField("Публичный ключ внешней ноды (для WireGuard)")
-    commercial_de_private_key_ref = wtf.StringField("Ссылка на приватный ключ (для WireGuard)")
-    commercial_de_vless_uri = wtf.TextAreaField("VLESS URI внешней ноды", render_kw={"rows": 3})
-    commercial_de_trojan_uri = wtf.TextAreaField("Trojan URI внешней ноды", render_kw={"rows": 3})
 
 
     # BEGIN COMMERCIAL ROUTING EDITABLE UI FIELDS
@@ -390,12 +342,6 @@ class BusinessAdmin(FlaskView):
             commercial_router_probe_url=hconfig(ConfigEnum.commercial_router_probe_url) or "https://1.1.1.1/",
             commercial_router_probe_interval=hconfig(ConfigEnum.commercial_router_probe_interval) or "1m",
             commercial_router_probe_tolerance=hconfig(ConfigEnum.commercial_router_probe_tolerance) or "0",
-            commercial_de_tunnel_type=hconfig(ConfigEnum.commercial_de_tunnel_type) or "test_blackhole",
-            commercial_de_endpoint=hconfig(ConfigEnum.commercial_de_endpoint) or "",
-            commercial_de_public_key=hconfig(ConfigEnum.commercial_de_public_key) or "",
-            commercial_de_private_key_ref=hconfig(ConfigEnum.commercial_de_private_key_ref) or "",
-            commercial_de_vless_uri=hconfig(ConfigEnum.commercial_de_vless_uri) or "",
-            commercial_de_trojan_uri=hconfig(ConfigEnum.commercial_de_trojan_uri) or "",
             commercial_blocked_domains=_commercial_routing_config_text(COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY, DEFAULT_COMMERCIAL_ROUTING_BLOCKED_DOMAINS),
             commercial_direct_dns_servers=_commercial_routing_config_text(COMMERCIAL_ROUTING_DIRECT_DNS_KEY, DEFAULT_COMMERCIAL_ROUTING_DIRECT_DNS),
             commercial_proxy_dns_servers=_commercial_routing_config_text(COMMERCIAL_ROUTING_PROXY_DNS_KEY, DEFAULT_COMMERCIAL_ROUTING_PROXY_DNS),
@@ -473,12 +419,6 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.commercial_router_probe_url: (form.commercial_router_probe_url.data or "https://1.1.1.1/").strip(),
             ConfigEnum.commercial_router_probe_interval: (form.commercial_router_probe_interval.data or "1m").strip(),
             ConfigEnum.commercial_router_probe_tolerance: str(max(0, int((form.commercial_router_probe_tolerance.data or "0").strip() or "0"))),
-            ConfigEnum.commercial_de_tunnel_type: (form.commercial_de_tunnel_type.data or "test_blackhole").strip(),
-            ConfigEnum.commercial_de_endpoint: (form.commercial_de_endpoint.data or "").strip(),
-            ConfigEnum.commercial_de_public_key: (form.commercial_de_public_key.data or "").strip(),
-            ConfigEnum.commercial_de_private_key_ref: (form.commercial_de_private_key_ref.data or "").strip(),
-            ConfigEnum.commercial_de_vless_uri: (form.commercial_de_vless_uri.data or "").strip(),
-            ConfigEnum.commercial_de_trojan_uri: (form.commercial_de_trojan_uri.data or "").strip(),
             COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY: (form.commercial_blocked_domains.data or "").strip(),
             COMMERCIAL_ROUTING_DIRECT_DNS_KEY: (form.commercial_direct_dns_servers.data or "").strip(),
             COMMERCIAL_ROUTING_PROXY_DNS_KEY: (form.commercial_proxy_dns_servers.data or "").strip(),
@@ -517,12 +457,6 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.commercial_router_probe_url,
             ConfigEnum.commercial_router_probe_interval,
             ConfigEnum.commercial_router_probe_tolerance,
-            ConfigEnum.commercial_de_tunnel_type,
-            ConfigEnum.commercial_de_endpoint,
-            ConfigEnum.commercial_de_public_key,
-            ConfigEnum.commercial_de_private_key_ref,
-            ConfigEnum.commercial_de_vless_uri,
-            ConfigEnum.commercial_de_trojan_uri,
             COMMERCIAL_ROUTING_BLOCKED_DOMAINS_KEY,
             COMMERCIAL_ROUTING_DIRECT_DNS_KEY,
             COMMERCIAL_ROUTING_PROXY_DNS_KEY,

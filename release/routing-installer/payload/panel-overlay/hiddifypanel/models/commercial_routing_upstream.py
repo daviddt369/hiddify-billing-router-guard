@@ -51,16 +51,6 @@ class CommercialRoutingUpstream(db.Model):
             .all()
         )
 
-    def to_hconfigs_dict(self) -> dict[str, Any]:
-        """Return a dict compatible with the legacy hconfigs format used by router_core."""
-        return {
-            "commercial_de_tunnel_type":      self.tunnel_type,
-            "commercial_de_endpoint":         self.wg_endpoint,
-            "commercial_de_public_key":       self.wg_public_key,
-            "commercial_de_private_key_ref":  self.wg_private_key_ref,
-            "commercial_de_vless_uri":        self.vless_uri,
-            "commercial_de_trojan_uri":       self.trojan_uri,
-        }
 
     def __repr__(self) -> str:
         return (

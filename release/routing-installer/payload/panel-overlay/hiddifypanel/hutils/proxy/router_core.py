@@ -210,7 +210,7 @@ def _xray_geoip_rules(hconfigs: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _build_vless_outbound(uri: str) -> dict[str, Any]:
     if not uri or not uri.strip():
-        raise ValueError("commercial_de_vless_uri is empty")
+        raise ValueError("vless_uri is empty")
 
     parsed, params = _uri_params(uri)
 
@@ -251,7 +251,7 @@ def _build_vless_outbound(uri: str) -> dict[str, Any]:
 
 def _build_trojan_outbound(uri: str) -> dict[str, Any]:
     if not uri or not uri.strip():
-        raise ValueError("commercial_de_trojan_uri is empty")
+        raise ValueError("trojan_uri is empty")
 
     parsed, params = _uri_params(uri)
 
@@ -283,79 +283,22 @@ def _build_trojan_outbound(uri: str) -> dict[str, Any]:
 
 def _read_secret_ref(ref: str) -> str:
     ref = (ref or "").strip()
-
     if not ref:
-        raise ValueError("commercial_de_private_key_ref is empty")
-
+        raise ValueError("secret ref is empty")
     if ref.startswith("env:"):
         name = ref[4:].strip()
         value = os.environ.get(name, "")
         if not value:
             raise ValueError(f"Environment variable is empty: {name}")
         return value.strip()
-
     if ref.startswith("file:"):
         path = ref[5:].strip()
         with open(path, "r", encoding="utf-8") as f:
             return f.read().strip()
-
     if os.path.exists(ref):
         with open(ref, "r", encoding="utf-8") as f:
             return f.read().strip()
-
     return ref
-
-
-def _build_wireguard_outbound(hconfigs: dict[str, Any]) -> dict[str, Any]:
-    endpoint = (hconfigs.get("commercial_de_endpoint") or "").strip()
-    public_key = (hconfigs.get("commercial_de_public_key") or "").strip()
-    private_key = _read_secret_ref(hconfigs.get("commercial_de_private_key_ref") or "")
-
-    if not endpoint:
-        raise ValueError("commercial_de_endpoint is required for wireguard")
-    if not public_key:
-        raise ValueError("commercial_de_public_key is required for wireguard")
-
-    address_raw = (hconfigs.get("commercial_de_vless_uri") or "").strip()
-    addresses = _split_csv(address_raw) if address_raw else ["10.66.66.2/32"]
-
-    mtu_raw = (hconfigs.get("commercial_de_trojan_uri") or "").strip()
-    mtu = int(mtu_raw) if mtu_raw else 1280
-
-    return {
-        "tag": "to-de",
-        "protocol": "wireguard",
-        "settings": {
-            "secretKey": private_key,
-            "address": addresses,
-            "peers": [
-                {
-                    "publicKey": public_key,
-                    "endpoint": endpoint,
-                    "allowedIPs": ["0.0.0.0/0", "::/0"],
-                }
-            ],
-            "mtu": mtu,
-        },
-    }
-
-
-def _build_to_de_outbound(hconfigs: dict[str, Any]) -> dict[str, Any]:
-    tunnel_type = (hconfigs.get("commercial_de_tunnel_type") or "test_blackhole").strip().lower()
-
-    if tunnel_type == "test_blackhole":
-        return {"tag": "to-de", "protocol": "blackhole"}
-
-    if tunnel_type == "vless":
-        return _build_vless_outbound(hconfigs.get("commercial_de_vless_uri") or "")
-
-    if tunnel_type == "trojan":
-        return _build_trojan_outbound(hconfigs.get("commercial_de_trojan_uri") or "")
-
-    if tunnel_type == "wireguard":
-        return _build_wireguard_outbound(hconfigs)
-
-    raise ValueError(f"Unsupported commercial_de_tunnel_type: {tunnel_type}")
 
 
 def _get_attr(obj: Any, key: str, default: Any = "") -> Any:
@@ -426,13 +369,13 @@ def render_xray_router_config(
 ) -> dict[str, Any]:
     """Render the xray-router config.
 
-    When upstreams (list of CommercialRoutingUpstream objects or dicts) is provided:
+    Upstreams are managed via the CommercialRoutingUpstream DB table.
       - Each upstream gets outbound tag upstream-{id}.
       - test_blackhole upstreams are included as outbounds but excluded from balancer.
       - If >=2 real (non-blackhole) upstreams: add routing.balancers + observatory for auto-failover.
       - If exactly 1 real upstream: use outboundTag directly (no balancer).
-      - If 0 real upstreams: fallback to legacy to-de from hconfigs.
-    When upstreams is None/empty: legacy single-upstream path via commercial_de_* from hconfigs.
+      - If 0 real upstreams: all non-RU traffic is blocked (blackhole).
+        Add external nodes via Routing → External Nodes to route traffic out.
     """
     # Build upstream outbound list first so we know the final_rule target
     # before rendering custom_rules (to_upstream policy needs to reference it).
@@ -459,9 +402,10 @@ def render_xray_router_config(
             selector = []
             final_rule = {"type": "field", "network": "tcp,udp", "outboundTag": real_outbounds[0]["tag"]}
     else:
-        all_outbounds = [_build_to_de_outbound(hconfigs)]
+        # No upstreams configured — block non-RU traffic until nodes are added.
+        all_outbounds = []
         selector = []
-        final_rule = {"type": "field", "network": "tcp,udp", "outboundTag": "to-de"}
+        final_rule = {"type": "field", "network": "tcp,udp", "outboundTag": "block"}
 
     # Now render custom rules with correct outbound targets
     rules: list[dict[str, Any]] = []

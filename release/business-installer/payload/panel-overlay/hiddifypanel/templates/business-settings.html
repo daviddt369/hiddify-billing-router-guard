@@ -102,19 +102,6 @@
               </div>
             </div>
 
-            {# Legacy single-upstream fields — hidden, managed via Routing → External Nodes table #}
-            <details class="mb-2">
-              <summary class="text-muted" style="cursor:pointer;font-size:0.85em">Устаревшие поля одиночной ноды (legacy, обычно не нужны)</summary>
-              <div class="card card-body bg-light mt-2">
-                <small class="text-muted mb-2">Используются только если таблица External Nodes пуста. Управляйте нодами через раздел Маршрутизация → Внешние ноды.</small>
-                <div class="form-group mt-2"><label for="{{ form.commercial_de_tunnel_type.id }}">Тип туннеля</label>{{ form.commercial_de_tunnel_type(class_="form-control") }}</div>
-                <div class="form-group"><label for="{{ form.commercial_de_endpoint.id }}">Endpoint (WireGuard)</label>{{ form.commercial_de_endpoint(class_="form-control") }}</div>
-                <div class="form-group"><label for="{{ form.commercial_de_public_key.id }}">Публичный ключ (WireGuard)</label>{{ form.commercial_de_public_key(class_="form-control") }}</div>
-                <div class="form-group"><label for="{{ form.commercial_de_private_key_ref.id }}">Ссылка на приватный ключ (WireGuard)</label>{{ form.commercial_de_private_key_ref(class_="form-control") }}</div>
-                <div class="form-group"><label for="{{ form.commercial_de_vless_uri.id }}">VLESS URI</label>{{ form.commercial_de_vless_uri(class_="form-control") }}</div>
-                <div class="form-group"><label for="{{ form.commercial_de_trojan_uri.id }}">Trojan URI</label>{{ form.commercial_de_trojan_uri(class_="form-control") }}</div>
-              </div>
-            </details>
 
             <hr>
             <h4>Пользовательские маршруты текущей ноды</h4>
