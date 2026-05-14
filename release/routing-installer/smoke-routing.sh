@@ -131,6 +131,20 @@ main() {
         || die "Sudoers file syntax invalid: $SUDOERS_FILE"
     echo "sudoers-ok"
 
+    # --- Check 7b: health probe installed ---
+    step "Checking routing health probe"
+    local probe_script="$INSTALL_ROOT/scripts/probe-routing-health.py"
+    local probe_timer="hiddify-routing-health.timer"
+    [[ -f "$probe_script" ]] \
+        || die "Health probe script not found: $probe_script"
+    "$py" -m py_compile "$probe_script" \
+        || die "Health probe syntax invalid: $probe_script"
+    systemctl cat "$probe_timer" >/dev/null 2>&1 \
+        || die "Health probe systemd timer not found: $probe_timer"
+    systemctl is-enabled "$probe_timer" >/dev/null 2>&1 \
+        || warn "Health probe timer exists but is not enabled: $probe_timer"
+    echo "health-probe-ok"
+
     # --- Check 8: commander.py patched and valid ---
     # BusinessAdmin calls: sudo -n commander.py commercial-routing-apply (direct via shebang).
     # hiddify-panel does NOT read commander.py — sudo runs it as root.

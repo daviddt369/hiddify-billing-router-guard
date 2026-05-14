@@ -198,6 +198,11 @@ main() {
     create_app_smoke
     import_routing_smoke "${ROUTING_IMPORTS[@]}"
 
+    # --- Step 10b: Install routing health probe (systemd timer) ---
+    step "Installing routing upstream health probe"
+    bash "$SCRIPT_DIR/scripts/install-routing-health-probe.sh" \
+        || warn "Health probe install failed — continuing without it (non-fatal)"
+
     # --- Step 11: Write manifest and collect checkpoint ---
     step "Writing routing manifest"
     write_routing_manifest "$runtime_path"
