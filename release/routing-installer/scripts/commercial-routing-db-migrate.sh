@@ -185,13 +185,7 @@ INSERT INTO str_config (child_id, `key`, value) VALUES
   (0, 'commercial_udp443_policy',        'keep_block'),
   (0, 'commercial_ru_domain_suffixes',   '.ru,.su,.xn--p1ai'),
   (0, 'commercial_default_global_policy','to_de'),
-  (0, 'commercial_router_core_type',     'xray'),
-  (0, 'commercial_de_tunnel_type',       'test_blackhole'),
-  (0, 'commercial_de_endpoint',          ''),
-  (0, 'commercial_de_public_key',        ''),
-  (0, 'commercial_de_private_key_ref',   ''),
-  (0, 'commercial_de_vless_uri',         ''),
-  (0, 'commercial_de_trojan_uri',        '')
+  (0, 'commercial_router_core_type',     'xray')
 ON DUPLICATE KEY UPDATE
   value = CASE
     WHEN value IS NULL OR value = '' THEN VALUES(value)
