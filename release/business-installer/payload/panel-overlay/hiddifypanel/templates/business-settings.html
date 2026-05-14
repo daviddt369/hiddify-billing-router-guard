@@ -59,7 +59,7 @@
 
             <hr>
             <h4>Маршрутизация</h4>
-            <div class="alert alert-info">Внешняя нода = upstream / global. В вашем случае это может быть DE, но настройки не привязаны к конкретной стране.</div>
+            <div class="alert alert-info">Внешняя нода = upstream / global. Настройки не привязаны к конкретной стране.</div>
             <div class="alert alert-info">Для полного split-routing настройку нужно применять и к Xray, и к sing-box. Иначе часть протоколов продолжит выходить напрямую.</div>
             <div class="alert alert-warning">UDP/443 управляет QUIC/HTTP3. Блокировка обычно делает маршрутизацию предсказуемее и заставляет клиентов перейти на TCP/443.</div>
             <div class="form-group form-check">{{ form.commercial_routing_enable(class_="form-check-input") }} <label class="form-check-label" for="{{ form.commercial_routing_enable.id }}">Включить коммерческую маршрутизацию</label><small class="form-text text-muted">Если включена коммерческая маршрутизация, в настройках Hiddify отключите "Блокировать внутренние сайты", иначе маршрутизация будет работать некорректно.</small></div>

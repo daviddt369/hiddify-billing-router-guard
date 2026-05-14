@@ -729,7 +729,7 @@ if "_HIDDIFY_ORIGINAL_APPLY_ROUTER_CORE_CONFIG" not in globals():
 def apply_router_core_config(*args, **kwargs):
     result = _HIDDIFY_ORIGINAL_APPLY_ROUTER_CORE_CONFIG(*args, **kwargs)
     backup = _commercial_router_postfix_apply_base_ru_rules()
-    print("Postfixed base RU routing rules and restarted xray-router backup=" + backup)
+    print("Postfixed base local routing rules and restarted xray-router backup=" + backup)
     return result
 
 # END HIDDIFY COMMERCIAL ROUTING BASE RU POSTFIX

@@ -69,7 +69,7 @@
       </td>
       <td>{{ 'Домены' if src.rule_family == 'domain' else 'Подсети' }}</td>
       <td>
-        {% if src.outbound_policy == 'direct_ru' %}Прямо (RU)
+        {% if src.outbound_policy == 'direct_ru' %}Прямо (локально)
         {% elif src.outbound_policy == 'to_upstream' %}Upstream
         {% elif src.outbound_policy == 'block' %}Блок
         {% else %}{{ src.outbound_policy }}
@@ -175,7 +175,7 @@
         <div class="col-md-4">
           <label class="form-label fw-bold">Политика outbound <span class="text-danger">*</span></label>
           <select name="outbound_policy" class="form-select">
-            <option value="direct_ru"  {% if source and source.outbound_policy == 'direct_ru'  %}selected{% elif not source %}selected{% endif %}>Прямо (RU, direct-ru)</option>
+            <option value="direct_ru"  {% if source and source.outbound_policy == 'direct_ru'  %}selected{% elif not source %}selected{% endif %}>Прямо (локально / direct)</option>
             <option value="to_upstream"{% if source and source.outbound_policy == 'to_upstream'%}selected{% endif %}>Через upstream (балансер)</option>
             <option value="block"      {% if source and source.outbound_policy == 'block'      %}selected{% endif %}>Блокировать</option>
           </select>

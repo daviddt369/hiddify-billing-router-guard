@@ -4,3 +4,43 @@ __pycache__/
 *.pyo
 .venv*/
 *.tar.gz
+
+# Archives and dumps — keep out of public repo
+*.tar
+*.zip
+*.dump
+*.sql
+
+# Backups
+*.bak
+*.bak.*
+
+# Secrets and env files
+.env
+.env.*
+*secret*
+*secrets*
+panel-secrets.env
+
+# Logs
+*.log
+logs/
+
+# Local dev artifacts
+reports/
+tmp_*/
+artifacts/
+tasks/
+tools/
+scripts/
+repo/
+backups/
+
+# Local editor and tool configs
+.vscode/
+.continue/
+.claude/
+.codex_*
+AGENTS.md
+assistant-fix*/
+codex-changes-backup.patch

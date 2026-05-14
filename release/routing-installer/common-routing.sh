@@ -649,7 +649,7 @@ patch_block = (
     "              <a href=\"{{ routing_section_url.split('?')[0].rstrip('/') }}/upstreams/\""
     " class=\"btn btn-primary\">&#9881; Внешние ноды (upstream)</a>\n"
     "              <small class=\"form-text text-muted d-block mt-1\">"
-    "VLESS / Trojan / WireGuard. Принимает весь не-RU трафик и направляет наружу."
+    "VLESS / Trojan / WireGuard. Принимает нелокальный трафик и направляет наружу."
     " Поддерживается несколько нод с авто-failover и балансировкой leastPing.</small>\n"
     "            </div>\n"
     "            <!-- ROUTING_UPSTREAM_UI_END -->\n"

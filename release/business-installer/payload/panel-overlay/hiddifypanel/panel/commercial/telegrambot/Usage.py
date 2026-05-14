@@ -33,7 +33,7 @@ TRIAL_USAGE_LIMIT_GB = 1
 TRIAL_PACKAGE_DAYS = 2
 TRIAL_MAX_IPS = 1
 _ADMIN_NOTIFY_DEDUP: dict[tuple[int, int | None, str], float] = {}
-_DEFAULT_SUPPORT_URL = "https://t.me/sisadmin_pro"
+_DEFAULT_SUPPORT_URL = ""  # Set support URL in admin panel → Business Settings → Support URL
 logger = logging.getLogger(__name__)
 _DEFAULT_INSTRUCTION_BUTTON_TEXT = "Инструкция"
 

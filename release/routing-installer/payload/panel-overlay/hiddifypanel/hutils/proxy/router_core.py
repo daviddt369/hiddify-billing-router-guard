@@ -47,7 +47,7 @@ def _port(parsed, default: int = 443) -> int:
 def _host(parsed) -> str:
     host = parsed.hostname
     if not host:
-        raise ValueError("DE URI host is empty")
+        raise ValueError("upstream URI host is empty")
     return host
 
 
@@ -215,7 +215,7 @@ def _build_vless_outbound(uri: str) -> dict[str, Any]:
     parsed, params = _uri_params(uri)
 
     if parsed.scheme.lower() != "vless":
-        raise ValueError("DE VLESS URI must start with vless://")
+        raise ValueError("upstream VLESS URI must start with vless://")
 
     user_id = unquote(parsed.username or "")
     if not user_id:
@@ -256,7 +256,7 @@ def _build_trojan_outbound(uri: str) -> dict[str, Any]:
     parsed, params = _uri_params(uri)
 
     if parsed.scheme.lower() != "trojan":
-        raise ValueError("DE Trojan URI must start with trojan://")
+        raise ValueError("upstream Trojan URI must start with trojan://")
 
     password = unquote(parsed.username or "")
     if not password:
@@ -374,7 +374,7 @@ def render_xray_router_config(
       - test_blackhole upstreams are included as outbounds but excluded from balancer.
       - If >=2 real (non-blackhole) upstreams: add routing.balancers + observatory for auto-failover.
       - If exactly 1 real upstream: use outboundTag directly (no balancer).
-      - If 0 real upstreams: all non-RU traffic is blocked (blackhole).
+      - If 0 real upstreams: all non-local traffic is blocked (blackhole).
         Add external nodes via Routing → External Nodes to route traffic out.
     """
     # Build upstream outbound list first so we know the final_rule target

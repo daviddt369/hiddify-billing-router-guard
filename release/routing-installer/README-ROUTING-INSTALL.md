@@ -69,7 +69,7 @@ Routing module НЕ заменяет основной Hiddify core. Он ста�
          v
 xray-router.service  [второй routing layer]
   inbound: "from-hiddify", SOCKS5, 127.0.0.1:20808
-  ├── direct-ru    → freedom (RU трафик напрямую)
+  ├── direct-ru    → freedom (локальный трафик напрямую)
   ├── upstream-{id} → VLESS / Trojan / WireGuard (внешняя нода)
   └── block        → blackhole (госсайты, BitTorrent)
 ```
@@ -145,7 +145,7 @@ After install (inactive):
 After activation:
   Main Hiddify Xray/Singbox → commercial-local-router (SOCKS5 127.0.0.1:20808)
   xray-router.service → receives all traffic, routes:
-    RU geoip/domains → direct-ru (freedom)
+    Local geoip/domains → direct-ru (freedom)
     Global traffic   → upstream-balancer (VLESS/Trojan/WireGuard)
     Gov sites        → block (blackhole)
 ```
@@ -332,10 +332,10 @@ Validated on live VM (business + routing-2A pre-installed):
 - `business-settings.html` patched with upstream link
 - `/upstreams/` list page renders correctly
 - `/upstreams/add/` and `/upstreams/<id>/edit/` forms work (csrf_token fix applied)
-- Added 2 real upstream nodes (VLESS + Trojan, both on mydnstexas.ru:443)
+- Added 2 real upstream nodes (VLESS + Trojan, both on <UPSTREAM_DOMAIN>:443)
 - Jinja2 template cache cleared via panel restart after template fix
 - Connectivity test via temporary xray instance on port 20809:
-  VLESS upstream → IP: 144.31.16.230 Country: DE — connection works
+  VLESS upstream → IP: <UPSTREAM_IP> Role: External upstream — connection works
 - Business and antishare not touched
 - Next: Stage 2C — router_core multi-upstream rendering
 
