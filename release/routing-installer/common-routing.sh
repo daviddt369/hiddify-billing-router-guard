@@ -698,8 +698,10 @@ patch_business_settings_hide_legacy_upstream() {
         return 0
     fi
 
-    grep -q 'commercial_de_tunnel_type' "$tmpl" \
-        || die "business-settings.html: commercial_de_tunnel_type field not found — cannot patch"
+    if ! grep -q 'commercial_de_tunnel_type' "$tmpl"; then
+        log "business-settings.html: commercial_de_* fields already absent — legacy hide patch not needed"
+        return 0
+    fi
     grep -q 'commercial_de_trojan_uri' "$tmpl" \
         || die "business-settings.html: commercial_de_trojan_uri field not found — cannot patch"
 
