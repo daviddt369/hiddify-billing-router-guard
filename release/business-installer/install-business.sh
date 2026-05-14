@@ -118,9 +118,10 @@ main() {
     step "Installing runtime Python requirements"
     install_runtime_requirements
 
+    write_manifest_section "business" "$runtime_path" "$BACKUP_DIR/db-dump.sql"
+
     step "Restarting panel services and verifying health"
     restart_and_verify "$log_since"
-    write_manifest_section "business" "$runtime_path" "$BACKUP_DIR/db-dump.sql"
 
     step "Collecting post-install checkpoint status"
     collect_checkpoint_status "$BACKUP_DIR/status"
