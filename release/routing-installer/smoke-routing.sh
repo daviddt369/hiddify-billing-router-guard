@@ -186,11 +186,15 @@ main() {
     grep -q 'ROUTING_UPSTREAM_UI_BEGIN' "$runtime_path/templates/business-settings.html" \
         || die "business-settings.html missing ROUTING_UPSTREAM_UI_BEGIN marker (Stage 2B patch not applied)"
     echo "upstream-ui-tmpl-patch-ok"
-    grep -q 'ROUTING_LEGACY_UPSTREAM_HIDE_BEGIN' "$runtime_path/templates/business-settings.html" \
-        || die "business-settings.html missing ROUTING_LEGACY_UPSTREAM_HIDE_BEGIN marker (legacy hide patch not applied)"
-    # Verify legacy fields are inside display:none block (not visible)
-    grep -q 'display:none' "$runtime_path/templates/business-settings.html" \
-        || die "business-settings.html: display:none not found — legacy fields may be visible"
+    # Legacy hide patch: either marker present (old template with fields hidden) or fields absent (already removed)
+    if grep -q 'commercial_de_tunnel_type' "$runtime_path/templates/business-settings.html"; then
+        grep -q 'ROUTING_LEGACY_UPSTREAM_HIDE_BEGIN' "$runtime_path/templates/business-settings.html" \
+            || die "business-settings.html: commercial_de_* fields present but not hidden (ROUTING_LEGACY_UPSTREAM_HIDE_BEGIN missing)"
+        grep -q 'display:none' "$runtime_path/templates/business-settings.html" \
+            || die "business-settings.html: display:none not found — legacy fields may be visible"
+    else
+        echo "upstream-legacy-hide-ok (commercial_de_* fields absent — already removed from template)"
+    fi
     # Verify custom rules section still present (accepts both old and new h4 text)
     grep -qE 'Пользовательские маршруты|Direct-правила' "$runtime_path/templates/business-settings.html" \
         || die "business-settings.html: custom rules section missing after patch"
