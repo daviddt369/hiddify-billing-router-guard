@@ -25,6 +25,7 @@ readonly DB_NAME="${DB_NAME:-hiddifypanel}"
 
 # xray access log — required by anti-share collect_recent_ips()
 readonly XRAY_LOG_CONFIG="$INSTALL_ROOT/xray/configs/00_log.json"
+readonly XRAY_LOG_TEMPLATE="$INSTALL_ROOT/xray/configs/00_log.json.j2"
 readonly XRAY_ACCESS_LOG="$INSTALL_ROOT/log/system/xray.access.log"
 readonly XRAY_ACCESS_STATE="$INSTALL_ROOT/log/system/xray.access.state.json"
 readonly XRAY_SERVICE="${XRAY_SERVICE:-hiddify-xray}"
@@ -445,6 +446,30 @@ PY
     record_installed_file "$log_config"
     printf 'true\n' > "$BACKUP_DIR/xray-log-patched.flag"
     log "xray access log enabled: $XRAY_ACCESS_LOG"
+}
+
+# Patch the Jinja2 template 00_log.json.j2 so that apply_configs.sh preserves the
+# access log path across future config applies (e.g. after adding routing upstreams).
+# Without this patch every "Применить" in the UI regenerates the config from template
+# and reverts "access" back to "none".
+patch_xray_access_log_template() {
+    local tmpl="$XRAY_LOG_TEMPLATE"
+    [[ -f "$tmpl" ]] || { warn "xray log template not found: $tmpl (skipping)"; return 0; }
+
+    if grep -q "antishare-access-patch" "$tmpl"; then
+        log "xray log template already patched, skipping"
+        return 0
+    fi
+
+    backup_target "$tmpl"
+
+    # Replace `"access": "none",` with the real path inside the CRITICAL block.
+    # The template uses {%if hconfigs['log_level']=="CRITICAL"%} ... {%endif%}.
+    # We unconditionally set the access log path so it survives log-level changes too.
+    sed -i 's|"access": "none",|"access": "'"$XRAY_ACCESS_LOG"'", \/* antishare-access-patch *\/|g' "$tmpl"
+
+    record_installed_file "$tmpl"
+    log "xray log template patched: access=$XRAY_ACCESS_LOG"
 }
 
 # Install systemd override for xray service that chmod 644 the access log after start.

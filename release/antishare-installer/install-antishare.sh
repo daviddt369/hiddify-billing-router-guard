@@ -98,6 +98,11 @@ main() {
     # Without this, anti-share sees 0 IPs and user online status never updates.
     step "Enabling xray access log (required by anti-share)"
     patch_xray_access_log
+    # Patch the Jinja2 template so apply_configs.sh preserves the access log path.
+    # Without this, every UI "Применить" (apply_configs.sh) regenerates the config
+    # from the template and reverts "access" back to "none".
+    step "Patching xray log template (survives apply_configs.sh)"
+    patch_xray_access_log_template
 
     # --- Step 3c: Install xray log permissions systemd override ---
     # xray creates the log as root:root 600; hiddify-panel needs to read it.
