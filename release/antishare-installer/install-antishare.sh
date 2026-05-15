@@ -150,8 +150,24 @@ main() {
 
     # --- Step 8: Restart panel services only when readiness is not deferred ---
     # anti-share module is auto-loaded by panel/admin/__init__.py when
-    # antishare_enabled() returns True (which happens after str_config flag is set).
+    # antishare_enabled() returns True (which requires commercial_antishare_installed=1
+    # in the DB hconfigs AND the manifest file on disk).
+    # Root cause of menu not appearing: panel restarts with stale Redis get_hconfigs()
+    # cache that predates the DB migration — antishare_enabled() returns False and the
+    # closure captures False for the request lifetime. Flush Redis BEFORE restart so
+    # the panel boots with a fresh hconfigs that includes commercial_antishare_installed=1.
     if [[ $DEFER_RESTART -eq 0 ]]; then
+        # --- Step 8a: Write manifest BEFORE restart so fallback os.path.exists() also works ---
+        step "Writing anti-share manifest (before panel restart)"
+        write_antishare_manifest "$runtime_path"
+
+        # --- Step 8b: Flush Redis hconfigs cache BEFORE panel restart ---
+        # antishare_enabled() checks get_hconfigs() which is cached in Redis (ttl=500s).
+        # Flushing now ensures the panel starts with the post-migration DB value,
+        # not the pre-install cached value that lacked commercial_antishare_installed.
+        step "Flushing Redis hconfigs cache before panel restart"
+        flush_panel_hconfigs_cache
+
         step "Restarting panel services to activate anti-share module"
         systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
         SERVICES_RESTARTED=1
@@ -166,19 +182,13 @@ main() {
         import_antishare_smoke "${ANTISHARE_IMPORTS[@]}"
 
         # --- Step 10: Endpoint smoke ---
-        # Flush the panel's Redis cache for get_hconfigs() so the endpoint check
-        # sees the freshly inserted commercial_antishare_installed=1 flag,
-        # not a stale cached value from before anti-share install.
-        step "Flushing panel config cache and verifying anti-share admin endpoint"
-        flush_panel_hconfigs_cache
+        step "Verifying anti-share admin endpoint"
         check_antishare_endpoints
     else
         log "Deferred restart mode: skipping panel restart, port 9000 check, and anti-share smoke"
+        step "Writing anti-share manifest"
+        write_antishare_manifest "$runtime_path"
     fi
-
-    # --- Step 11: Write manifest and collect checkpoint ---
-    step "Writing anti-share manifest"
-    write_antishare_manifest "$runtime_path"
 
     step "Collecting post-install checkpoint"
     collect_antishare_checkpoint "$BACKUP_DIR/status"
