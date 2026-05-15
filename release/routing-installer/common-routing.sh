@@ -260,12 +260,28 @@ import_routing_smoke() {
     py="$(detect_venv_python)"
     sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' - \"\$@\"" bash "$@" <<'PY'
 import importlib
+import importlib.util
+import os
 import sys
 
 mods = sys.argv[1:]
 for mod in mods:
-    importlib.import_module(mod)
-    print(f"import-ok {mod}")
+    try:
+        importlib.import_module(mod)
+        print(f"import-ok {mod}")
+    except ModuleNotFoundError as exc:
+        # Emit diagnostics so we know exactly what Python sees at failure time.
+        parts = mod.rsplit('.', 1)
+        if len(parts) == 2:
+            parent_name, child_name = parts
+            try:
+                parent = importlib.import_module(parent_name)
+                for p in parent.__path__:
+                    f = os.path.join(p, child_name + '.py')
+                    print(f"  diag: {f} exists={os.path.exists(f)} readable={os.access(f, os.R_OK) if os.path.exists(f) else 'N/A'}", file=sys.stderr)
+            except Exception as e2:
+                print(f"  diag: could not inspect parent {parent_name}: {e2}", file=sys.stderr)
+        raise
 PY
 }
 

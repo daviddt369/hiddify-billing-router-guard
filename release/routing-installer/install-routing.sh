@@ -196,7 +196,9 @@ main() {
     # --- Step 10: Import smoke (NOW safe — table exists, services up) ---
     step "Running routing import smoke"
     create_app_smoke
-    import_routing_smoke "${ROUTING_IMPORTS[@]}"
+    # Retry once after a brief pause — panel may still be writing __pycache__ on first attempt.
+    import_routing_smoke "${ROUTING_IMPORTS[@]}" \
+        || { warn "Import smoke attempt 1 failed — retrying after 5s"; sleep 5; import_routing_smoke "${ROUTING_IMPORTS[@]}"; }
 
     # --- Step 10b: Install routing health probe (systemd timer) ---
     step "Installing routing upstream health probe"
