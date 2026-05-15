@@ -64,10 +64,6 @@ def exec_command(cmd, cwd=None):
 
 
 def quick_apply_users():
-    with open('/opt/hiddify-manager/current.json', 'w', encoding='utf-8') as config_file:
-        json.dump(all_configs_for_cli(), config_file)
-    os.chmod('/opt/hiddify-manager/current.json', 0o600)
-
     # run install.sh apply_users
     commander(Command.apply_users)
 
