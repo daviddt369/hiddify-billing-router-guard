@@ -69,6 +69,14 @@ main() {
     done
     compile_without_pyc "${compiled_files[@]}"
 
+    # --- Step 2b: Extend bool_config/str_config ENUM before DB migration ---
+    # When db_version == latest_db_version(), panel init_db returns early and skips
+    # add_new_enum_values(). This means routing ConfigEnum keys (added by business
+    # config_enum.py) are never added to the DB ENUM, causing ERROR 1265 in Step 3.
+    # Force the ENUM update now so the seed INSERT can proceed.
+    step "Extending panel config ENUM for routing keys"
+    extend_panel_enum_for_routing
+
     # --- Step 3: DB migration (must happen before create_app or panel restart) ---
     step "Running routing DB migration"
     export BACKUP_DIR DB_NAME

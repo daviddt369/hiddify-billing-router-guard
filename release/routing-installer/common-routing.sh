@@ -255,6 +255,28 @@ for arg in sys.argv[1:]:
 PY
 }
 
+extend_panel_enum_for_routing() {
+    # Call add_new_enum_values() via the panel Python so the DB ENUM for
+    # bool_config.key / str_config.key includes all current ConfigEnum members
+    # (incl. routing keys installed by the business config_enum.py).
+    # This is needed because init_db() skips add_new_enum_values() when
+    # db_version == latest_db_version() (which is the case after the full
+    # panel migration has already run on this server).
+    local py
+    py="$(detect_venv_python)"
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+from hiddifypanel import create_app
+app = create_app()
+with app.app_context():
+    from hiddifypanel.panel.init_db import add_new_enum_values
+    from hiddifypanel.database import db
+    add_new_enum_values()
+    db.session.commit()
+    print("extend-enum-ok")
+PY
+}
+
 import_routing_smoke() {
     local py
     py="$(detect_venv_python)"
