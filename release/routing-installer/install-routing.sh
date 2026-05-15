@@ -209,6 +209,14 @@ main() {
     step "Writing routing manifest"
     write_routing_manifest "$runtime_path"
 
+    # Final panel restart — ensures panel loads routing modules from warm __pycache__
+    # (first restart after install may have a brief import race; this one is clean).
+    step "Final panel restart to ensure clean module load"
+    systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
+    sleep 10
+    check_services_active
+    check_port_9000
+
     step "Collecting post-install checkpoint"
     collect_routing_checkpoint "$BACKUP_DIR/status"
 

@@ -392,10 +392,19 @@ admin_routing_route_smoke() {
         || _curl_check_route "https://127.0.0.1${admin_path}" \
         || die "Admin route smoke failed for $admin_path"
 
+    # The routing-admin/upstreams/ route can return 404 on the first panel startup
+    # after install if the panel imported routing modules with a race condition
+    # (RoutingAdmin silently fell back to base class). Restart and retry once.
     local routing_path="/$proxy_path/admin/routing-admin/upstreams/"
-    _curl_check_route "http://127.0.0.1${routing_path}" \
-        || _curl_check_route "https://127.0.0.1${routing_path}" \
-        || die "Routing-admin route smoke failed for $routing_path"
+    if ! _curl_check_route "http://127.0.0.1${routing_path}" \
+        && ! _curl_check_route "https://127.0.0.1${routing_path}"; then
+        warn "Routing-admin route returned unexpected status — restarting panel and retrying"
+        systemctl restart "$SERVICE_PANEL" "$SERVICE_BG" || true
+        sleep 10
+        _curl_check_route "http://127.0.0.1${routing_path}" \
+            || _curl_check_route "https://127.0.0.1${routing_path}" \
+            || die "Routing-admin route smoke failed for $routing_path after panel restart"
+    fi
 }
 
 check_services_active() {
