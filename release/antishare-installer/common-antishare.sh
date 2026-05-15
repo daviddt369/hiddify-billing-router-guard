@@ -277,8 +277,8 @@ flush_panel_hconfigs_cache() {
 from hiddifypanel import create_app
 app = create_app()
 with app.app_context():
-    from hiddifypanel import cache
-    cache.invalidate_all_cached_functions()
+    from hiddifypanel.cache import cache as _cache
+    _cache.invalidate_all_cached_functions()
     print("cache-flush-ok")
 PY
 }
