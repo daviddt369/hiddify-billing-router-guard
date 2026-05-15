@@ -275,9 +275,12 @@ check_antishare_endpoints() {
     # if the panel's init_db() is still running, antishare_enabled() may see
     # an incomplete hconfigs dict and silently disable AntiShareAdmin.
     for attempt in 1 2 3; do
-        local result
+        local result rc
+        # Use set +e to prevent ERR trap from firing when the Python assertion fails.
+        # We handle the non-zero exit ourselves in the retry loop below.
+        set +e
         result="$(sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
-            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY' 2>&1
+            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" bash <<'PY' 2>&1
 from hiddifypanel import create_app
 
 app = create_app()
@@ -291,7 +294,8 @@ assert 'admin.BusinessAdmin:index' in endpoints, \
 print('antishare-endpoints-ok')
 PY
         )"
-        local rc=$?
+        rc=$?
+        set -e
         if [[ $rc -eq 0 && "$result" == *"antishare-endpoints-ok"* ]]; then
             echo "$result"
             return 0
