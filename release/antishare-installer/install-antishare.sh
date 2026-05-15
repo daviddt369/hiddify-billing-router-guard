@@ -166,7 +166,11 @@ main() {
         import_antishare_smoke "${ANTISHARE_IMPORTS[@]}"
 
         # --- Step 10: Endpoint smoke ---
-        step "Verifying anti-share admin endpoint is registered"
+        # Flush the panel's Redis cache for get_hconfigs() so the endpoint check
+        # sees the freshly inserted commercial_antishare_installed=1 flag,
+        # not a stale cached value from before anti-share install.
+        step "Flushing panel config cache and verifying anti-share admin endpoint"
+        flush_panel_hconfigs_cache
         check_antishare_endpoints
     else
         log "Deferred restart mode: skipping panel restart, port 9000 check, and anti-share smoke"

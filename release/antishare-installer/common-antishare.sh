@@ -266,6 +266,23 @@ admin_antishare_route_smoke() {
     fi
 }
 
+flush_panel_hconfigs_cache() {
+    # get_hconfigs() is cached in Redis with ttl=500s. After installing anti-share
+    # and restarting the panel, the cached value (from before install) still lacks
+    # commercial_antishare_installed. Invalidate so the endpoint check sees the fresh DB.
+    local py
+    py="$(detect_venv_python)"
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" bash <<'PY' || true
+from hiddifypanel import create_app
+app = create_app()
+with app.app_context():
+    from hiddifypanel import cache
+    cache.invalidate_all_cached_functions()
+    print("cache-flush-ok")
+PY
+}
+
 check_antishare_endpoints() {
     local py attempt max_attempts=3
     py="$(detect_venv_python)"
