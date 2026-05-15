@@ -43,13 +43,18 @@ def db_query(sql, db=DB_NAME):
         ["mysql", db, "-N", "-B", "-e", sql],
         capture_output=True, text=True, timeout=10
     )
-    return result.stdout.strip()
+    # Strip only newlines, not tabs: strip() would eat trailing \t\t that represent
+    # empty string fields at the END of the last output row, causing len(parts) < 7.
+    return result.stdout.strip("\r\n")
 
 
 def get_upstreams():
+    # COALESCE converts NULL → '' so MySQL batch mode always emits the trailing
+    # tab separators for nullable columns (vless_uri/trojan_uri/wg_endpoint).
+    # Without COALESCE, MySQL -B omits tabs for trailing NULLs, making len(parts) < 7.
     rows = db_query(
         "SELECT id, name, enabled, tunnel_type, "
-        "vless_uri, trojan_uri, wg_endpoint "
+        "COALESCE(vless_uri,''), COALESCE(trojan_uri,''), COALESCE(wg_endpoint,'') "
         "FROM commercial_routing_upstream ORDER BY id;"
     )
     upstreams = []
@@ -57,15 +62,18 @@ def get_upstreams():
         parts = line.split("\t")
         if len(parts) < 7:
             continue
-        upstreams.append({
-            "id":          int(parts[0]),
-            "name":        parts[1],
-            "enabled":     parts[2] == "1",
-            "tunnel_type": parts[3],
-            "vless_uri":   parts[4],
-            "trojan_uri":  parts[5],
-            "wg_endpoint": parts[6],
-        })
+        try:
+            upstreams.append({
+                "id":          int(parts[0]),
+                "name":        parts[1],
+                "enabled":     parts[2] == "1",
+                "tunnel_type": parts[3],
+                "vless_uri":   parts[4],
+                "trojan_uri":  parts[5],
+                "wg_endpoint": parts[6],
+            })
+        except (ValueError, IndexError):
+            continue
     return upstreams
 
 
