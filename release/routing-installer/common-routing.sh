@@ -392,7 +392,7 @@ admin_routing_route_smoke() {
         || _curl_check_route "https://127.0.0.1${admin_path}" \
         || die "Admin route smoke failed for $admin_path"
 
-    local routing_path="/$proxy_path/admin/routing-admin/"
+    local routing_path="/$proxy_path/admin/routing-admin/upstreams/"
     _curl_check_route "http://127.0.0.1${routing_path}" \
         || _curl_check_route "https://127.0.0.1${routing_path}" \
         || die "Routing-admin route smoke failed for $routing_path"
