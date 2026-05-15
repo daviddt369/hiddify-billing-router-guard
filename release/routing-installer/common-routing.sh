@@ -343,28 +343,25 @@ for ep in required:
 PY
 }
 
-check_routing_endpoints() {
-    local py antishare_manifest
-    py="$(detect_venv_python)"
-    antishare_manifest="${ANTISHARE_MANIFEST_PATH:-$INSTALL_ROOT/anti-share-addon.manifest}"
-
-    # If antishare is installed, AntiShareAdmin will be registered — this is expected
-    # on a full-stack install (routing + antishare) and is NOT a routing bug.
-    if [[ -f "$antishare_manifest" ]]; then
-        sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
-            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+_routing_endpoint_check_with_antishare() {
+    local py="$1"
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" bash <<'PY'
 from hiddifypanel import create_app
 
 app = create_app()
 endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
 assert 'admin.RoutingAdmin:index' in endpoints, 'RoutingAdmin endpoint missing after routing install'
 assert 'admin.BusinessAdmin:index' in endpoints, 'BusinessAdmin endpoint broken after routing install'
-# AntiShareAdmin presence is expected (antishare installed) — not asserting absence
+# AntiShareAdmin presence is expected — not asserting absence
 print('routing-endpoints-ok (full-stack: antishare also present)')
 PY
-    else
-        sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
-            bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY'
+}
+
+_routing_endpoint_check_solo() {
+    local py="$1"
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" bash <<'PY'
 from hiddifypanel import create_app
 
 app = create_app()
@@ -374,7 +371,37 @@ assert 'admin.BusinessAdmin:index' in endpoints, 'BusinessAdmin endpoint broken 
 assert 'admin.AntiShareAdmin:index' not in endpoints, 'AntiShareAdmin must not be installed by routing'
 print('routing-endpoints-ok')
 PY
-    fi
+}
+
+check_routing_endpoints() {
+    local py antishare_manifest attempt rc result
+    py="$(detect_venv_python)"
+    antishare_manifest="${ANTISHARE_MANIFEST_PATH:-$INSTALL_ROOT/anti-share-addon.manifest}"
+
+    for attempt in 1 2 3; do
+        rc=0
+        set +e
+        if [[ -f "$antishare_manifest" ]]; then
+            result="$(_routing_endpoint_check_with_antishare "$py" 2>&1)"
+        else
+            result="$(_routing_endpoint_check_solo "$py" 2>&1)"
+        fi
+        rc=$?
+        set -e
+
+        if [[ $rc -eq 0 && "$result" == *"routing-endpoints-ok"* ]]; then
+            echo "$result"
+            return 0
+        fi
+        if [[ $attempt -lt 3 ]]; then
+            warn "Routing endpoint check attempt $attempt/3 failed — retrying in 10s"
+            echo "$result" >&2
+            sleep 10
+        fi
+    done
+
+    echo "$result"
+    die "RoutingAdmin endpoint check failed after 3 attempts"
 }
 
 _get_admin_proxy_path() {
