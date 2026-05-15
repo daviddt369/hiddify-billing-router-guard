@@ -224,6 +224,9 @@ main() {
     sleep 10
     check_services_active
     check_port_9000
+    # Warm up __pycache__ for routing modules so smoke-routing endpoint check
+    # doesn't hit the first-import race condition in its fresh subprocess.
+    create_app_smoke || warn "Post-restart create_app_smoke warning (non-fatal)"
 
     step "Collecting post-install checkpoint"
     collect_routing_checkpoint "$BACKUP_DIR/status"
