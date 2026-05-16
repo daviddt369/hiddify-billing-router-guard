@@ -618,23 +618,6 @@ def send_usage(message):
     return send_welcome(message)
 
 
-@bot.message_handler(commands=['start'], func=lambda message: "admin" in (message.text or ""))
-def register_admin_telegram(message):
-    """Register admin Telegram ID via /start admin <uuid>."""
-    parts = (message.text or "").split()
-    uuid = next((p for p in parts if hutils.auth.is_uuid_valid(p)), None)
-    if not uuid:
-        bot.reply_to(message, "❌ UUID не указан. Отправьте /start admin <ваш-uuid>")
-        return
-    admin = AdminUser.query.filter(AdminUser.uuid == uuid).first()
-    if not admin:
-        bot.reply_to(message, "❌ Администратор с таким UUID не найден.")
-        return
-    admin.telegram_id = message.chat.id
-    db.session.commit()
-    bot.reply_to(message, f"✅ Администратор <b>{admin.name}</b> привязан к этому чату.", parse_mode="HTML")
-
-
 @bot.message_handler(commands=['start'], func=lambda message: "admin" not in (message.text or ""))
 def send_welcome(message):
     if _is_admin_chat(getattr(message.chat, "id", None)):

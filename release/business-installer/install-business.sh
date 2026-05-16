@@ -11,6 +11,7 @@ BASE_IMPORTS=(
   hiddifypanel.panel.commercial.telegrambot.runtime
   hiddifypanel.panel.commercial.telegrambot.secrets
   hiddifypanel.panel.commercial.telegrambot.Usage
+  hiddifypanel.panel.commercial.telegrambot.admin
   hiddifypanel.panel.commercial.restapi.v1.tgbot
   hiddifypanel.panel.commercial.restapi.v1.tgmsg
   hiddifypanel.panel.commercial.restapi.v2.telegram.tgbot
@@ -61,9 +62,14 @@ main() {
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/runtime.py" "$panel_root/panel/commercial/telegrambot/runtime.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/secrets.py" "$panel_root/panel/commercial/telegrambot/secrets.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/capabilities.py" "$panel_root/panel/commercial/capabilities.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/__init__.py" "$panel_root/panel/commercial/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/telegram/__init__.py" "$panel_root/panel/commercial/restapi/v2/telegram/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/telegram/tgbot.py" "$panel_root/panel/commercial/restapi/v2/telegram/tgbot.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/__init__.py" "$panel_root/panel/commercial/telegrambot/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/Usage.py" "$panel_root/panel/commercial/telegrambot/Usage.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/admin.py" "$panel_root/panel/commercial/telegrambot/admin.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/information.py" "$panel_root/panel/commercial/telegrambot/information.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/DefaultResponse.py" "$panel_root/panel/commercial/telegrambot/DefaultResponse.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/models/config_enum.py" "$panel_root/models/config_enum.py" 0644
 
     step "Installing business admin and template files"
@@ -102,9 +108,14 @@ main() {
       "$panel_root/panel/commercial/capabilities.py" \
       "$panel_root/panel/admin/BusinessAdmin.py" \
       "$panel_root/panel/admin/PlanAdmin.py" \
+      "$panel_root/panel/commercial/__init__.py" \
       "$panel_root/panel/commercial/restapi/v2/telegram/__init__.py" \
       "$panel_root/panel/commercial/restapi/v2/telegram/tgbot.py" \
-      "$panel_root/panel/commercial/telegrambot/Usage.py"
+      "$panel_root/panel/commercial/telegrambot/__init__.py" \
+      "$panel_root/panel/commercial/telegrambot/Usage.py" \
+      "$panel_root/panel/commercial/telegrambot/admin.py" \
+      "$panel_root/panel/commercial/telegrambot/information.py" \
+      "$panel_root/panel/commercial/telegrambot/DefaultResponse.py"
 
     step "Running idempotent tariffs DB migration with DB dump backup"
     BACKUP_DIR="$BACKUP_DIR" "$INSTALL_ROOT/scripts/commercial-tariffs-db-migrate.sh"
