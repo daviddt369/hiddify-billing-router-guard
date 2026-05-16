@@ -8,15 +8,19 @@ from .tgbot import (
     TGBotResource,
 )
 
-bp_uuid = APIBlueprint(
-    "api_v2_tgbot_uuid",
+# No <uuid:secret_uuid> in the URL prefix: auth.auth_before_request() only blocks
+# requests when g.uuid is set. Without a UUID in the path, unauthenticated requests
+# (like Telegram webhook POSTs) pass through, and TGBotResource validates the
+# X-Telegram-Bot-Api-Secret-Token header directly.
+bp = APIBlueprint(
+    "api_v2_tgbot",
     __name__,
-    url_prefix="/<proxy_path>/<uuid:secret_uuid>/api/v2/",
+    url_prefix="/<proxy_path>/api/v2/",
     enable_openapi=False,
 )
-api_uuid = Api(bp_uuid)
+api = Api(bp)
 
 
 def init_app(app):
-    api_uuid.add_resource(TGBotResource, "tgbot/")
-    app.register_blueprint(bp_uuid)
+    api.add_resource(TGBotResource, "tgbot/")
+    app.register_blueprint(bp)

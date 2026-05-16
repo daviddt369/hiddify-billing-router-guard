@@ -184,8 +184,6 @@ def register_bot(set_hook=False, remove_hook=False):
                 raise Exception('Cannot get valid domain for setting telegram bot webhook')
 
             admin_proxy_path = hconfig(ConfigEnum.proxy_path_admin)
-
-            user_secret = AdminUser.get_super_admin_uuid()
             if set_hook:
                 kwargs = {}
                 secret = _webhook_secret()
@@ -196,7 +194,7 @@ def register_bot(set_hook=False, remove_hook=False):
                     return
                 kwargs["secret_token"] = secret
                 bot.set_webhook(
-                    url=f"https://{domain}/{admin_proxy_path}/{user_secret}/api/v1/tgbot/",
+                    url=f"https://{domain}/{admin_proxy_path}/api/v2/tgbot/",
                     **kwargs,
                 )
     except Exception as e:

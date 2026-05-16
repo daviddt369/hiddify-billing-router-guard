@@ -174,14 +174,13 @@ def register_bot(set_hook=False, remove_hook=False):
         if not domain:
             raise Exception("Cannot get valid domain for setting telegram bot webhook")
         admin_proxy_path = hconfig(ConfigEnum.proxy_path_admin)
-        user_secret = AdminUser.get_super_admin_uuid()
         if set_hook:
             secret = _webhook_secret()
             if not secret:
                 logger.error("Telegram webhook registration skipped: webhook secret is not configured.")
                 return
             bot.set_webhook(
-                url=f"https://{domain}/{admin_proxy_path}/{user_secret}/api/v2/tgbot/",
+                url=f"https://{domain}/{admin_proxy_path}/api/v2/tgbot/",
                 secret_token=secret,
                 allowed_updates=[
                     "message",
