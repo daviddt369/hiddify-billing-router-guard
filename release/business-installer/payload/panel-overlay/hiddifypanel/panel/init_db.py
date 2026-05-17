@@ -15,7 +15,7 @@ from hiddifypanel.database import db, db_execute
 
 
 from loguru import logger
-MAX_DB_VERSION = 136
+MAX_DB_VERSION = 137
 _BOOTSTRAP_DOMAIN_FALLBACKS = [
     "fa.wikipedia.org",
     "en.wikipedia.org",
@@ -307,6 +307,12 @@ def _v136(child_id):
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_url, "https://1.1.1.1/")
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_interval, "1m")
     add_config_if_not_exist(ConfigEnum.commercial_router_probe_tolerance, "0")
+
+
+def _v137(child_id):
+    add_config_if_not_exist(ConfigEnum.telegram_instruction_android, "")
+    add_config_if_not_exist(ConfigEnum.telegram_instruction_ios, "")
+    add_config_if_not_exist(ConfigEnum.telegram_instruction_windows, "")
 
 
 def _v111(child_id):
