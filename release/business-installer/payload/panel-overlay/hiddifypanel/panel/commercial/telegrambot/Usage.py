@@ -391,6 +391,12 @@ def _send_my_subscription(chat_id: int, user: User):
                     status_msg = get_usage_msg(user.uuid)
         except Exception:
             status_msg = _telegram_usage_fallback(user)
+        try:
+            domain = Domain.get_domains()[0]
+            user_link = hiddify.get_account_panel_link(user, domain.domain)
+            status_msg += f"\n\n{user_link}\n\nСкопируйте и вставьте в свой клиент"
+        except Exception:
+            pass
         bot.send_message(
             chat_id,
             status_msg,
@@ -398,17 +404,6 @@ def _send_my_subscription(chat_id: int, user: User):
             parse_mode="HTML",
             disable_web_page_preview=True,
         )
-        # Send subscription link as plain text for easy copy-paste into VPN client
-        try:
-            domain = Domain.get_domains()[0]
-            user_link = hiddify.get_account_panel_link(user, domain.domain)
-            bot.send_message(
-                chat_id,
-                f"Скопируйте ссылку и вставьте в клиент:\n\n{user_link}",
-                disable_web_page_preview=True,
-            )
-        except Exception:
-            pass
 
 
 # ─── Notifications ────────────────────────────────────────────────────────────
