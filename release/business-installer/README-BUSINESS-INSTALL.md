@@ -31,19 +31,19 @@ On a clean VM these warnings are expected and do not mean install failure:
 ## Full runbook (verified on clean Hiddify VM)
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash audit-hiddify-cli.sh
 sudo bash stabilize-hiddify-cli.sh
 sudo bash smoke-hiddify-cli.sh
 
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash install-business.sh && sudo bash smoke-business.sh
 
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash stabilize-hiddify-cli.sh
 sudo bash smoke-hiddify-cli.sh
 
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash smoke-business.sh
 ```
 
@@ -89,7 +89,7 @@ Installer сохраняет root-only файл:
 ## Rollback
 
 ```bash
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash rollback-business.sh
 ```
 
@@ -102,7 +102,7 @@ sudo bash rollback-business.sh --restore-db
 ## Diagnostics
 
 ```bash
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash collect-business-diagnostics.sh
 ```
 

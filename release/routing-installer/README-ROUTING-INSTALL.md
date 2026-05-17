@@ -102,12 +102,12 @@ ls /opt/hiddify-manager/business-addon.manifest
 
 ```bash
 # 1. Baseline hiddify-cli check (optional)
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash smoke-hiddify-cli.sh
 # Expected: HIDDIFY_CLI_DEGRADED_EXPECTED
 
 # 2. Install routing
-cd /home/texas/lab-work/release/routing-installer
+cd /root/hiddify-billing-router-guard/release/routing-installer
 sudo bash install-routing.sh && sudo bash smoke-routing.sh
 
 # Note: install-routing.sh does NOT run apply_configs.sh.
@@ -115,12 +115,12 @@ sudo bash install-routing.sh && sudo bash smoke-routing.sh
 # After a normal install-routing.sh run, step 3 is not required.
 
 # 3. Business regression check
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash smoke-business.sh
 # Expected: smoke-business OK
 
 # 4. Final routing smoke
-cd /home/texas/lab-work/release/routing-installer
+cd /root/hiddify-billing-router-guard/release/routing-installer
 sudo bash smoke-routing.sh
 # Expected: smoke-routing OK
 ```
@@ -232,8 +232,8 @@ https://<your-domain>/<proxy_path>/admin/routing-admin/rule-sources/
 # Комментарии (#, //) игнорируются
 
 # Домены (семейство "domain"):
-mediaserv.site          → domain_suffix (то же что .mediaserv.site)
-.sub.mediaserv.site     → domain_suffix
+example.com          → domain_suffix (то же что .example.com)
+.sub.example.com     → domain_suffix
 full:api.telegram.org   → domain_exact
 regexp:.*\.ru$          → domain_regex
 
@@ -355,7 +355,7 @@ Validated on clean VM (business addon pre-installed):
 ## Rollback
 
 ```bash
-cd /home/texas/lab-work/release/routing-installer
+cd /root/hiddify-billing-router-guard/release/routing-installer
 sudo bash rollback-routing.sh
 ```
 
@@ -367,7 +367,7 @@ sudo bash rollback-routing.sh --restore-db
 ## Diagnostics
 
 ```bash
-cd /home/texas/lab-work/release/routing-installer
+cd /root/hiddify-billing-router-guard/release/routing-installer
 sudo bash collect-routing-diagnostics.sh
 ```
 

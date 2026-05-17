@@ -210,7 +210,7 @@
       <div id="field_text" class="mb-3" style="display:none">
         <label class="form-label fw-bold">Содержимое (по одному правилу на строку)</label>
         <textarea name="content_text" class="form-control font-monospace" rows="14"
-                  placeholder="# Комментарии (строки с # или // игнорируются)&#10;&#10;# Обычные домены:&#10;mediaserv.site&#10;.sub.mediaserv.site&#10;&#10;# Точное совпадение:&#10;full:api.telegram.org&#10;&#10;# Regexp:&#10;regexp:.*\.ru$&#10;&#10;# Подсети (для семейства Подсети/IP):&#10;1.2.3.4&#10;10.0.0.0/8">{{ source.content_text if source else '' }}</textarea>
+                  placeholder="# Комментарии (строки с # или // игнорируются)&#10;&#10;# Обычные домены:&#10;example.com&#10;.sub.example.com&#10;&#10;# Точное совпадение:&#10;full:api.telegram.org&#10;&#10;# Regexp:&#10;regexp:.*\.ru$&#10;&#10;# Подсети (для семейства Подсети/IP):&#10;1.2.3.4&#10;10.0.0.0/8">{{ source.content_text if source else '' }}</textarea>
         <div class="form-text">
           <strong>Домены:</strong>
           <code>example.com</code> или <code>.example.com</code> → suffix,

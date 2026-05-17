@@ -57,7 +57,7 @@ bash check-line-endings.sh /path/to/repo
 ## Audit
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash audit-hiddify-cli.sh
 ```
 
@@ -79,7 +79,7 @@ Expected on clean Hiddify:
 ## Stabilize
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash stabilize-hiddify-cli.sh
 ```
 
@@ -99,7 +99,7 @@ It does not:
 ## Smoke
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash smoke-hiddify-cli.sh
 ```
 
@@ -113,7 +113,7 @@ Expected outcomes:
 ## Rollback
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash rollback-hiddify-cli-stabilization.sh
 ```
 
@@ -130,7 +130,7 @@ sudo bash rollback-hiddify-cli-stabilization.sh --backup-dir /opt/hiddify-manage
 `hiddify-cli` re-enters the restart storm after business install restarts the panel services. This is expected. Stabilize again after business install:
 
 ```bash
-cd /home/texas/lab-work/release/service-tools
+cd /root/hiddify-billing-router-guard/release/service-tools
 sudo bash stabilize-hiddify-cli.sh
 sudo bash smoke-hiddify-cli.sh
 ```

@@ -33,6 +33,17 @@ This project extends HiddifyPanel with commercial subscription management, a Tel
 
 ## Pre-install steps
 
+### 0. Install HiddifyPanel 12.0.0
+
+This addon stack requires **exactly version 12.0.0**. Install it first:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+bash <(curl https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/v12.0.0/common/download.sh) "v12.0.0"
+```
+
+Wait until the panel is fully up and accessible before proceeding.
+
 ### 1. Add swap (recommended)
 
 If your server has 1 GB RAM or less, add a 2 GB swap file before installing:

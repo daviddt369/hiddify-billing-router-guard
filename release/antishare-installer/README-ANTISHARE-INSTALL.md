@@ -108,17 +108,17 @@ ls /opt/hiddify-manager/business-addon.manifest
 
 ```bash
 # 1. Sync and install
-cd /home/texas/lab-work/release/antishare-installer
+cd /root/hiddify-billing-router-guard/release/antishare-installer
 sudo bash install-antishare.sh 2>&1 | tee /tmp/antishare-install.log
 
 # 2. Smoke anti-share
 sudo bash smoke-antishare.sh 2>&1 | tee /tmp/antishare-smoke.log
 
 # 3. Regression checks (included in smoke-antishare.sh, but can run manually)
-cd /home/texas/lab-work/release/business-installer
+cd /root/hiddify-billing-router-guard/release/business-installer
 sudo bash smoke-business.sh
 
-cd /home/texas/lab-work/release/routing-installer
+cd /root/hiddify-billing-router-guard/release/routing-installer
 sudo bash smoke-routing.sh
 ```
 
@@ -171,7 +171,7 @@ Enable nft enforcement only after confirming scoring is correct.
 ## Rollback
 
 ```bash
-cd /home/texas/lab-work/release/antishare-installer
+cd /root/hiddify-billing-router-guard/release/antishare-installer
 sudo bash rollback-antishare.sh
 ```
 
@@ -183,7 +183,7 @@ sudo bash rollback-antishare.sh --restore-db
 ## Diagnostics
 
 ```bash
-cd /home/texas/lab-work/release/antishare-installer
+cd /root/hiddify-billing-router-guard/release/antishare-installer
 sudo bash collect-antishare-diagnostics.sh
 ```
 

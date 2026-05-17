@@ -33,6 +33,17 @@
 
 ## Подготовка перед установкой
 
+### 0. Установка HiddifyPanel 12.0.0
+
+Этот стек аддонов требует **строго версии 12.0.0**. Сначала установите панель:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+bash <(curl https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/v12.0.0/common/download.sh) "v12.0.0"
+```
+
+Дождитесь полного запуска панели перед продолжением.
+
 ### 1. Добавить swap (рекомендуется)
 
 Если на сервере 1 ГБ ОЗУ или меньше, добавьте 2 ГБ swap перед установкой:
