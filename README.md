@@ -1,94 +1,48 @@
 # Hiddify Addon Stack
 
-> **Independent community project.** This project is an independent community addon stack for Hiddify Manager. It is not affiliated with, endorsed by, or officially supported by the Hiddify project unless explicitly stated otherwise.
-
-An overlay addon suite for [Hiddify Manager](https://github.com/hiddify/HiddifyPanel) 12.0.0 that adds server-side routing control, upstream/relay-node management, operational tooling, and optional user management extensions — as an overlay installer on top of a standard Hiddify Manager installation, without maintaining a fork of the upstream Hiddify repository.
+> **Independent community project.**
+> This is an independent community overlay addon stack for Hiddify Manager 12.0.0.
+> It is not affiliated with, endorsed by, or officially supported by the Hiddify project.
 
 ---
 
-## What this project adds
+## What this is
 
-### 1. Routing and traffic control
+This project extends Hiddify Manager 12.0.0 with server-side routing control, upstream relay-node management, operational tooling, and optional billing and anti-sharing modules — installed as an overlay on top of a standard Hiddify Manager installation.
 
-Server-side routing rules managed from the panel admin UI. Useful for operators whose users do not configure client-side routing and need sensible server-side defaults.
+**Why overlay, not fork:**
+This project was initially explored as a fork of Hiddify Manager 12.0.0. After Hiddify 12.3.0 was released with significant internal architecture changes, maintaining a full fork became impractical. The project was redesigned as an overlay installer: addon files are copied into the panel runtime at install time, the base panel remains unchanged and independently upgradeable, and rollback restores original files from a pre-install backup.
 
-- Select which domains, IP ranges, or CIDR blocks are routed, proxied, or blocked directly from the admin panel.
-- Local/domestic traffic can stay direct; selected destinations are forwarded through an upstream relay node.
-- Routing is applied to Xray and Sing-box outbound chains automatically via `apply_configs.sh`.
+**Module optionality:**
+All three addon modules are logically independent. You can use only the business/billing layer on a single-node installation without enabling routing or anti-share. The relay/cascade scenario is for operators who need upstream node management and server-side routing. Anti-share is an optional enforcement layer for shared-account detection.
 
-**Rule sources** — routing rules are organized into sources. Each source is a list of domains or subnets with a single policy (direct / upstream / block). Sources can be added in three ways:
+---
 
-| Type | Description |
-|---|---|
-| **URL** | Remote list fetched automatically; supports re-import on demand or on schedule |
-| **File** | Local file on the server (e.g. `/opt/hiddify-manager/routing-lists/mylist.txt`) |
-| **Text** | Inline list entered directly in the admin UI |
+## Compatibility
 
-Supported formats: plain domain list, CIDR subnet list, or a mix. Each line is one rule. Comments (`#`, `//`) are ignored. After adding or updating any source, click **Apply xray-router** in the UI to activate the changes.
+> ⚠️ **This release supports Hiddify Manager 12.0.0 only.**
 
-### 2. Relay-node and upstream management
+Hiddify Manager 12.3.0 and newer are **not supported** by this release. The upstream project changed internal architecture and file layout between 12.0.0 and 12.3.0. Porting this addon stack to newer Hiddify versions requires a separate adaptation and validation phase.
 
-One server can act as both the panel host and a routing relay:
-
-- Add, edit, and remove upstream relay nodes from the admin UI (VLESS, Trojan, WireGuard).
-- Switch routing between upstreams without touching config files.
-- Upstream health status is visible in the admin panel and checked by an automated probe.
-
-### 3. Operational safety
-
-- **Clean install script** — installs all addons in the correct order with preflight checks and smoke tests at each stage.
-- **Upgrade script** — re-applies addon files on top of an upgraded panel without touching routing or antishare.
-- **Smoke tests** — verify each addon after install or upgrade.
-- **Rollback scripts** — per-addon and full-stack rollback from pre-install file backups.
-- **Routing health probe** — 60-second systemd timer; writes upstream health status to the panel database and a status JSON file, visible in the Routing admin UI.
-
-### 4. Anti-sharing guard
-
-Optional account-sharing detection and enforcement, more relevant for commercial or community operators:
-
-- IP-scoring engine reads the Xray access log and counts unique source IPs per user UUID.
-- Configurable threshold per user plan.
-- Optional nftables enforcement (disabled by default; dry-run mode on first install).
-
-### 5. Telegram bot tooling
-
-- **User self-service** — subscription status, setup instructions per platform (Android, iPhone, Windows), support contact.
-- **Admin actions** — new registrations, plan requests, payment events, upstream failure alerts.
-- Auto trial signup on phone number registration.
-- Inline subscription link in status messages.
-- **Outgoing API proxy** — if the Telegram Bot API is not directly reachable from the server, the bot can route its outgoing API calls through a configurable SOCKS5 or HTTP proxy. The built-in xray-router (port 20808) can be used as this proxy, making the routing addon and the bot work together seamlessly. Configured in admin UI → Business → Telegram → *Telegram API proxy*. Does not affect incoming webhooks.
-
-### 6. Billing / commercial layer (optional)
-
-An optional commercial subscription layer for operators running paid or community VPN services:
-
-- Tariff plans with configurable data limits and expiry.
-- YooKassa payment integration.
-- Automated expiry reminders via Celery.
-
-This component is optional and last in priority. The routing, relay management, and operational tooling work independently of the billing layer.
+**Do not install this release on Hiddify Manager 12.3.0+ unless you are intentionally working on a port.**
 
 ---
 
 ## Why this architecture
 
-This addon stack was designed around a specific operational pattern: a **local entry node** that handles user connections, combined with **server-side routing** that decides where each traffic flow goes — without requiring users to configure anything on their devices.
+This addon stack was designed around a specific operational pattern: a **local or regional entry node** that handles user connections, combined with **server-side routing** that decides where each traffic flow goes — without requiring users to configure anything on their devices.
 
 Three practical problems drove this design:
 
 ### Application compatibility with active VPN interfaces
 
-Some applications and websites detect whether a VPN interface is active on the user's device. Behavior varies: some services work normally if the visible IP address belongs to the expected region, others restrict access regardless. In practice, operators have observed fewer compatibility issues when:
+Some applications and websites detect whether a VPN interface is active on the user's device. Behavior varies: some services work normally if the visible IP address belongs to the expected region, others restrict access regardless. In practical deployments, operators have observed that using a **local or regional entry node** with **server-side routing** can reduce false positives and improve compatibility in some environments. The user does not need to configure split-tunneling manually — routing decisions are made on the server.
 
-- the user connects to a **local or regional entry node** rather than a foreign upstream directly
-- **server-side routing** keeps selected traffic flows local, so the visible exit IP for those flows remains regional
-- the user does not need to configure split-tunneling manually on their device — routing decisions are made on the server
-
-This does not guarantee compatibility with every application or service. Results depend on the specific detection method used.
+This does not guarantee that every application will work. Results depend on the specific detection method used.
 
 ### Network traffic accounting
 
-With some internet service providers and mobile carriers, **international or cross-region traffic** is metered separately from local/domestic traffic and may carry significantly higher costs per gigabyte. Connecting users to a **local server** means their traffic is accounted as local traffic. The local server then routes only the flows that require an external upstream through the relay node, keeping the volume of metered international traffic low.
+With some internet service providers and mobile carriers, international or cross-region traffic is metered separately from local/domestic traffic and may carry higher costs. Connecting users to a **local server** means their traffic is accounted as local. The local server routes only flows that require an external upstream through the relay node, keeping metered international traffic volume low.
 
 This pattern allows operators to manage traffic costs without changing the user-facing connection profile.
 
@@ -102,45 +56,91 @@ Distributing complex routing configurations to end users is fragile — clients 
 
 | Component | Description |
 |---|---|
-| **Routing addon** | Server-side routing rules, upstream management, relay-node support, health probe |
-| **Anti-share addon** | IP-scoring detection, optional nftables enforcement |
-| **Business addon** | Telegram bot, billing layer, tariff plans, payment integration |
+| **Routing addon** | Server-side routing rules, upstream node management (VLESS, Trojan, WireGuard), relay-node support, health probe |
+| **Anti-share addon** | IP-scoring detection of shared accounts, optional nftables enforcement |
+| **Business addon** | Telegram bot, tariff plans, billing hooks, payment integration |
+
+Each component has its own installer, smoke test script, manifest, and rollback script. They can be installed independently or together via the full-stack wrapper.
+
+---
+
+## What each module adds
+
+### Routing and traffic control
+
+Server-side routing rules managed from the panel admin UI.
+
+- Select which domains, IP ranges, or CIDR blocks are routed, proxied, or blocked.
+- Local/domestic traffic can stay direct; selected destinations are forwarded through an upstream relay node.
+- Routing is applied to Xray and Sing-box outbound chains via `apply_configs.sh`.
+
+**Rule sources** — routing rules are organized into sources. Each source is a list of domains or subnets with a single policy (`direct` / `upstream` / `block`). Sources can be added in three ways:
+
+| Type | Description |
+|---|---|
+| **URL** | Remote list fetched automatically; supports on-demand re-import |
+| **File** | Local file on the server (e.g. `/opt/hiddify-manager/routing-lists/mylist.txt`) |
+| **Text** | Inline list entered directly in the admin UI |
+
+Supported formats: plain domain list, CIDR subnet list, or mixed. Each line is one rule. Comments (`#`, `//`) are ignored. After adding or updating any source, click **Apply xray-router** in the UI.
+
+### Relay-node and upstream management
+
+One server can act as both the panel host and a routing relay:
+
+- Add, edit, and remove upstream relay nodes from the admin UI (VLESS, Trojan, WireGuard).
+- Switch routing between upstreams without touching config files.
+- Upstream health status is visible in the admin panel (60-second probe writes status to DB and JSON file).
+
+### Anti-sharing guard (optional)
+
+- IP-scoring engine reads the Xray access log and counts unique source IPs per user UUID.
+- Configurable threshold per user plan.
+- Optional nftables enforcement — disabled by default, dry-run mode on first install.
+
+### Telegram bot tooling
+
+- **User self-service** — subscription status, setup instructions per platform (Android, iPhone, Windows).
+- **Admin actions** — new registrations, plan requests, payment events.
+- Auto trial signup on phone number registration.
+- Inline subscription link in status messages.
+- **Outgoing API proxy** — if the Telegram Bot API is not directly reachable from the server, outgoing API calls can be routed through a SOCKS5 or HTTP proxy. The built-in xray-router (port 20808) can serve as this proxy. Configured in admin UI → Business → Telegram → *Telegram API proxy*. Does not affect incoming webhooks.
+
+### Billing / commercial layer (optional)
+
+- Tariff plans with configurable data limits and expiry.
+- YooKassa payment integration.
+- Automated expiry reminders via Celery.
+
+This module is optional. Routing, relay management, and operational tooling work independently of the billing layer.
 
 ---
 
 ## Requirements
 
-| Requirement | Version / Note |
+| Requirement | Value |
 |---|---|
-| Hiddify Manager | **12.0.0 exactly** |
+| Hiddify Manager | **12.0.0 only** — see [Compatibility](#compatibility) |
 | OS | Ubuntu 22.04 LTS or 24.04 LTS |
-| User | root |
+| User | `root` |
 | RAM | 1 GB minimum; 2 GB swap recommended |
 | Database | MariaDB running and accessible |
-| Panel services | `hiddify-panel` and `hiddify-panel-background-tasks` must be active |
+| Panel services | `hiddify-panel` and `hiddify-panel-background-tasks` active |
 
 ---
 
 ## Pre-install steps
 
-### 0. Install Hiddify Manager 12.0.0
-
-This addon stack requires **exactly version 12.0.0**. Other versions are not supported.
+### Step 0 — Install Hiddify Manager 12.0.0
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 bash <(curl https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/v12.0.0/common/download.sh) "v12.0.0"
 ```
 
-Wait until the panel is fully up and accessible before continuing.
+After installation, open the panel in a browser and **complete the initial setup wizard** (admin account, domain, proxy settings). Do not run the addon installer until the base panel is working correctly.
 
-### 0a. Complete the initial panel setup
-
-After installation, open the panel in a browser and complete the initial configuration wizard (admin account, domain, proxy settings). The addon installer requires the panel to be fully configured and its services to be active.
-
-**Do not run the addon installer until the base panel is working correctly.**
-
-### 1. Add swap (recommended for 1 GB RAM servers)
+### Step 1 — Add swap (recommended for 1 GB RAM servers)
 
 ```bash
 fallocate -l 2G /swapfile
@@ -150,7 +150,7 @@ swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
-### 2. Clone this repository
+### Step 2 — Clone this repository
 
 ```bash
 git clone https://github.com/daviddt369/hiddify-billing-router-guard.git
@@ -159,19 +159,25 @@ cd hiddify-billing-router-guard
 
 ---
 
-## Clean install
+## Clean install (full stack)
 
 ```bash
 sudo bash release/clean-install-full-stack.sh
 ```
 
-Installs all three addons in order (business → routing → antishare) with preflight checks, DB migrations, smoke tests, and automatic rollback on failure. Expected duration: 10–15 minutes.
+Installs all three addons in order:
+
+```text
+business → routing → antishare
+```
+
+Each stage runs preflight checks, backs up existing files, copies addon files, runs DB migrations, restarts services, and verifies with smoke tests. Rolls back automatically on failure. Expected duration: 10–15 minutes.
 
 Full details: [INSTALL.md](INSTALL.md)
 
 ---
 
-## Post-install manual steps
+## Post-install steps
 
 ### Configure Telegram bot
 
@@ -179,7 +185,7 @@ Full details: [INSTALL.md](INSTALL.md)
 2. Admin UI → **Business → Telegram** → enter the bot token and save.
 3. Send the activation command to your bot:
 
-   ```
+   ```text
    /start admin_<ADMIN_UUID>
    ```
 
@@ -189,19 +195,15 @@ Full details: [INSTALL.md](INSTALL.md)
    cat /opt/hiddify-manager/business-addon-secrets/telegram-owner-activation.txt
    ```
 
-### Configure routing upstream and apply configuration (optional)
+### Configure routing upstream (optional)
 
-To enable traffic routing through an upstream relay node:
-
-1. Admin UI → **Business → Routing** → add an upstream node (VLESS, Trojan, or WireGuard format).
-2. Enable routing in the same section and save.
-3. **Apply configuration** — required for routing to take effect in Xray/Sing-box:
+1. Admin UI → **Business → Routing** → add an upstream node (VLESS, Trojan, or WireGuard).
+2. Enable routing and save.
+3. Apply configuration to activate changes in the running proxy core:
 
    ```bash
    sudo bash /opt/hiddify-manager/apply_configs.sh
    ```
-
-   Without this step the routing changes are saved in the DB but not active in the running proxy core.
 
 ### Fix proxy-stats balancer (if hiddify-cli is installed)
 
@@ -224,10 +226,13 @@ Full details: [UPGRADE.md](UPGRADE.md)
 ## Rollback
 
 ```bash
-# Full rollback (all addons, reverse order)
+# Full rollback — all addons in reverse order
 sudo bash release/rollback-all.sh
+```
 
-# Individual rollback
+Per-addon rollback:
+
+```bash
 sudo bash release/antishare-installer/rollback-antishare.sh
 sudo bash release/routing-installer/rollback-routing.sh
 sudo bash release/business-installer/rollback-business.sh
@@ -260,14 +265,16 @@ sudo bash release/antishare-installer/smoke-antishare.sh
 
 ## Known warnings (expected, not errors)
 
-- **"Telegram bot token is not configured"** — logged on every panel start until the token is set in the admin UI.
-- **"xray-router inactive" / "upstream not reachable"** — logged until at least one upstream node is configured under Business → Routing.
+- **"Telegram bot token is not configured"** — logged on every panel start until the token is set in the admin UI. Expected behavior.
+- **"xray-router inactive" / "upstream not reachable"** — logged until at least one upstream node is configured under Business → Routing. Expected behavior.
 
 ---
 
 ## Release status
 
-**v1.0.0-rc1** — Release Candidate. Tested on a clean VM (Ubuntu 24.04 LTS + Hiddify Manager 12.0.0). Clean install completes in ~12 minutes with all smoke tests passing. Not recommended for production without your own review and testing.
+**v1.0.0** — Tested on a clean VM (Ubuntu 24.04 LTS + Hiddify Manager 12.0.0). Clean install completes in ~12 minutes with all smoke tests passing.
+
+This release is pinned to Hiddify Manager 12.0.0. See [Compatibility](#compatibility).
 
 ---
 
@@ -279,6 +286,6 @@ sudo bash release/antishare-installer/smoke-antishare.sh
 
 ## Disclaimer
 
-This software is provided as-is, without warranty of any kind. Use at your own risk. The authors are not responsible for data loss, service interruption, or any other damage resulting from the use of this software.
+This software is provided as-is, without warranty of any kind. Use at your own risk.
 
 This project is an independent community project and is not affiliated with, endorsed by, or officially supported by the Hiddify project.
