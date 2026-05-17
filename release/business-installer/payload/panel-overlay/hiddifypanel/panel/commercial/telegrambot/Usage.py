@@ -559,6 +559,7 @@ def _handle_phone_lookup(message, phone: str, allow_rebind: bool = False):
         reply_markup=_user_menu_keyboard(user),
     )
     _send_first_link_welcome(message.chat.id, user)
+    _send_my_subscription(message.chat.id, user)
     _notify_admins_for_user(
         user,
         text=(
