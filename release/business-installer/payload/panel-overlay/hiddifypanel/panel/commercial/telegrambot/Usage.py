@@ -382,21 +382,23 @@ def _send_my_subscription(chat_id: int, user: User):
     """Send combined subscription info: status + link + actions."""
     with force_locale(user.lang or hconfig(ConfigEnum.lang)):
         try:
+            domain = Domain.get_domains()[0]
+            user_link = hiddify.get_account_panel_link(user, domain.domain)
+        except Exception:
+            domain = None
+            user_link = None
+        try:
             if has_request_context():
                 status_msg = get_usage_msg(user.uuid)
             else:
-                base_host = Domain.get_panel_link() or Domain.get_domains()[0].domain
+                base_host = Domain.get_panel_link() or (domain.domain if domain else "")
                 with app.test_request_context(base_url=f"https://{base_host}/"):
                     g.account = user
                     status_msg = get_usage_msg(user.uuid)
         except Exception:
             status_msg = _telegram_usage_fallback(user)
-        try:
-            domain = Domain.get_domains()[0]
-            user_link = hiddify.get_account_panel_link(user, domain.domain)
+        if user_link:
             status_msg += f"\n\n{user_link}\n\nСкопируйте и вставьте в свой клиент"
-        except Exception:
-            pass
         bot.send_message(
             chat_id,
             status_msg,
