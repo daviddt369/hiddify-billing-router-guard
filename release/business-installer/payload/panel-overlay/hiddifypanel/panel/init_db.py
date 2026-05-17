@@ -288,7 +288,10 @@ def _v134(child_id):
 
 
 def _v136(child_id):
-    from hiddifypanel.models.commercial_routing_custom_rule import CommercialRoutingCustomRule
+    try:
+        from hiddifypanel.models.commercial_routing_custom_rule import CommercialRoutingCustomRule
+    except ImportError:
+        return  # routing addon not installed yet — table created by routing installer
     CommercialRoutingCustomRule.__table__.create(bind=db.engine, checkfirst=True)
     add_config_if_not_exist(ConfigEnum.commercial_routing_enable, False)
     add_config_if_not_exist(ConfigEnum.commercial_router_host, "127.0.0.1")
