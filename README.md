@@ -96,6 +96,12 @@ bash <(curl https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/
 
 Wait until the panel is fully up and accessible before continuing.
 
+### 0a. Complete the initial panel setup
+
+After installation, open the panel in a browser and complete the initial configuration wizard (admin account, domain, proxy settings). The addon installer requires the panel to be fully configured and its services to be active.
+
+**Do not run the addon installer until the base panel is working correctly.**
+
 ### 1. Add swap (recommended for 1 GB RAM servers)
 
 ```bash
@@ -144,6 +150,20 @@ Full details: [INSTALL.md](INSTALL.md)
    ```bash
    cat /opt/hiddify-manager/business-addon-secrets/telegram-owner-activation.txt
    ```
+
+### Configure routing upstream and apply configuration (optional)
+
+To enable traffic routing through an upstream relay node:
+
+1. Admin UI → **Business → Routing** → add an upstream node (VLESS or Trojan format).
+2. Enable routing in the same section and save.
+3. **Apply configuration** — required for routing to take effect in Xray/Sing-box:
+
+   ```bash
+   sudo bash /opt/hiddify-manager/apply_configs.sh
+   ```
+
+   Without this step the routing changes are saved in the DB but not active in the running proxy core.
 
 ### Fix proxy-stats balancer (if hiddify-cli is installed)
 

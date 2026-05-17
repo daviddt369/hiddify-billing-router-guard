@@ -28,6 +28,8 @@ bash <(curl https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/
 
 Wait until the panel is fully up and accessible before continuing.
 
+**Complete the initial panel setup wizard** (admin account, domain, proxy settings) before proceeding. The addon installer requires the panel to be fully configured and both `hiddify-panel` and `hiddify-panel-background-tasks` services to be active.
+
 ---
 
 ## Step 1 — Add swap (recommended)
@@ -107,12 +109,14 @@ If you want to enable traffic routing through an upstream relay node:
 
 1. Open admin interface → **Business → Routing**.
 2. Add an upstream node (VLESS or Trojan format).
-3. Enable routing in the same section.
-4. Run `apply_configs.sh` to activate:
+3. Enable routing in the same section and save.
+4. **Apply configuration** — required for changes to take effect in the running Xray/Sing-box core:
 
    ```bash
    sudo bash /opt/hiddify-manager/apply_configs.sh
    ```
+
+   Without this step the routing settings are saved in the database but not active in the proxy core.
 
 ---
 
