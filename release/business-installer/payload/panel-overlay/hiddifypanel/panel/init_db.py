@@ -15,7 +15,7 @@ from hiddifypanel.database import db, db_execute
 
 
 from loguru import logger
-MAX_DB_VERSION = 137
+MAX_DB_VERSION = 138
 _BOOTSTRAP_DOMAIN_FALLBACKS = [
     "fa.wikipedia.org",
     "en.wikipedia.org",
@@ -313,6 +313,13 @@ def _v137(child_id):
     add_config_if_not_exist(ConfigEnum.telegram_instruction_android, "")
     add_config_if_not_exist(ConfigEnum.telegram_instruction_ios, "")
     add_config_if_not_exist(ConfigEnum.telegram_instruction_windows, "")
+
+
+def _v138(child_id):
+    # Add ON DELETE CASCADE to user_detail FK so deleting a user works without 500
+    execute("ALTER TABLE user_detail DROP FOREIGN KEY user_detail_ibfk_1;")
+    execute("ALTER TABLE user_detail ADD CONSTRAINT user_detail_ibfk_1 "
+            "FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE;")
 
 
 def _v111(child_id):
