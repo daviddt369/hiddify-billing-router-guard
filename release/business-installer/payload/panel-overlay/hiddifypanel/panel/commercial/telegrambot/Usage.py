@@ -383,7 +383,8 @@ def _send_my_subscription(chat_id: int, user: User):
     with force_locale(user.lang or hconfig(ConfigEnum.lang)):
         try:
             domain = Domain.get_domains()[0]
-            user_link = hiddify.get_account_panel_link(user, domain.domain)
+            proxy_path = hconfig(ConfigEnum.proxy_path_client)
+            user_link = f"https://{domain.domain}/{proxy_path}/{user.uuid}/"
         except Exception:
             domain = None
             user_link = None
