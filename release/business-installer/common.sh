@@ -489,6 +489,48 @@ assert_canonical_payload() {
         || die "Canonical migration script is stale: expected migration messages not found. Sync payload from repo."
 }
 
+ensure_panel_secrets_env() {
+    local secrets_file="/etc/hiddify-panel/panel-secrets.env"
+    mkdir -p /etc/hiddify-panel
+    if [[ -f "$secrets_file" ]] && grep -q "HIDDIFY_TELEGRAM_WEBHOOK_SECRET=" "$secrets_file"; then
+        log "webhook secret already present in $secrets_file"
+        return 0
+    fi
+    local secret
+    secret="$(openssl rand -hex 32)"
+    # Preserve existing lines, just add/update the secret
+    if [[ -f "$secrets_file" ]]; then
+        grep -v "^HIDDIFY_TELEGRAM_WEBHOOK_SECRET=" "$secrets_file" > "${secrets_file}.tmp" || true
+        mv "${secrets_file}.tmp" "$secrets_file"
+    fi
+    echo "HIDDIFY_TELEGRAM_WEBHOOK_SECRET=$secret" >> "$secrets_file"
+    chmod 644 "$secrets_file"
+    chown root:root "$secrets_file"
+    log "webhook secret written to $secrets_file"
+}
+
+register_telegram_webhook() {
+    local py runtime_path
+    py="$(detect_venv_python)"
+    runtime_path="$(detect_runtime_path)"
+    log "Registering Telegram webhook..."
+    sudo -H -u "$PANEL_USER" env PYTHONUNBUFFERED=1 \
+        bash -lc "cd '$INSTALL_ROOT/hiddify-panel' && '$py' -" <<'PY' || warn "Telegram webhook registration failed (non-fatal)"
+import os
+os.environ.setdefault('HIDDIFY_CFG_PATH', '/opt/hiddify-manager/hiddify-panel/app.cfg')
+from hiddifypanel import create_app
+app = create_app()
+with app.app_context():
+    from hiddifypanel.panel.commercial.restapi.v2.telegram.tgbot import register_bot, telegram_bot_token
+    token = telegram_bot_token()
+    if not token:
+        print("[webhook] bot token not configured — skipping")
+    else:
+        register_bot(set_hook=True)
+        print("[webhook] registered OK")
+PY
+}
+
 ensure_telegram_owner_activation_command() {
     local owner_uuid activation_command
     mkdir -p "$TELEGRAM_ACTIVATION_DIR"

@@ -120,6 +120,9 @@ main() {
     step "Running idempotent tariffs DB migration with DB dump backup"
     BACKUP_DIR="$BACKUP_DIR" "$INSTALL_ROOT/scripts/commercial-tariffs-db-migrate.sh"
 
+    step "Ensuring Telegram webhook secret (panel-secrets.env)"
+    ensure_panel_secrets_env
+
     step "Ensuring Telegram owner activation command file"
     ensure_telegram_owner_activation_command
 
@@ -133,6 +136,9 @@ main() {
 
     step "Restarting panel services and verifying health"
     restart_and_verify "$log_since"
+
+    step "Registering Telegram webhook"
+    register_telegram_webhook
 
     step "Collecting post-install checkpoint status"
     collect_checkpoint_status "$BACKUP_DIR/status"
