@@ -27,7 +27,7 @@ The Hiddify Commercial Addon Stack is an overlay installation on top of Hiddify 
 │  │                                                       │       │
 │  │  Routing addon                                        │       │
 │  │  ├── xray-router service (SOCKS5 · port 20808)        │       │
-│  │  ├── upstream node management (VLESS, Trojan)         │       │
+│  │  ├── upstream node management (VLESS, Trojan, WireGuard)         │       │
 │  │  ├── routing health probe (60-second timer)           │       │
 │  │  └── RoutingAdmin + RuleSourceAdmin UI                │       │
 │  │                                                       │       │
@@ -61,7 +61,7 @@ Installs into the panel runtime (`site-packages/hiddifypanel/`) and extends:
 Installs a separate `xray-router` systemd service alongside the panel:
 
 - **xray-router.service** — runs a second Xray instance on a SOCKS5 port (default 20808), routing outbound traffic through configurable upstream nodes.
-- **Upstream node management** — VLESS and Trojan upstream nodes stored in `commercial_routing_upstream` table; managed from `RoutingAdmin` UI.
+- **Upstream node management** — VLESS, Trojan, and WireGuard upstream nodes stored in `commercial_routing_upstream` table; managed from `RoutingAdmin` UI.
 - **Rule sources** — configurable domain/IP lists (`commercial_routing_rule_source`); rules stored in `commercial_routing_custom_rule` table.
 - **Routing health probe** — `hiddify-routing-health.timer` runs every 60 seconds, checks upstream reachability via TCP connect, writes status to the panel DB and a JSON status file readable by the Routing admin UI.
 

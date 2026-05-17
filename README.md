@@ -21,7 +21,7 @@ Server-side routing rules managed from the panel admin UI. Useful for operators 
 
 One server can act as both the panel host and a routing relay:
 
-- Add, edit, and remove upstream relay nodes from the admin UI (VLESS, Trojan).
+- Add, edit, and remove upstream relay nodes from the admin UI (VLESS, Trojan, WireGuard).
 - Switch routing between upstreams without touching config files.
 - Upstream health status is visible in the admin panel and checked by an automated probe.
 
@@ -183,7 +183,7 @@ Full details: [INSTALL.md](INSTALL.md)
 
 To enable traffic routing through an upstream relay node:
 
-1. Admin UI → **Business → Routing** → add an upstream node (VLESS or Trojan format).
+1. Admin UI → **Business → Routing** → add an upstream node (VLESS, Trojan, or WireGuard format).
 2. Enable routing in the same section and save.
 3. **Apply configuration** — required for routing to take effect in Xray/Sing-box:
 

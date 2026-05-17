@@ -108,7 +108,7 @@ After installation, the Telegram bot is installed but inactive until a token is 
 If you want to enable traffic routing through an upstream relay node:
 
 1. Open admin interface → **Business → Routing**.
-2. Add an upstream node (VLESS or Trojan format).
+2. Add an upstream node (VLESS, Trojan, or WireGuard format).
 3. Enable routing in the same section and save.
 4. **Apply configuration** — required for changes to take effect in the running Xray/Sing-box core:
 
