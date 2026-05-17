@@ -14,8 +14,17 @@ Server-side routing rules managed from the panel admin UI. Useful for operators 
 
 - Select which domains, IP ranges, or CIDR blocks are routed, proxied, or blocked directly from the admin panel.
 - Local/domestic traffic can stay direct; selected destinations are forwarded through an upstream relay node.
-- Rule sources (domain lists, IP lists) are manageable from the panel without touching config files.
 - Routing is applied to Xray and Sing-box outbound chains automatically via `apply_configs.sh`.
+
+**Rule sources** — routing rules are organized into sources. Each source is a list of domains or subnets with a single policy (direct / upstream / block). Sources can be added in three ways:
+
+| Type | Description |
+|---|---|
+| **URL** | Remote list fetched automatically; supports re-import on demand or on schedule |
+| **File** | Local file on the server (e.g. `/opt/hiddify-manager/routing-lists/mylist.txt`) |
+| **Text** | Inline list entered directly in the admin UI |
+
+Supported formats: plain domain list, CIDR subnet list, or a mix. Each line is one rule. Comments (`#`, `//`) are ignored. After adding or updating any source, click **Apply xray-router** in the UI to activate the changes.
 
 ### 2. Relay-node and upstream management
 
