@@ -94,10 +94,13 @@ from hiddifypanel import create_app
 app = create_app()
 endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
 upgrade_mode = os.environ.get('UPGRADE_MODE') == '1'
+routing_installed = Path('/opt/hiddify-manager/routing-addon.manifest').exists()
+antishare_installed = Path('/opt/hiddify-manager/anti-share-addon.manifest').exists()
 assert 'admin.BusinessAdmin:index' in endpoints, 'Business endpoint missing'
 assert 'flask.plans.index_view' in endpoints, 'Plans endpoint missing'
-if not upgrade_mode:
+if not upgrade_mode and not routing_installed:
     assert 'admin.RoutingAdmin:index' not in endpoints, 'Routing endpoint must not be installed by business'
+if not upgrade_mode and not antishare_installed:
     assert 'admin.AntiShareAdmin:index' not in endpoints, 'Anti-share endpoint must not be installed by business'
 
 runtime = Path(os.environ['PANEL_ROOT'])
