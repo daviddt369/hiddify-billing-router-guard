@@ -182,9 +182,11 @@ class BusinessSettingsForm(FlaskForm):
     telegram_payment_provider_token = wtf.StringField(_("Токен YooKassa для Telegram Payments"), validators=[wtf.validators.Optional(), wtf.validators.Regexp(r"^([0-9]{5,}:[A-Za-z0-9_:-]+)$", re.IGNORECASE, _("Invalid YooKassa/Telegram provider token"))], description=_("Токен провайдера Telegram Payments для YooKassa, который выдаётся через BotFather."), render_kw={"class": "ltr"})
     support_url = wtf.StringField(_("Ссылка поддержки"), validators=[wtf.validators.Optional(), wtf.validators.Regexp(r"^(https?://|tg://|mailto:|tel:).+", re.IGNORECASE, _("Invalid support URL"))], description=_("Ссылка поддержки для пользователя, которая есть у него (например в меню или кнопке обращения к администратору)."), render_kw={"class": "ltr"})
     telegram_registration_mode = wtf.SelectField(_("Регистрация пользователей в Telegram-боте"), choices=[("auto", "Автоматическая"), ("admin_only", "Ручная")], validate_choice=False, description=_("Автоматическая - бот сам регистрирует новых пользователей. Ручная - только после действий администратора."))
-    telegram_instruction_button_text = wtf.StringField(_("Текст кнопки инструкции"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=64)], description=_("Текст reply-кнопки, которая отправляет отдельное сообщение с инструкцией."))
-    telegram_welcome_message = wtf.TextAreaField(_("Приветственное сообщение"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Первое сообщение для нового пользователя Telegram при регистрации и выдаче ссылки на подписку. Поддерживается HTML и ссылки."), render_kw={"rows": 6})
-    telegram_instruction_message = wtf.TextAreaField(_("Инструкция"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Отдельное сообщение, которое отправляется по кнопке Инструкция. Если поле пустое, используется приветственное сообщение."), render_kw={"rows": 6})
+    telegram_instruction_button_text = wtf.StringField(_("Текст кнопки инструкции"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=64)], description=_("Текст reply-кнопки, которая открывает подменю с выбором платформы."))
+    telegram_welcome_message = wtf.TextAreaField(_("Приветственное сообщение"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Первое сообщение для нового пользователя при регистрации. Поддерживается HTML и ссылки."), render_kw={"rows": 6})
+    telegram_instruction_android = wtf.TextAreaField(_("Инструкция — Android"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Текст инструкции для Android. Поддерживается HTML и ссылки."), render_kw={"rows": 6})
+    telegram_instruction_ios = wtf.TextAreaField(_("Инструкция — iPhone"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Текст инструкции для iPhone/iOS. Поддерживается HTML и ссылки."), render_kw={"rows": 6})
+    telegram_instruction_windows = wtf.TextAreaField(_("Инструкция — Windows"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Текст инструкции для Windows. Поддерживается HTML и ссылки."), render_kw={"rows": 6})
     telegram_subscription_expiry_reminder_days = wtf.StringField(_("Дни до напоминания о продлении"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=64)], description=_("Список через запятую, например 2,1. Бот напомнит за столько дней до окончания подписки."))
     telegram_subscription_expiry_reminder_message = wtf.TextAreaField(_("Текст напоминания о продлении"), validators=[wtf.validators.Optional(), wtf.validators.Length(max=4000)], description=_("Текст автоматического напоминания в Telegram. Доступен плейсхолдер {days_left}."), render_kw={"rows": 5})
 
@@ -321,7 +323,9 @@ class BusinessAdmin(FlaskView):
             telegram_registration_mode=_telegram_registration_mode_value(),
             telegram_instruction_button_text=hconfig(ConfigEnum.telegram_instruction_button_text) or "Инструкция",
             telegram_welcome_message=hconfig(ConfigEnum.telegram_welcome_message) or "",
-            telegram_instruction_message=hconfig(ConfigEnum.telegram_instruction_message) or "",
+            telegram_instruction_android=hconfig(ConfigEnum.telegram_instruction_android) or "",
+            telegram_instruction_ios=hconfig(ConfigEnum.telegram_instruction_ios) or "",
+            telegram_instruction_windows=hconfig(ConfigEnum.telegram_instruction_windows) or "",
             telegram_subscription_expiry_reminder_days=hconfig(ConfigEnum.telegram_subscription_expiry_reminder_days) or "2,1",
             telegram_subscription_expiry_reminder_message=hconfig(ConfigEnum.telegram_subscription_expiry_reminder_message) or "У вас заканчивается подписка через {days_left} дн. Не забудьте продлить тариф.",
             telegram_api_proxy_enable=bool(hconfig(ConfigEnum.telegram_api_proxy_enable)),
@@ -391,7 +395,9 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.support_url: (form.support_url.data or "").strip(),
             ConfigEnum.telegram_instruction_button_text: (form.telegram_instruction_button_text.data or "").strip() or "Инструкция",
             ConfigEnum.telegram_welcome_message: _normalize_multiline_text(form.telegram_welcome_message.data or ""),
-            ConfigEnum.telegram_instruction_message: _normalize_multiline_text(form.telegram_instruction_message.data or ""),
+            ConfigEnum.telegram_instruction_android: _normalize_multiline_text(form.telegram_instruction_android.data or ""),
+            ConfigEnum.telegram_instruction_ios: _normalize_multiline_text(form.telegram_instruction_ios.data or ""),
+            ConfigEnum.telegram_instruction_windows: _normalize_multiline_text(form.telegram_instruction_windows.data or ""),
             ConfigEnum.telegram_subscription_expiry_reminder_days: (form.telegram_subscription_expiry_reminder_days.data or "").strip() or "2,1",
             ConfigEnum.telegram_subscription_expiry_reminder_message: _normalize_multiline_text(form.telegram_subscription_expiry_reminder_message.data or ""),
             ConfigEnum.telegram_api_proxy_enable: bool(form.telegram_api_proxy_enable.data),
@@ -421,7 +427,9 @@ class BusinessAdmin(FlaskView):
             ConfigEnum.support_url,
             ConfigEnum.telegram_instruction_button_text,
             ConfigEnum.telegram_welcome_message,
-            ConfigEnum.telegram_instruction_message,
+            ConfigEnum.telegram_instruction_android,
+            ConfigEnum.telegram_instruction_ios,
+            ConfigEnum.telegram_instruction_windows,
             ConfigEnum.telegram_subscription_expiry_reminder_days,
             ConfigEnum.telegram_subscription_expiry_reminder_message,
             ConfigEnum.telegram_api_proxy_enable,
