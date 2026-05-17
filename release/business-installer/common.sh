@@ -203,7 +203,15 @@ check_services_active() {
 }
 
 check_port_9000() {
-    ss -lntp | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000' || die "9000 is not listening"
+    local waited=0 interval=5 max=120
+    while ! ss -lntp 2>/dev/null | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000'; do
+        if [[ $waited -ge $max ]]; then
+            die "9000 is not listening after ${max}s"
+        fi
+        sleep $interval
+        waited=$((waited + interval))
+        log "waiting for port 9000... ${waited}s"
+    done
 }
 
 check_front_proxy_ports() {
@@ -369,7 +377,7 @@ restart_and_verify() {
     local since="$1"
     systemctl restart "$SERVICE_PANEL" "$SERVICE_BG"
     SERVICES_RESTARTED=1
-    sleep 60
+    sleep 10
     check_services_active
     check_port_9000
     create_app_smoke
