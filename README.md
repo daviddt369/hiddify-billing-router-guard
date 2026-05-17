@@ -56,6 +56,7 @@ Optional account-sharing detection and enforcement, more relevant for commercial
 - **Admin actions** — new registrations, plan requests, payment events, upstream failure alerts.
 - Auto trial signup on phone number registration.
 - Inline subscription link in status messages.
+- **Outgoing API proxy** — if the Telegram Bot API is not directly reachable from the server, the bot can route its outgoing API calls through a configurable SOCKS5 or HTTP proxy. The built-in xray-router (port 20808) can be used as this proxy, making the routing addon and the bot work together seamlessly. Configured in admin UI → Business → Telegram → *Telegram API proxy*. Does not affect incoming webhooks.
 
 ### 6. Billing / commercial layer (optional)
 
