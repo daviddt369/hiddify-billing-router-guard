@@ -214,7 +214,15 @@ check_services_active() {
 }
 
 check_port_9000() {
-    ss -lntp | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000' || die "Port 9000 is not listening"
+    local waited=0 interval=5 max=120
+    while ! ss -lntp 2>/dev/null | grep -qE '127\.0\.0\.1:9000|0\.0\.0\.0:9000|:::9000'; do
+        if [[ $waited -ge $max ]]; then
+            die "Port 9000 is not listening after ${max}s"
+        fi
+        sleep $interval
+        waited=$((waited + interval))
+        log "waiting for port 9000... ${waited}s"
+    done
 }
 
 _get_admin_proxy_path() {
