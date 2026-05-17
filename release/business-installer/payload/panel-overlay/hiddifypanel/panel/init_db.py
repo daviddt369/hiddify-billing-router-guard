@@ -1182,7 +1182,7 @@ def init_db():
         db_version = int(hconfig(ConfigEnum.db_version, child.id) or 0)
         start_version = db_version
 
-        for ver in range(1, MAX_DB_VERSION):
+        for ver in range(1, MAX_DB_VERSION + 1):
             if ver <= db_version:
                 continue
 
@@ -1216,6 +1216,60 @@ def migrate(db_version):
         for column in table_obj.columns:
             add_column(column)
     Events.db_prehook.notify()
+    if db_version < 137:
+        execute(
+            "ALTER TABLE str_config MODIFY COLUMN `key` "
+            "enum('dbvalues','create_easysetup_link','wireguard_enable','wireguard_port','wireguard_ipv6',"
+            "'wireguard_ipv4','wireguard_private_key','wireguard_public_key','wireguard_noise_trick',"
+            "'ssh_server_redis_url','ssh_server_port','ssh_server_enable','first_setup','core_type',"
+            "'warp_enable','warp_mode','warp_plus_code','warp_sites','dns_server',"
+            "'reality_fallback_domain','reality_server_names','reality_short_ids','reality_private_key',"
+            "'reality_public_key','reality_port','special_port','restls1_2_domain','restls1_3_domain',"
+            "'show_usage_in_sublink','cloudflare','license','country','package_mode','utls',"
+            "'telegram_bot_token','telegram_webhook_domain','telegram_payment_provider_token',"
+            "'support_url','telegram_welcome_message','telegram_instruction_button_text',"
+            "'telegram_instruction_message','telegram_instruction_android','telegram_instruction_ios',"
+            "'telegram_instruction_windows','telegram_subscription_expiry_reminder_days',"
+            "'telegram_subscription_expiry_reminder_message','telegram_api_proxy_enable',"
+            "'telegram_api_proxy_url','business_enabled','commercial_routing_installed',"
+            "'commercial_antishare_installed','commercial_routing_enable','commercial_router_host',"
+            "'commercial_router_port','commercial_router_protocol','commercial_apply_to_xray',"
+            "'commercial_apply_to_singbox','commercial_domestic_policy','commercial_udp443_policy',"
+            "'commercial_legacy_geosite_to_router','commercial_drop_bittorrent',"
+            "'commercial_ru_domain_suffixes','commercial_ru_geoip_enabled',"
+            "'commercial_default_global_policy','commercial_router_core_type',"
+            "'commercial_router_probe_url','commercial_router_probe_interval',"
+            "'commercial_router_probe_tolerance','is_parent','parent_panel','parent_domain',"
+            "'parent_admin_proxy_path','panel_mode','log_level','unique_id','last_hash',"
+            "'cdn_forced_host','lang','admin_lang','admin_secret','default_useragent_string',"
+            "'use_ip_in_config','tls_ports','tls_fragment_enable','tls_fragment_size',"
+            "'tls_fragment_sleep','tls_fragment_packets','tls_mixed_case','tls_padding_enable',"
+            "'tls_padding_length','tls_ech_enable','mux_enable','mux_protocol',"
+            "'mux_max_connections','mux_min_streams','mux_max_streams','mux_padding_enable',"
+            "'mux_brutal_enable','mux_brutal_up_mbps','mux_brutal_down_mbps','http_ports',"
+            "'mieru_tcp_ports','mieru_udp_ports','kcp_ports','kcp_enable','decoy_domain',"
+            "'proxy_path','proxy_path_admin','proxy_path_client','firewall','netdata',"
+            "'http_proxy_enable','block_iran_sites','allow_invalid_sni','auto_update',"
+            "'speed_test','only_ipv4','shared_secret','telegram_enable','telegram_adtag',"
+            "'telegram_lib','telegram_fakedomain','v2ray_enable','torrent_block','tuic_enable',"
+            "'tuic_port','hysteria_enable','hysteria_port','hysteria_obfs_enable',"
+            "'hysteria_up_mbps','hysteria_down_mbps','shadowsocks2022_enable',"
+            "'shadowsocks2022_method','shadowsocks2022_port','ssfaketls_enable',"
+            "'ssfaketls_fakedomain','shadowtls_enable','shadowtls_fakedomain','ssr_enable',"
+            "'ssr_fakedomain','vmess_enable','domain_fronting_domain',"
+            "'domain_fronting_http_enable','domain_fronting_tls_enable','ws_enable','grpc_enable',"
+            "'httpupgrade_enable','xhttp_enable','naive_enable','naive_port','mieru_enable',"
+            "'mieru_multiplexing','mieru_handshake','vless_enable','trojan_enable',"
+            "'reality_enable','tcp_enable','quic_enable','xtls_enable','h2_enable','db_version',"
+            "'last_priodic_usage_check','branding_title','branding_site','branding_freetext',"
+            "'not_found','path_vmess','path_vless','path_trojan','path_naive','path_v2ray',"
+            "'path_ss','path_xhttp','path_httpupgrade','path_ws','path_tcp','path_grpc',"
+            "'sub_full_singbox_enable','sub_singbox_ssh_enable','sub_full_xray_json_enable',"
+            "'sub_full_links_enable','sub_full_links_b64_enable','sub_full_clash_enable',"
+            "'sub_full_clash_meta_enable','ssh_host_rsa_pk','ssh_host_rsa_pub',"
+            "'ssh_host_ed25519_pk','ssh_host_ed25519_pub','ssh_host_ecdsa_pk','ssh_host_ecdsa_pub',"
+            "'ssh_host_dsa_pk','ssh_host_dsa_pub','hiddifycli_enable') NOT NULL;"
+        )
     if db_version < 100:
         execute('update str_config set `key`="xhttp_enable" where `key`="splithttp_enable";')
         execute('update str_config set `key`="path_xhttp" where `key`="path_splithttp";')
