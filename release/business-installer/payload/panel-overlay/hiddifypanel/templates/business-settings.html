@@ -37,6 +37,19 @@
             <h4>Telegram</h4>
             <p class="text-muted">Здесь настраиваются Telegram-бот, webhook, прокси Telegram API и пользовательские тексты.{% if routing_available %} Маршрутизация вынесена в отдельный пункт меню.{% else %} Пункт «Маршрутизация» появится после установки routing-addon.{% endif %}</p>
             <div class="form-group"><label for="{{ form.telegram_bot_token.id }}">{{ form.telegram_bot_token.label.text }}</label>{{ form.telegram_bot_token(class_="form-control") }}<small class="form-text text-muted">{{ form.telegram_bot_token.description }}</small></div>
+            {% if current_admin_uuid %}
+            <div class="alert alert-info py-2 px-3 mb-3" style="border-radius:6px;">
+              <strong>Привязка администратора к боту</strong><br>
+              <small>Отправьте боту эту команду, чтобы привязать ваш Telegram-аккаунт:</small><br>
+              <code id="admin-start-cmd">/start admin_{{ current_admin_uuid }}</code>
+              <button type="button" class="btn btn-sm btn-outline-secondary ml-2" onclick="navigator.clipboard.writeText('/start admin_{{ current_admin_uuid }}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Копировать',1500)})" style="font-size:0.75rem;padding:1px 8px;">Копировать</button>
+              {% if bot_username %}
+              <br><small class="text-muted">Или перейдите по ссылке:
+                <a href="https://t.me/{{ bot_username }}?start=admin_{{ current_admin_uuid }}" target="_blank">t.me/{{ bot_username }}?start=admin_{{ current_admin_uuid }}</a>
+              </small>
+              {% endif %}
+            </div>
+            {% endif %}
             <div class="form-group"><label for="{{ form.telegram_webhook_domain.id }}">{{ form.telegram_webhook_domain.label.text }}</label>{{ form.telegram_webhook_domain(class_="form-control") }}<small class="form-text text-muted">{{ form.telegram_webhook_domain.description }}</small></div>
             <div class="form-group"><label for="{{ form.support_url.id }}">{{ form.support_url.label.text }}</label>{{ form.support_url(class_="form-control") }}<small class="form-text text-muted">{{ form.support_url.description }}</small></div>
             <div class="form-group"><label for="{{ form.telegram_registration_mode.id }}">{{ form.telegram_registration_mode.label.text }}</label>{{ form.telegram_registration_mode(class_="form-control") }}<small class="form-text text-muted">{{ form.telegram_registration_mode.description }}</small></div>

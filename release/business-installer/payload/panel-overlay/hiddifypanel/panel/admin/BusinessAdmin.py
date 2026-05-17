@@ -282,6 +282,17 @@ class BusinessAdmin(FlaskView):
                 custom_rules = commercial_routing.load_enabled_custom_rules()
                 preview = commercial_routing.build_preview(hconfigs, custom_rules)
         routing_available = self._routing_available(hconfigs)
+        from flask import g
+        from hiddifypanel.models import AdminUser
+        try:
+            current_admin_uuid = str(g.account.uuid) if hasattr(g, 'account') and g.account else None
+        except Exception:
+            current_admin_uuid = None
+        try:
+            from hiddifypanel.panel.commercial.restapi.v2.telegram.tgbot import bot
+            bot_username = bot.username or None
+        except Exception:
+            bot_username = None
         return render_template(
             "business-settings.html",
             form=form,
@@ -292,6 +303,8 @@ class BusinessAdmin(FlaskView):
             commercial_routing_notice=commercial_routing_notice,
             active_section=active_section,
             routing_available=routing_available,
+            current_admin_uuid=current_admin_uuid,
+            bot_username=bot_username,
             routing_section_url=f"{request.path}?{urlencode({'section': 'routing'})}",
             telegram_section_url=f"{request.path}?{urlencode({'section': 'telegram'})}",
             yookassa_section_url=f"{request.path}?{urlencode({'section': 'yookassa'})}",
