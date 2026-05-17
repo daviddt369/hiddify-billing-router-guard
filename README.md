@@ -60,6 +60,34 @@ This component is optional and last in priority. The routing, relay management, 
 
 ---
 
+## Why this architecture
+
+This addon stack was designed around a specific operational pattern: a **local entry node** that handles user connections, combined with **server-side routing** that decides where each traffic flow goes — without requiring users to configure anything on their devices.
+
+Three practical problems drove this design:
+
+### Application compatibility with active VPN interfaces
+
+Some applications and websites detect whether a VPN interface is active on the user's device. Behavior varies: some services work normally if the visible IP address belongs to the expected region, others restrict access regardless. In practice, operators have observed fewer compatibility issues when:
+
+- the user connects to a **local or regional entry node** rather than a foreign upstream directly
+- **server-side routing** keeps selected traffic flows local, so the visible exit IP for those flows remains regional
+- the user does not need to configure split-tunneling manually on their device — routing decisions are made on the server
+
+This does not guarantee compatibility with every application or service. Results depend on the specific detection method used.
+
+### Network traffic accounting
+
+With some internet service providers and mobile carriers, **international or cross-region traffic** is metered separately from local/domestic traffic and may carry significantly higher costs per gigabyte. Connecting users to a **local server** means their traffic is accounted as local traffic. The local server then routes only the flows that require an external upstream through the relay node, keeping the volume of metered international traffic low.
+
+This pattern allows operators to manage traffic costs without changing the user-facing connection profile.
+
+### Server-side routing instead of client-side configuration
+
+Distributing complex routing configurations to end users is fragile — clients may have outdated rule sets, misconfigure split-tunneling, or simply not know how to set it up. This stack moves routing decisions to the server: the operator configures once which traffic goes through the proxy, which goes direct, and which is dropped. Users connect with a single standard profile and receive the correct routing automatically.
+
+---
+
 ## Components
 
 | Component | Description |
