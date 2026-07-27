@@ -1,0 +1,166 @@
+<!-- VPN Trial Widget — вставить в блок "Пользовательский HTML" в WordPress -->
+<style>
+.vpn-box {
+  max-width: 480px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+}
+.vpn-box h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.vpn-row {
+  display: flex;
+  gap: 8px;
+}
+.vpn-box input[type="tel"] {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color .2s;
+}
+.vpn-box input[type="tel"]:focus { border-color: #0073aa; }
+.vpn-box button {
+  padding: 10px 18px;
+  background: #0073aa;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+}
+.vpn-box button:disabled { background: #aaa; cursor: default; }
+.vpn-msg { margin-top: 12px; font-size: 14px; }
+.vpn-msg.error { color: #c00; }
+.vpn-msg.ok   { color: #1a7f37; }
+.vpn-result { margin-top: 16px; }
+.vpn-result a {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  color: #333;
+  text-decoration: none;
+  font-size: 13px;
+  word-break: break-all;
+}
+.vpn-qr { margin-top: 12px; }
+.vpn-qr canvas, .vpn-qr img { border-radius: 8px; }
+</style>
+
+<div class="vpn-box" id="vpn-widget">
+  <h3>Пробный VPN — 2 дня бесплатно</h3>
+  <div class="vpn-row">
+    <input type="tel" id="vpn-phone" placeholder="+7 (___) ___-__-__" maxlength="18">
+    <button id="vpn-btn" onclick="vpnSubmit()">Получить</button>
+  </div>
+  <div id="vpn-msg" class="vpn-msg" style="display:none"></div>
+  <div id="vpn-result" class="vpn-result" style="display:none">
+    <div id="vpn-qr" class="vpn-qr"></div>
+    <div>Ссылка подписки (скопируйте в клиент):</div>
+    <a id="vpn-link" href="#" target="_blank"></a>
+  </div>
+</div>
+
+<!-- QR-code library (MIT, ~15KB) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+        integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSRX5aKRg/4v6J4Ysl7ov6b6tIDTgXHZXGyw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+// ═══ CONFIG ════════════════════════════════════════════════════════════════════
+var VPN_API = "https://ruhook.cheburnator.site/RfU0VwUcVvhDmZmZz3ibZfp/api/v2/trial/";
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var _qrInst = null;
+
+function vpnMsg(text, type) {
+  var el = document.getElementById("vpn-msg");
+  el.textContent = text;
+  el.className = "vpn-msg " + (type || "");
+  el.style.display = text ? "" : "none";
+}
+
+function vpnShowResult(url, msgText, isNew) {
+  vpnMsg(msgText, isNew ? "ok" : "");
+
+  var link = document.getElementById("vpn-link");
+  link.href = url;
+  link.textContent = url;
+
+  var qrDiv = document.getElementById("vpn-qr");
+  qrDiv.innerHTML = "";
+  try {
+    _qrInst = new QRCode(qrDiv, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) { /* QRCode lib not loaded — skip */ }
+
+  document.getElementById("vpn-result").style.display = "";
+}
+
+function vpnSubmit() {
+  var phone = (document.getElementById("vpn-phone").value || "").trim();
+  if (!phone) { vpnMsg("Введите номер телефона", "error"); return; }
+
+  var btn = document.getElementById("vpn-btn");
+  btn.disabled = true;
+  vpnMsg("Отправляем запрос…", "");
+  document.getElementById("vpn-result").style.display = "none";
+
+  fetch(VPN_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: phone })
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    var d = res.data;
+    btn.disabled = false;
+    if (d.status === "created") {
+      vpnShowResult(d.sub_url, "✅ " + d.message, true);
+    } else if (d.status === "exists") {
+      vpnShowResult(d.sub_url, "ℹ️ " + d.message + ". Ваша ссылка ниже:", false);
+    } else {
+      vpnMsg("❌ " + (d.message || "Ошибка"), "error");
+    }
+  })
+  .catch(function(e) {
+    btn.disabled = false;
+    vpnMsg("❌ Нет связи с сервером. Попробуйте позже.", "error");
+  });
+}
+
+// Форматирование при вводе (маска +7 ...)
+document.getElementById("vpn-phone").addEventListener("input", function(e) {
+  var v = this.value.replace(/\D/g, "");
+  if (v.startsWith("8") && v.length === 1) v = "7";
+  if (v.startsWith("7") && v.length > 0) {
+    var d = v.slice(1);
+    var out = "+7";
+    if (d.length > 0) out += " (" + d.slice(0,3);
+    if (d.length >= 3) out += ") " + d.slice(3,6);
+    if (d.length >= 6) out += "-" + d.slice(6,8);
+    if (d.length >= 8) out += "-" + d.slice(8,10);
+    this.value = out;
+  }
+});
+
+document.getElementById("vpn-phone").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") vpnSubmit();
+});
+</script>
