@@ -59,8 +59,41 @@ sudo bash release/clean-install-full-stack.sh
 | **Routing** | Серверные правила маршрутизации, управление upstream-нодами (VLESS, Trojan, WireGuard), relay-нода, health probe |
 | **Anti-share** | IP-скоринг для обнаружения шаринга аккаунтов, опциональный nftables |
 | **Business** | Telegram-бот, тарифные планы, биллинг, интеграция с ЮKassa |
+| **Web Trial** | REST-эндпоинт выдачи пробных подписок по номеру телефона — без Telegram, с любого сайта |
 
 Модули независимы — можно поставить только нужные.
+
+---
+
+## Web Trial — пробный доступ с сайта
+
+REST API эндпоинт, который выдаёт пробную подписку (2 дня / 1 ГБ) по номеру телефона +7 — без Telegram-бота и без регистрации аккаунта.
+
+**Эндпоинт:** `POST /<proxy_path>/api/v2/trial/`
+
+**Запрос:**
+```json
+{ "phone": "+79001234567" }
+```
+
+**Ответ:**
+```json
+{ "status": "created", "sub_url": "https://...", "message": "..." }
+```
+
+**Параметры (в `trial.py`):**
+
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `TRIAL_PACKAGE_DAYS` | `2` | Срок действия подписки |
+| `TRIAL_USAGE_LIMIT_GB` | `1` | Лимит трафика |
+| `TRIAL_MAX_IPS` | `1` | Максимум устройств |
+| `_RATE_MAX` | `2` | Запросов с одного IP в час |
+| `WEB_TRIAL_CORS_ORIGIN` (env) | `*` | Разрешённый CORS-origin |
+
+**Встраивание на сайт:** см. `widget.html` — готовый HTML-виджет с маской телефона, QR-кодом и инструкцией по подключению.
+
+**Обход блокировок:** если ваш домен панели заблокирован провайдером, запросы можно проксировать через сервер сайта (PHP, nginx). Браузер обращается к вашему сайту, сайт передаёт запрос на панель сервер-сервер.
 
 ---
 
@@ -194,8 +227,41 @@ Hiddify Manager 12.3.0 and newer are **not supported**. The upstream project cha
 | **Routing** | Server-side routing rules, upstream node management (VLESS, Trojan, WireGuard), relay-node support, health probe |
 | **Anti-share** | IP-scoring detection of shared accounts, optional nftables enforcement |
 | **Business** | Telegram bot, tariff plans, billing hooks, YooKassa payment integration |
+| **Web Trial** | REST endpoint to issue trial subscriptions by phone number — no Telegram required, embeds in any website |
 
 All modules are independent — install only what you need.
+
+---
+
+## Web Trial — website-based trial access
+
+REST API endpoint that issues a trial subscription (2 days / 1 GB) by phone number — no Telegram bot, no account registration required.
+
+**Endpoint:** `POST /<proxy_path>/api/v2/trial/`
+
+**Request:**
+```json
+{ "phone": "+79001234567" }
+```
+
+**Response:**
+```json
+{ "status": "created", "sub_url": "https://...", "message": "..." }
+```
+
+**Configuration (in `trial.py`):**
+
+| Variable | Default | Description |
+|---|---|---|
+| `TRIAL_PACKAGE_DAYS` | `2` | Trial duration in days |
+| `TRIAL_USAGE_LIMIT_GB` | `1` | Traffic limit |
+| `TRIAL_MAX_IPS` | `1` | Max simultaneous devices |
+| `_RATE_MAX` | `2` | Max requests per IP per hour |
+| `WEB_TRIAL_CORS_ORIGIN` (env) | `*` | Allowed CORS origin |
+
+**Embedding:** see `widget.html` — a ready-made HTML widget with phone mask input, QR code, and connection instructions.
+
+**Bypassing ISP blocks:** if your panel domain is blocked by ISPs, proxy requests through your website server (PHP, nginx). The browser calls your site; your site forwards the request to the panel server-to-server.
 
 ---
 
