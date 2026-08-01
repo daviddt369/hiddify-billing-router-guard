@@ -54,7 +54,40 @@ def _normalize_phone(value: str | None) -> str:
         digits = "7" + digits[1:]
     if not digits.startswith("7") and len(digits) == 10:
         digits = "7" + digits
+    if not digits.startswith("7") or len(digits) != 11:
+        return ""
     return f"+{digits}"
+
+
+_COMMENT_MAX_LEN = 512
+
+
+def _build_trial_comment(
+    sender_id: int,
+    username: str | None,
+    first_name: str | None,
+    last_name: str | None,
+) -> str:
+    def _safe(s: str | None) -> str:
+        if not s:
+            return ""
+        return "".join(
+            ch for ch in s
+            if ch >= " " and ch not in ("\n", "\r", "\t", "\x00")
+        ).strip()
+
+    parts = [f"Telegram trial signup | tg_id:{sender_id}"]
+    uname = _safe(username)
+    if uname:
+        parts.append(f"@{uname}")
+    full_name = " ".join(p for p in (_safe(first_name), _safe(last_name)) if p)
+    if full_name:
+        parts.append(full_name)
+    return " | ".join(parts)[:_COMMENT_MAX_LEN]
+
+
+class _DuplicateTelegramId(Exception):
+    pass
 
 
 def _sanitize_tg_html(text: str) -> str:
@@ -455,17 +488,31 @@ def _bind_user_to_telegram(user: User, chat_id: int, force: bool = False) -> boo
     if not user.username:
         user.username = user.name
     db.session.add(user)
-    db.session.flush()
-    db.session.commit()
+    try:
+        db.session.flush()
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     db.session.refresh(user)
     return int(user.telegram_id or 0) == int(chat_id)
 
 
-def _create_user_from_phone(phone: str, chat_id: int) -> User:
+def _create_user_from_phone(
+    phone: str,
+    sender_id: int,
+    *,
+    tg_username: str | None = None,
+    tg_first_name: str | None = None,
+    tg_last_name: str | None = None,
+) -> User:
+    if User.query.filter(User.telegram_id == sender_id).first():
+        raise _DuplicateTelegramId()
+    comment = _build_trial_comment(sender_id, tg_username, tg_first_name, tg_last_name)
     user = User(
         name=phone,
         username=phone,
-        telegram_id=int(chat_id),
+        telegram_id=sender_id,
         added_by=_default_added_by_id(),
         enable=True,
         usage_limit=TRIAL_USAGE_LIMIT_GB * ONE_GIG,
@@ -474,10 +521,14 @@ def _create_user_from_phone(phone: str, chat_id: int) -> User:
         mode=UserMode.no_reset,
         start_date=datetime.date.today(),
         last_reset_time=datetime.date.today(),
-        comment="Telegram trial signup",
+        comment=comment,
     )
-    db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.add(user)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     db.session.refresh(user)
     hiddify.quick_apply_users()
     return user
@@ -513,62 +564,78 @@ def _send_first_link_welcome(chat_id: int, user: User) -> bool:
 
 # ─── Phone lookup / registration ──────────────────────────────────────────────
 
-def _handle_phone_lookup(message, phone: str, allow_rebind: bool = False):
-    user = _find_user_by_phone(phone)
-    if user:
-        new_binding = not bool(user.telegram_id)
-        if not _bind_user_to_telegram(user, message.chat.id, force=allow_rebind):
-            _notify_admins_for_user(
-                user,
-                text=(
-                    f"Заблокирована попытка перепривязки Telegram\n"
-                    f"Телефон: {user.name}\n"
-                    f"UUID: {user.uuid}\n"
-                    f"Текущий Telegram ID: {user.telegram_id}\n"
-                    f"Новый Telegram ID: {message.chat.id}"
-                ),
-            )
-            bot.reply_to(
-                message,
-                _("Этот аккаунт уже привязан к другому Telegram. "
-                  "Если вам нужна перепривязка, отправьте контакт со своим номером телефона."),
-                reply_markup=_phone_request_keyboard(),
-            )
-            return
-        if allow_rebind and not new_binding:
-            _notify_admins_for_user(
-                user,
-                text=(
-                    f"Аккаунт перепривязан по подтвержденному контакту\n"
-                    f"Телефон: {user.name}\n"
-                    f"UUID: {user.uuid}\n"
-                    f"Новый Telegram ID: {message.chat.id}"
-                ),
-            )
-        if new_binding:
-            _send_first_link_welcome(message.chat.id, user)
-        _send_user_home(message.chat.id, user)
+def _handle_phone_lookup(message, phone: str, sender_id: int):
+    existing_by_tg    = User.query.filter(User.telegram_id == sender_id).first()
+    existing_by_phone = _find_user_by_phone(phone)
+
+    # D/F: оба найдены, разные записи
+    if existing_by_tg and existing_by_phone and existing_by_tg.id != existing_by_phone.id:
+        bot.reply_to(message, _("Этот Telegram-аккаунт уже связан с другим VPN-доступом. Обратитесь к администратору."), reply_markup=_admin_contact_keyboard())
         return
 
-    # New user — create trial automatically
-    user = _create_user_from_phone(phone, message.chat.id)
+    # B: TG найден, тот же пользователь
+    if existing_by_tg and existing_by_phone and existing_by_tg.id == existing_by_phone.id:
+        _send_user_home(message.chat.id, existing_by_tg)
+        return
+
+    # D: TG найден, номер не найден
+    if existing_by_tg and not existing_by_phone:
+        bot.reply_to(message, _("С этого Telegram-аккаунта уже выдавался доступ к VPN. Используйте меню для управления подпиской."), reply_markup=_user_menu_keyboard(existing_by_tg))
+        _send_user_home(message.chat.id, existing_by_tg)
+        return
+
+    # C: TG не найден, номер привязан к другому TG ID
+    if not existing_by_tg and existing_by_phone:
+        existing_phone_tg = int(existing_by_phone.telegram_id or 0)
+        if existing_phone_tg and existing_phone_tg != sender_id:
+            _notify_admins_for_user(existing_by_phone, text=(f"Отказ в привязке: номер занят другим Telegram ID\nТекущий Telegram ID: {existing_by_phone.telegram_id}\nЗапрошенный Telegram ID: {sender_id}"))
+            bot.reply_to(message, _("Этот номер уже привязан к другому Telegram-аккаунту. Обратитесь к администратору для разрешения ситуации."), reply_markup=_admin_contact_keyboard())
+            return
+
+    # A/E/F: TG не найден, номер найден без telegram_id — первичная привязка
+    if not existing_by_tg and existing_by_phone:
+        try:
+            bound = _bind_user_to_telegram(existing_by_phone, sender_id, force=False)
+        except Exception:
+            logger.exception("bind_user_to_telegram failed user_id=%s", existing_by_phone.id)
+            bot.reply_to(message, _("Произошла ошибка при привязке аккаунта. Попробуйте позже или обратитесь к администратору."), reply_markup=_admin_contact_keyboard())
+            return
+        if not bound:
+            bot.reply_to(message, _("Этот номер уже привязан к другому Telegram-аккаунту. Обратитесь к администратору для разрешения ситуации."), reply_markup=_admin_contact_keyboard())
+            return
+        _notify_admins_for_user(existing_by_phone, text=(f"Аккаунт привязан по подтверждённому контакту\nTelegram ID: {sender_id}"))
+        _send_first_link_welcome(message.chat.id, existing_by_phone)
+        _send_user_home(message.chat.id, existing_by_phone)
+        return
+
+    # G: ни TG, ни номер не найдены — создать новый Telegram Trial
+    try:
+        user = _create_user_from_phone(
+            phone, sender_id,
+            tg_username=getattr(message.from_user, "username", None),
+            tg_first_name=getattr(message.from_user, "first_name", None),
+            tg_last_name=getattr(message.from_user, "last_name", None),
+        )
+    except _DuplicateTelegramId:
+        existing_by_tg = User.query.filter(User.telegram_id == sender_id).first()
+        bot.reply_to(message, _("С этого Telegram-аккаунта уже выдавался доступ к VPN. Используйте меню для управления подпиской."), reply_markup=_user_menu_keyboard(existing_by_tg))
+        if existing_by_tg:
+            _send_user_home(message.chat.id, existing_by_tg)
+        return
+    except Exception:
+        logger.exception("telegram trial user creation failed sender_id=%s", sender_id)
+        bot.reply_to(message, _("Не удалось создать пробный доступ. Попробуйте позже или обратитесь к администратору."), reply_markup=_admin_contact_keyboard())
+        return
+
     bot.reply_to(
         message,
         _("Добро пожаловать! Вам выдан пробный доступ: %(gb)s ГБ на %(days)s дн.",
           gb=TRIAL_USAGE_LIMIT_GB, days=TRIAL_PACKAGE_DAYS),
         reply_markup=_user_menu_keyboard(user),
     )
+    _notify_admins_for_user(user, text=(f"Новый пользователь зарегистрирован\nTelegram ID: {sender_id}\nСтатус: trial {TRIAL_USAGE_LIMIT_GB} ГБ / {TRIAL_PACKAGE_DAYS} дн."))
     _send_first_link_welcome(message.chat.id, user)
     _send_my_subscription(message.chat.id, user)
-    _notify_admins_for_user(
-        user,
-        text=(
-            f"Новый пользователь зарегистрирован\n"
-            f"Телефон: {user.name}\n"
-            f"UUID: {user.uuid}\n"
-            f"Статус: trial {TRIAL_USAGE_LIMIT_GB} ГБ / {TRIAL_PACKAGE_DAYS} дней"
-        ),
-    )
     plans_markup = _plans_keyboard()
     if plans_markup:
         bot.send_message(
@@ -639,9 +706,28 @@ def send_welcome(message):
 def handle_phone_contact(message):
     if _is_admin_chat(getattr(message.chat, "id", None)):
         return
+    contact_user_id = getattr(message.contact, "user_id", None)
+    sender_id = getattr(message.from_user, "id", None)
+    if (
+        contact_user_id is None
+        or sender_id is None
+        or int(contact_user_id) != int(sender_id)
+    ):
+        bot.reply_to(
+            message,
+            _("Можно делиться только своим номером телефона."),
+            reply_markup=_phone_request_keyboard(),
+        )
+        return
     phone = _normalize_phone(getattr(message.contact, "phone_number", None))
-    if phone:
-        _handle_phone_lookup(message, phone, allow_rebind=True)
+    if not phone:
+        bot.reply_to(
+            message,
+            _("Не удалось распознать номер. Убедитесь, что в Telegram указан российский номер +7."),
+            reply_markup=_phone_request_keyboard(),
+        )
+        return
+    _handle_phone_lookup(message, phone, sender_id)
 
 
 @bot.message_handler(
@@ -653,10 +739,12 @@ def handle_user_message(message):
     text = (message.text or "").strip()
     instr_btn = _telegram_instruction_button_text()
 
-    # Phone number text input
-    phone = _normalize_phone(text)
-    if phone:
-        _handle_phone_lookup(message, phone, allow_rebind=False)
+    if _normalize_phone(text):
+        bot.reply_to(
+            message,
+            _("Для регистрации нажмите кнопку «Отправить номер телефона»."),
+            reply_markup=_phone_request_keyboard(),
+        )
         return
 
     user = User.query.filter(User.telegram_id == message.chat.id).order_by(User.id.desc()).first()
