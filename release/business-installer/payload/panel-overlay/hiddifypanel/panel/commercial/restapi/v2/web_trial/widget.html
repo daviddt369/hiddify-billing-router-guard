@@ -78,7 +78,7 @@
 
 <script>
 // ═══ CONFIG ════════════════════════════════════════════════════════════════════
-var VPN_API = "https://ruhook.cheburnator.site/RfU0VwUcVvhDmZmZz3ibZfp/api/v2/trial/";
+var VPN_API = "https://YOUR_DOMAIN/YOUR_PROXY_PATH/api/v2/trial/";
 // ═══════════════════════════════════════════════════════════════════════════════
 
 var _qrInst = null;
@@ -134,7 +134,7 @@ function vpnSubmit() {
     if (d.status === "created") {
       vpnShowResult(d.sub_url, "✅ " + d.message, true);
     } else if (d.status === "exists") {
-      vpnShowResult(d.sub_url, "ℹ️ " + d.message + ". Ваша ссылка ниже:", false);
+      vpnMsg("ℹ️ " + d.message, "");
     } else {
       vpnMsg("❌ " + (d.message || "Ошибка"), "error");
     }

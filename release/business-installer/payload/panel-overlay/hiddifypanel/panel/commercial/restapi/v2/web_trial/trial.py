@@ -133,8 +133,7 @@ class WebTrialResource(Resource):
             if existing:
                 return {
                     "status": "exists",
-                    "sub_url": _sub_url(existing),
-                    "message": "Подписка уже существует",
+                    "message": "Пробная подписка на этот номер уже выдавалась",
                 }, 200, headers
 
             user = _create_trial_user(phone)
@@ -148,6 +147,7 @@ class WebTrialResource(Resource):
             }, 201, headers
 
         except Exception as exc:
+            db.session.rollback()
             logger.exception("Web trial signup failed: %s", exc)
             return {
                 "status": "error",

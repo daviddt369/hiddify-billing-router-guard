@@ -93,7 +93,7 @@ REST API эндпоинт, который выдаёт пробную подпи
 
 **Встраивание на сайт:** см. `widget.html` — готовый HTML-виджет с маской телефона, QR-кодом и инструкцией по подключению.
 
-**Обход блокировок:** если ваш домен панели заблокирован провайдером, запросы можно проксировать через сервер сайта (PHP, nginx). Браузер обращается к вашему сайту, сайт передаёт запрос на панель сервер-сервер.
+**Обход блокировок:** если ваш домен панели заблокирован провайдером, используйте `wordpress-proxy.php` — WordPress REST API прокси, который передаёт запросы сервер-сервер. Включает rate limiting через WordPress transients (по реальному IP клиента, 2 запроса в час), не зависит от количества воркеров панели.
 
 ---
 
@@ -261,7 +261,7 @@ REST API endpoint that issues a trial subscription (2 days / 1 GB) by phone numb
 
 **Embedding:** see `widget.html` — a ready-made HTML widget with phone mask input, QR code, and connection instructions.
 
-**Bypassing ISP blocks:** if your panel domain is blocked by ISPs, proxy requests through your website server (PHP, nginx). The browser calls your site; your site forwards the request to the panel server-to-server.
+**Bypassing ISP blocks:** use `wordpress-proxy.php` — a WordPress REST API proxy that forwards requests server-to-server. Includes rate limiting via WordPress transients (keyed on the real client IP, 2 requests/hour), independent of the panel's worker count.
 
 ---
 
