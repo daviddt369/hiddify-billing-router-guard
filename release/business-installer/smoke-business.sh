@@ -12,6 +12,7 @@ SMOKE_IMPORTS=(
   hiddifypanel.panel.commercial.telegrambot.Usage
   hiddifypanel.panel.commercial.restapi.v1.tgbot
   hiddifypanel.panel.commercial.restapi.v1.tgmsg
+  hiddifypanel.panel.commercial.restapi.v2.web_trial.trial
   hiddifypanel.panel.commercial.capabilities
   hiddifypanel.panel.admin
   hiddifypanel.panel.admin.BusinessAdmin

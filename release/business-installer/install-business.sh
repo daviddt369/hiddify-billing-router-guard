@@ -15,6 +15,7 @@ BASE_IMPORTS=(
   hiddifypanel.panel.commercial.restapi.v1.tgbot
   hiddifypanel.panel.commercial.restapi.v1.tgmsg
   hiddifypanel.panel.commercial.restapi.v2.telegram.tgbot
+  hiddifypanel.panel.commercial.restapi.v2.web_trial.trial
   hiddifypanel.panel.commercial.capabilities
   hiddifypanel.panel.admin
 )
@@ -65,6 +66,8 @@ main() {
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/__init__.py" "$panel_root/panel/commercial/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/telegram/__init__.py" "$panel_root/panel/commercial/restapi/v2/telegram/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/telegram/tgbot.py" "$panel_root/panel/commercial/restapi/v2/telegram/tgbot.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/web_trial/__init__.py" "$panel_root/panel/commercial/restapi/v2/web_trial/__init__.py" 0644
+    install_payload_file "panel-overlay/hiddifypanel/panel/commercial/restapi/v2/web_trial/trial.py" "$panel_root/panel/commercial/restapi/v2/web_trial/trial.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/__init__.py" "$panel_root/panel/commercial/telegrambot/__init__.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/Usage.py" "$panel_root/panel/commercial/telegrambot/Usage.py" 0644
     install_payload_file "panel-overlay/hiddifypanel/panel/commercial/telegrambot/admin.py" "$panel_root/panel/commercial/telegrambot/admin.py" 0644
@@ -111,6 +114,8 @@ main() {
       "$panel_root/panel/commercial/__init__.py" \
       "$panel_root/panel/commercial/restapi/v2/telegram/__init__.py" \
       "$panel_root/panel/commercial/restapi/v2/telegram/tgbot.py" \
+      "$panel_root/panel/commercial/restapi/v2/web_trial/__init__.py" \
+      "$panel_root/panel/commercial/restapi/v2/web_trial/trial.py" \
       "$panel_root/panel/commercial/telegrambot/__init__.py" \
       "$panel_root/panel/commercial/telegrambot/Usage.py" \
       "$panel_root/panel/commercial/telegrambot/admin.py" \
