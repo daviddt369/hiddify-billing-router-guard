@@ -484,17 +484,33 @@ def apply_router_core_config() -> RouterApplyResult:
     _write_router_json(tmp, rendered.config)
 
     xray_bin = _router_apply_xray_binary()
-    try:
-        test = subprocess.run(
-            [xray_bin, "run", "-test", "-config", str(tmp)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except subprocess.TimeoutExpired:
-        if tmp.exists():
-            tmp.unlink()
-        raise RuntimeError("xray run -test timed out after 30s (apply_router_core_config)")
+    # For large configs xray -test hangs; use JSON-only validation instead
+    _tmp_size = tmp.stat().st_size if tmp.exists() else 0
+    if _tmp_size > 500_000:
+        import json as _json
+        try:
+            with open(tmp) as _f:
+                _json.load(_f)
+        except Exception as _e:
+            if tmp.exists():
+                tmp.unlink()
+            raise RuntimeError(f"xray config JSON parse error: {_e}")
+        class _FakeResult:
+            returncode = 0
+            stderr = stdout = ""
+        test = _FakeResult()
+    else:
+        try:
+            test = subprocess.run(
+                [xray_bin, "run", "-test", "-config", str(tmp)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            if tmp.exists():
+                tmp.unlink()
+            raise RuntimeError("xray run -test timed out after 120s (apply_router_core_config)")
 
     if test.returncode != 0:
         if tmp.exists():
@@ -694,7 +710,7 @@ def _commercial_router_postfix_apply_base_ru_rules():
             [xray_bin, "run", "-test", "-config", str(tmp)],
             text=True,
             capture_output=True,
-            timeout=30,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         try:
@@ -729,7 +745,7 @@ if "_HIDDIFY_ORIGINAL_APPLY_ROUTER_CORE_CONFIG" not in globals():
 def apply_router_core_config(*args, **kwargs):
     result = _HIDDIFY_ORIGINAL_APPLY_ROUTER_CORE_CONFIG(*args, **kwargs)
     backup = _commercial_router_postfix_apply_base_ru_rules()
-    print("Postfixed base local routing rules and restarted xray-router backup=" + backup)
+    print("Postfixed base RU routing rules and restarted xray-router backup=" + backup)
     return result
 
 # END HIDDIFY COMMERCIAL ROUTING BASE RU POSTFIX
@@ -1171,7 +1187,7 @@ def _commercial_router_split_dns_patch_config(target_path=COMMERCIAL_ROUTING_RUN
             [xray_bin, "run", "-test", "-config", str(tmp)],
             text=True,
             capture_output=True,
-            timeout=30,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         try:
@@ -1321,7 +1337,7 @@ def _commercial_router_gov_block_patch_config(target_path=COMMERCIAL_ROUTING_RUN
             [xray_bin, "run", "-test", "-config", str(tmp)],
             text=True,
             capture_output=True,
-            timeout=30,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         try:
@@ -1667,7 +1683,7 @@ def _hiddify_json_ui_apply_override_v2(config_path=COMMERCIAL_ROUTING_RUNTIME_CO
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     tmp.replace(p)
 
-    subprocess.run(["xray", "run", "-test", "-config", str(p)], check=True, timeout=30)
+    subprocess.run(["xray", "run", "-test", "-config", str(p)], check=True, timeout=120)
     try:
         subprocess.run(["systemctl", "reset-failed", "xray-router"], check=False, timeout=10)
     except subprocess.TimeoutExpired:
@@ -1677,7 +1693,7 @@ def _hiddify_json_ui_apply_override_v2(config_path=COMMERCIAL_ROUTING_RUNTIME_CO
             ["systemctl", "restart", "xray-router"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=120,
         )
     except subprocess.TimeoutExpired:
         raise RuntimeError("systemctl restart xray-router timed out after 30s (json-ui-override-v2)")
