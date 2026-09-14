@@ -11,6 +11,8 @@ readonly DR_SERVICE_BG="hiddify-panel-background-tasks"
 readonly DR_APP_CFG="${DR_APP_CFG:-$DR_INSTALL_ROOT/hiddify-panel/app.cfg}"
 readonly DR_PANEL_SECRETS="/etc/hiddify-panel/panel-secrets.env"
 readonly DR_SELECTEL_PLACEHOLDER="__SELECTEL_XHTTP_PATH__"
+readonly DR_BACKUP_ENV="${DR_BACKUP_ENV:-/etc/vpn-ru-node/backup.env}"
+readonly DR_OFFSITE_PREFIX="snapshots"
 
 DR_BLOCK="dr"
 
@@ -142,6 +144,38 @@ dr_render_selectel_file() {
     sed "s#${DR_SELECTEL_PLACEHOLDER}#${secret_path#/}#g" "$src" > "$dest.tmp"
     install -m "$mode" "$dest.tmp" "$dest"
     rm -f "$dest.tmp"
+}
+
+# Offsite (Selectel S3) support ---------------------------------------------
+#
+# Credentials + the age public key live in $DR_BACKUP_ENV (root-only, 0600,
+# never in git — see .gitignore's *secret*/*.env patterns). Loading it sets:
+#   SELECTEL_S3_ACCESS_KEY, SELECTEL_S3_SECRET_KEY, SELECTEL_S3_ENDPOINT,
+#   SELECTEL_S3_BUCKET, DR_AGE_PUBLIC_KEY
+# The private age key is deliberately NEVER stored on the server — only the
+# user holds it (offsite backups are asymmetrically encrypted: this box can
+# write them, it cannot read them back, so compromising the server alone
+# cannot expose historical offsite backups).
+dr_load_backup_env() {
+    [[ -f "$DR_BACKUP_ENV" ]] || dr_die "Offsite backup config not found: $DR_BACKUP_ENV (see disaster-recovery/README.ru.md for setup)"
+    set -a
+    # shellcheck disable=SC1090
+    source "$DR_BACKUP_ENV"
+    set +a
+    for var in SELECTEL_S3_ACCESS_KEY SELECTEL_S3_SECRET_KEY SELECTEL_S3_ENDPOINT SELECTEL_S3_BUCKET DR_AGE_PUBLIC_KEY; do
+        [[ -n "${!var:-}" ]] || dr_die "$DR_BACKUP_ENV is missing required variable: $var"
+    done
+}
+
+# rclone's connection-string ("on the fly remote") syntax wants a bare host,
+# not a full URL — passing the https:// scheme through produces a mangled
+# request (discovered live: "https://https/host..."). Strip it here once so
+# every caller gets it right.
+dr_rclone_remote() {
+    local host="${SELECTEL_S3_ENDPOINT#https://}"
+    host="${host#http://}"
+    printf ':s3,provider=Other,access_key_id=%s,secret_access_key=%s,endpoint=%s:%s' \
+        "$SELECTEL_S3_ACCESS_KEY" "$SELECTEL_S3_SECRET_KEY" "$host" "$SELECTEL_S3_BUCKET"
 }
 
 # Idempotently appends a snippet block to an existing file if a marker

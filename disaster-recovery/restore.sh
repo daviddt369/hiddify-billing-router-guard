@@ -12,7 +12,15 @@
 # leaving that live for any window risks it requesting certs / registering
 # webhooks against the wrong identity before the real data lands.
 #
-# Usage: sudo bash restore.sh <snapshot-bundle-dir>
+# Usage:
+#   sudo bash restore.sh <snapshot-bundle-dir>
+#   sudo bash restore.sh --from-offsite <path-to-age-private-key-file>
+#
+# The second form fetches the newest encrypted snapshot straight from the
+# Selectel bucket and decrypts it here. Requires /etc/vpn-ru-node/backup.env
+# (S3 credentials — copy it from the old server) to already be in place; the
+# age PRIVATE key is deliberately never stored on any server, so it must be
+# supplied explicitly, once, for this run only.
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,20 +29,67 @@ source "$SCRIPT_DIR/common-dr.sh"
 DR_BLOCK="restore"
 trap dr_error_trap ERR
 BUNDLE="${1:-}"
+FROM_OFFSITE=0
+AGE_KEY_FILE=""
+FETCHED_TMPDIR=""
+
+if [[ "${1:-}" == "--from-offsite" ]]; then
+    FROM_OFFSITE=1
+    AGE_KEY_FILE="${2:-}"
+fi
 
 usage() {
     cat <<'EOF'
-Usage: sudo bash restore.sh <snapshot-bundle-dir>
+Usage:
+  sudo bash restore.sh <snapshot-bundle-dir>
+  sudo bash restore.sh --from-offsite <path-to-age-private-key-file>
 
   <snapshot-bundle-dir>  A directory produced by disaster-recovery/snapshot.sh
                          (must contain mariadb-full-dump.sql).
+  --from-offsite         Fetch + decrypt the newest snapshot from the
+                         Selectel bucket configured in
+                         /etc/vpn-ru-node/backup.env instead of using a
+                         local directory.
 EOF
+}
+
+fetch_from_offsite() {
+    dr_step "Fetching newest snapshot from offsite (Selectel)"
+    dr_need_cmd rclone
+    dr_need_cmd age
+    [[ -n "$AGE_KEY_FILE" ]] || { usage; dr_die "Missing age private key file path after --from-offsite"; }
+    [[ -f "$AGE_KEY_FILE" ]] || dr_die "age private key file not found: $AGE_KEY_FILE"
+    dr_load_backup_env
+
+    local remote newest tmpdir
+    remote="$(dr_rclone_remote)/$DR_OFFSITE_PREFIX/"
+    newest="$(rclone lsf "$remote" --files-only 2>/dev/null | sort | tail -1)"
+    [[ -n "$newest" ]] || dr_die "No snapshots found at $remote"
+    dr_log "Newest offsite snapshot: $newest"
+
+    tmpdir="$(mktemp -d /root/dr-restore-fetched.XXXXXX)"
+    FETCHED_TMPDIR="$tmpdir"
+    rclone copyto "${remote}${newest}" "$tmpdir/${newest}"
+    dr_log "Downloaded, decrypting..."
+    age -d -i "$AGE_KEY_FILE" -o "$tmpdir/bundle.tar.gz" "$tmpdir/${newest}"
+    rm -f "$tmpdir/${newest}"
+    tar -C "$tmpdir" -xzf "$tmpdir/bundle.tar.gz"
+    rm -f "$tmpdir/bundle.tar.gz"
+
+    local extracted
+    extracted="$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | head -1)"
+    [[ -n "$extracted" ]] || dr_die "Decrypted archive did not contain a snapshot directory"
+    BUNDLE="$extracted"
+    dr_log "Decrypted snapshot ready at: $BUNDLE"
 }
 
 preflight() {
     dr_require_root
     dr_need_cmd mariadb
     dr_need_cmd tar
+    if [[ "$FROM_OFFSITE" -eq 1 ]]; then
+        fetch_from_offsite
+    fi
     [[ -n "$BUNDLE" ]] || { usage; dr_die "Missing snapshot bundle argument"; }
     [[ -d "$BUNDLE" ]] || dr_die "Bundle directory not found: $BUNDLE"
     [[ -f "$BUNDLE/mariadb-full-dump.sql" ]] || dr_die "Bundle is missing mariadb-full-dump.sql — is this a real snapshot.sh output dir?"
@@ -247,6 +302,11 @@ main() {
     start_and_verify
     smoke_test_direct
     print_manual_steps
+
+    if [[ -n "$FETCHED_TMPDIR" && -d "$FETCHED_TMPDIR" ]]; then
+        dr_log "Cleaning up decrypted temp copy: $FETCHED_TMPDIR"
+        rm -rf "$FETCHED_TMPDIR"
+    fi
 }
 
 main "$@"

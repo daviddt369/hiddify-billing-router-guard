@@ -1,0 +1,15 @@
+[Unit]
+Description=VPN Ru Node disaster-recovery snapshot + encrypted offsite backup
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /root/hiddify-billing-router-guard/disaster-recovery/scheduled-backup.sh
+WorkingDirectory=/root/hiddify-billing-router-guard
+User=root
+StandardOutput=journal
+StandardError=journal
+# A stuck/slow run (large DB, slow upload) shouldn't be killed prematurely,
+# but must not run forever either if something hangs.
+TimeoutStartSec=3600
