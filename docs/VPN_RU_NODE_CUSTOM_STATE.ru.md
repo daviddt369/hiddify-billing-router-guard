@@ -27,7 +27,7 @@ Upstream Hiddify используется только как справочна
 
 Минимальный фикс сохранён в `patches/hiddifypanel-12.0.0-xray-query-json.patch`. Он сериализует только dict/list через `json.dumps()` и не меняет scalar-параметры. Патч нельзя применять вслепую: сначала выполнить `tools/check-hiddifypanel-xray-headers-json.py` на фактическом runtime-файле.
 
-Статус production на момент фиксации: `tls_mixed_case=false` подтверждено; применение headers-патча к реально импортируемому `site-packages` не подтверждено. Ранняя правка справочной `src/`-копии была отменена.
+Статус production на 2026-09-14: `tls_mixed_case=false` подтверждено; headers-патч применён к реально импортируемому `site-packages`, прошёл однострочный diff и `py_compile`, затем активирован успешным restart `hiddify-panel.service`. Backup: `/opt/hiddify-manager/.venv313/.claude-backups/xray.py.bak-20260914-060811`. Ранняя правка справочной `src/`-копии была отменена.
 
 ### Проверка `create_app()`
 
