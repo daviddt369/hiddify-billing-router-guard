@@ -47,8 +47,16 @@ preflight() {
 }
 
 install_base_hiddify() {
-    dr_step "Installing base Hiddify Manager $HIDDIFY_TAG (pinned upstream installer)"
-    bash <(curl -fsSL "https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/${HIDDIFY_TAG}/common/download.sh") "$HIDDIFY_TAG"
+    dr_step "Installing base Hiddify Manager $HIDDIFY_TAG (pinned upstream installer, non-interactive)"
+    # --no-gui / NO_UI=true are required here: without them, upstream's
+    # installer launches a cli-progress/urwid TUI that calls
+    # asyncio add_reader() on stdin, which raises
+    # "PermissionError: [Errno 1] Operation not permitted" the moment there is
+    # no real controlling terminal (any detached/scripted/automated run —
+    # exactly how this DR tool needs to work). Confirmed by an actual failed
+    # run on a throwaway VPS before this flag was added; see
+    # AGENT_COORDINATION_VPN.md for the reproduction.
+    NO_UI=true bash <(curl -fsSL "https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/${HIDDIFY_TAG}/common/download.sh") "$HIDDIFY_TAG" --no-gui
 
     dr_log "Waiting for base panel services to come up..."
     local waited=0 interval=5 max=180
