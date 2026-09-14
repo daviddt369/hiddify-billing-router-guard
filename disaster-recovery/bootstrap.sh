@@ -60,8 +60,24 @@ install_base_hiddify() {
     NO_UI=true bash <(curl -fsSL "https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/${HIDDIFY_TAG}/common/download.sh") "$HIDDIFY_TAG" --no-gui
 
     dr_log "Waiting for base panel services to come up..."
-    local waited=0 interval=5 max=180
+    local waited=0 interval=5 max=180 reset_done=0
     while [[ "$(systemctl is-active "$DR_SERVICE_PANEL" 2>/dev/null)" != "active" ]]; do
+        # The base installer itself restarts hiddify-panel repeatedly while
+        # applying per-stage config (base cert, then business/routing/
+        # antishare). On a fresh box this can trip systemd's StartLimitBurst
+        # ("Start request repeated too quickly"), leaving the unit in
+        # `failed` even though the app itself is fine — confirmed live: a
+        # plain `systemctl reset-failed && systemctl start` immediately
+        # brought it up healthy. Try that once before falling back to
+        # waiting/dying, so this doesn't need manual intervention.
+        if [[ "$reset_done" -eq 0 && "$(systemctl is-failed "$DR_SERVICE_PANEL" 2>/dev/null)" == "failed" ]]; then
+            dr_warn "$DR_SERVICE_PANEL is in 'failed' state (likely systemd start-rate-limit from the installer's own restarts) — resetting and starting once"
+            systemctl reset-failed "$DR_SERVICE_PANEL" || true
+            systemctl start "$DR_SERVICE_PANEL" || true
+            reset_done=1
+            sleep 2
+            continue
+        fi
         if [[ $waited -ge $max ]]; then
             dr_die "$DR_SERVICE_PANEL did not become active within ${max}s after base install"
         fi
