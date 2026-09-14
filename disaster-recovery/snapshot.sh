@@ -20,6 +20,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-dr.sh"
 
 DR_BLOCK="snapshot"
+trap dr_error_trap ERR
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="${1:-/root/dr-snapshots/$STAMP}"

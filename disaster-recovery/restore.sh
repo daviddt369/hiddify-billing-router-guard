@@ -19,6 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common-dr.sh"
 
 DR_BLOCK="restore"
+trap dr_error_trap ERR
 BUNDLE="${1:-}"
 
 usage() {
@@ -99,7 +100,7 @@ restore_selectel_templates() {
 
     local json_tmpl="/opt/hiddify-manager/xray/configs/05_inbounds_09_cdn_xhttp.json.j2"
     local secret_path
-    secret_path="$(grep -oE '"path"\s*:\s*"/[^"]+"' "$json_tmpl" | head -1 | grep -oE '/[^"]+$')"
+    secret_path="$(grep -oE '"path"\s*:\s*"/[^"]+"' "$json_tmpl" | head -1 | grep -oE '/[^"]+')"
     [[ -n "$secret_path" ]] || dr_die "Could not extract Selectel secret path from restored $json_tmpl"
     dr_log "Selectel path recovered from bundle (not printed — treat as secret)"
 

@@ -23,6 +23,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/common-dr.sh"
 
 DR_BLOCK="bootstrap"
+trap dr_error_trap ERR
 readonly HIDDIFY_TAG="v12.0.0"
 LOG_DIR="/opt/hiddify-manager/dr-bootstrap-logs/$(date +%Y%m%d-%H%M%S)"
 

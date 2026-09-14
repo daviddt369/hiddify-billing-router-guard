@@ -19,6 +19,18 @@ dr_step() { echo; echo "[$DR_BLOCK][STEP] $*"; }
 dr_warn() { echo "[$DR_BLOCK][WARN] $*" >&2; }
 dr_die()  { echo "[$DR_BLOCK][ERROR] $*" >&2; exit 1; }
 
+# With `set -e`, any unhandled pipeline/command failure anywhere in the
+# script exits silently — no message at all, just a dead process. This was
+# discovered the hard way: a regex bug in restore.sh's Selectel path
+# extraction failed a pipeline and the script just stopped mid-run with zero
+# diagnostic output. Every top-level script should `trap dr_error_trap ERR`
+# right after sourcing this file so a failure always prints where it died.
+dr_error_trap() {
+    local exit_code=$?
+    echo "[$DR_BLOCK][ERROR] Command failed (exit $exit_code) at ${BASH_SOURCE[1]:-?}:${BASH_LINENO[0]:-?}: ${BASH_COMMAND}" >&2
+    exit "$exit_code"
+}
+
 dr_need_cmd() {
     command -v "$1" >/dev/null 2>&1 || dr_die "Missing command: $1"
 }
