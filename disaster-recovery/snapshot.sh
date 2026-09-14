@@ -92,13 +92,22 @@ main() {
     fi
 
     dr_step "Archiving TLS/ACME certificates for all domains"
-    if [[ -d "$DR_INSTALL_ROOT/acme.sh/lib" ]]; then
-        tar -C / -czf "$OUT_DIR/secrets/acme-certs.tar.gz" \
-            "${DR_INSTALL_ROOT#/}/acme.sh/lib" \
-            $( [[ -f /root/.acme.sh/account.conf ]] && echo "root/.acme.sh/account.conf" )
+    # Two locations matter here, not just one: acme.sh/lib is its own
+    # internal cert store, but Hiddify's actual web-facing proxy reads certs
+    # from $DR_INSTALL_ROOT/ssl/<domain>.crt(.key) — acme.sh copies them
+    # there on issue/renew via --install-cert. Missing this second directory
+    # means a restore would have valid certs sitting unused in acme.sh's
+    # store while the live proxy keeps serving the fresh bootstrap cert for
+    # the NEW server's own IP. Confirmed by inspecting a real install.
+    if [[ -d "$DR_INSTALL_ROOT/acme.sh/lib" || -d "$DR_INSTALL_ROOT/ssl" ]]; then
+        local cert_paths=()
+        [[ -d "$DR_INSTALL_ROOT/acme.sh/lib" ]] && cert_paths+=("${DR_INSTALL_ROOT#/}/acme.sh/lib")
+        [[ -d "$DR_INSTALL_ROOT/ssl" ]] && cert_paths+=("${DR_INSTALL_ROOT#/}/ssl")
+        [[ -f /root/.acme.sh/account.conf ]] && cert_paths+=("root/.acme.sh/account.conf")
+        tar -C / -czf "$OUT_DIR/secrets/acme-certs.tar.gz" "${cert_paths[@]}"
         dr_log "domains found: $(find "$DR_INSTALL_ROOT/acme.sh/lib" -maxdepth 2 -iname '*_ecc' -type d 2>/dev/null | sed 's#.*/##; s/_ecc$//' | sort -u | tr '\n' ' ')"
     else
-        dr_warn "$DR_INSTALL_ROOT/acme.sh/lib not found — no certs archived"
+        dr_warn "Neither $DR_INSTALL_ROOT/acme.sh/lib nor $DR_INSTALL_ROOT/ssl found — no certs archived"
     fi
 
     dr_step "Writing manifest"
