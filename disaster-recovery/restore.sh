@@ -117,6 +117,32 @@ restore_selectel_templates() {
     dr_log "Selectel CDN templates + map entries restored"
 }
 
+apply_routing_configs() {
+    dr_step "Regenerating live Xray/HAProxy/nginx configs from the restored database"
+    # Restoring the DB alone is not enough: the actual proxy configs on disk
+    # (Xray/HAProxy/nginx) are rendered templates that only get regenerated
+    # when apply_configs.sh runs. Without this, admin/proxy access on this
+    # server's own IP fails with HTTP 421 "Misdirected Request" (SNI routing
+    # still reflects bootstrap.sh's fresh-install domains, not the restored
+    # ones) — confirmed live during rehearsal.
+    #
+    # NO_UI=true + --no-gui is required for the same reason as in
+    # bootstrap.sh: apply_configs.sh calls into install.sh, which launches a
+    # cli-progress/urwid TUI that crashes without a controlling terminal.
+    #
+    # This can legitimately take a while and may fail to obtain TLS certs
+    # for domains that don't point DNS-wise at this server yet (expected
+    # before the DNS/CDN cutover in print_manual_steps) — treated as
+    # best-effort, not fatal, with a timeout so a stuck cert-issuance retry
+    # loop can't hang the whole restore.
+    if [[ -x "$DR_INSTALL_ROOT/apply_configs.sh" ]]; then
+        NO_UI=true timeout 300 bash "$DR_INSTALL_ROOT/apply_configs.sh" --no-gui \
+            || dr_warn "apply_configs.sh did not finish cleanly within 300s — likely TLS cert issuance retries for domains not yet pointing here; routing config was still regenerated. Re-run manually after DNS/CDN cutover: sudo bash $DR_INSTALL_ROOT/apply_configs.sh"
+    else
+        dr_warn "$DR_INSTALL_ROOT/apply_configs.sh not found or not executable — routing config was NOT regenerated, admin/proxy access will likely fail with HTTP 421 until you run it manually"
+    fi
+}
+
 flush_redis() {
     dr_step "Flushing Redis cache (stale hconfig cache after a DB swap is a known risk)"
     local redis_uri
@@ -215,6 +241,7 @@ main() {
     restore_database
     restore_secrets_and_certs
     restore_selectel_templates
+    apply_routing_configs
     flush_redis
     confirm_tls_mixed_case
     start_and_verify
