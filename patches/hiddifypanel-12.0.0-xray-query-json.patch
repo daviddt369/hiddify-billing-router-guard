@@ -1,0 +1,8 @@
+--- a/hiddifypanel/hutils/proxy/xray.py
++++ b/hiddifypanel/hutils/proxy/xray.py
+@@
+     if proxy.get('transport') not in {ProxyTransport.xhttp}:
+         for k, v in proxy.get('params', {}).items():
+             if k not in q and k != "download":
+-                q[k] = v
++                q[k] = json.dumps(v) if isinstance(v, (dict, list)) else v

@@ -1,5 +1,9 @@
 # Hiddify Addon Stack
 
+> **Важно для VPN Ru Node:** это не stock Hiddify. Актуальные custom-отличия,
+> runtime-пути и CDN/generator hotfix описаны в
+> [`docs/VPN_RU_NODE_CUSTOM_STATE.ru.md`](docs/VPN_RU_NODE_CUSTOM_STATE.ru.md).
+
 > **Независимый community-проект.**
 > Это независимый community overlay addon stack для Hiddify Manager 12.0.0.
 > Проект не является аффилированным с проектом Hiddify, не одобрен им и официально не поддерживается.
