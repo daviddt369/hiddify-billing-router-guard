@@ -22,9 +22,12 @@ sudo bash disaster-recovery/restore.sh <bundle>   # restores DB/secrets/certs
 #   - re-run a smoke test through the CDN path
 ```
 
-**Not yet rehearsed end-to-end on a fresh VPS as of this writing** — check
-`AGENT_COORDINATION_VPN.md` for the latest verification status before
-trusting these scripts in a real emergency.
+**Rehearsed end-to-end on a real throwaway VPS on 2026-09-14** — `bootstrap.sh`
++ `restore.sh` with a real production snapshot (real users, secrets, keys,
+certs) came up healthy and passed a direct smoke test. The CDN path (Gcore/
+Selectel) was not exercised in that rehearsal — only the direct/origin path.
+See `AGENT_COORDINATION_VPN.md` for details and the bugs found/fixed along
+the way.
 
 Files: `common-dr.sh` (shared helpers), `snapshot.sh` (capture), `bootstrap.sh`
 (fresh-VPS platform install), `restore.sh` (data restore),
