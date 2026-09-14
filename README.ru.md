@@ -262,6 +262,7 @@ sudo bash release/antishare-installer/smoke-antishare.sh
 | [UPGRADE.ru.md](UPGRADE.ru.md) | Руководство по обновлению |
 | [docs/ARCHITECTURE.ru.md](docs/ARCHITECTURE.ru.md) | Архитектура системы и дизайн компонентов |
 | [docs/OPERATIONS.ru.md](docs/OPERATIONS.ru.md) | Эксплуатация, логи, проверки |
+| [disaster-recovery/README.ru.md](disaster-recovery/README.ru.md) | Переезд на новый сервер при потере текущего хостинга |
 | [SECURITY.md](SECURITY.md) | Политика безопасности и обращение с секретами |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Как участвовать в проекте |
 

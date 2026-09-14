@@ -1,0 +1,1 @@
+{% include '/opt/hiddify-manager/haproxy/backends/v10-cdn.cfg.pj2' %}

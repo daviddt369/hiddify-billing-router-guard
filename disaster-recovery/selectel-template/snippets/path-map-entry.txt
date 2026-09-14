@@ -1,0 +1,3 @@
+{% if hconfigs['vless_enable'] and hconfigs['xhttp_enable'] %}
+/__SELECTEL_XHTTP_PATH__ v10-vless-xhttp-cdn-http
+{% endif %}

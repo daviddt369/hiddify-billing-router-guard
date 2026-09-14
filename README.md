@@ -340,6 +340,7 @@ sudo bash release/rollback-all.sh
 | [UPGRADE.md](UPGRADE.md) | Upgrade guide |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Operations, logs, health checks |
+| [disaster-recovery/README.md](disaster-recovery/README.md) | Migrating to a new server if the current host is lost |
 | [SECURITY.md](SECURITY.md) | Security policy |
 
 ---

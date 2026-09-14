@@ -1,0 +1,5 @@
+{% if hconfigs['vless_enable'] and hconfigs['xhttp_enable'] %}
+backend v10-vless-xhttp-cdn-http
+    mode http
+    server xray abns@v10-vless-xhttp-cdn send-proxy-v2 tfo proto h2
+{% endif %}

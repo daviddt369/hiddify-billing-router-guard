@@ -1,0 +1,35 @@
+{
+    "inbounds":[
+        {% if hconfigs['vless_enable'] and hconfigs['xhttp_enable'] %}
+        {
+            "tag":"v10-vless-xhttp-cdn",
+            "listen": "@@v10-vless-xhttp-cdn",
+            {% include '/opt/hiddify-manager/xray/configs/common/protocols/vless.pj2' %},
+
+            "streamSettings": {
+                "network": "xhttp",
+                "xhttpSettings": {
+                    "mode": "packet-up",
+                    "path": "/__SELECTEL_XHTTP_PATH__",
+                    "xPaddingObfsMode": true,
+                    "xPaddingPlacement": "header",
+                    "xPaddingHeader": "X-Cache-Key",
+                    "xPaddingKey": "x_padding",
+                    "xPaddingMethod": "tokenish",
+                    "xPaddingBytes": "100-500"
+                },
+                "security": "none",
+                "sockopt": {
+                    "acceptProxyProtocol": true,
+                    "tcpFastOpen": true
+                }
+            },
+
+            "sniffing": {
+                "enabled": true,
+                "destOverride": ["http","tls", "quic"]
+            }
+        }
+        {% endif %}
+    ]
+}
