@@ -37,6 +37,23 @@ dr_need_cmd() {
     command -v "$1" >/dev/null 2>&1 || dr_die "Missing command: $1"
 }
 
+# rclone/age are only needed for the offsite (Selectel) half of this
+# pipeline, so bootstrap.sh doesn't install them unconditionally — but a
+# truly fresh VPS won't have either, and assuming they're present (as an
+# earlier version of this tooling implicitly did, because the original
+# production box happened to already have both installed from unrelated
+# prior admin work) breaks restore.sh --from-offsite / offsite-sync.sh on
+# any other box. Both are plain `apt` packages on Ubuntu 22.04/24.04.
+dr_ensure_offsite_tools() {
+    local missing=()
+    command -v rclone >/dev/null 2>&1 || missing+=("rclone")
+    command -v age >/dev/null 2>&1 || missing+=("age")
+    [[ "${#missing[@]}" -eq 0 ]] && return 0
+    dr_log "Installing missing offsite tool(s): ${missing[*]}"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}" \
+        || dr_die "Failed to install: ${missing[*]} (apt-get install -y ${missing[*]})"
+}
+
 dr_require_root() {
     [[ "$(id -u)" -eq 0 ]] || dr_die "Run as root."
 }

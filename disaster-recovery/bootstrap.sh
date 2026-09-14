@@ -168,6 +168,8 @@ main() {
     exec > >(tee -a "$LOG_DIR/bootstrap.log") 2>&1
 
     preflight
+    dr_step "Installing offsite tooling (rclone, age) so restore.sh --from-offsite works without extra setup"
+    dr_ensure_offsite_tools
     install_base_hiddify
     install_addons
     apply_headers_patch

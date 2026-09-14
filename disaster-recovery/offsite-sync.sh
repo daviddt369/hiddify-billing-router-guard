@@ -93,8 +93,7 @@ prune_local() {
 
 main() {
     dr_require_root
-    dr_need_cmd rclone
-    dr_need_cmd age
+    dr_ensure_offsite_tools
     dr_load_backup_env
 
     local snap_dir

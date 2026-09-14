@@ -55,8 +55,7 @@ EOF
 
 fetch_from_offsite() {
     dr_step "Fetching newest snapshot from offsite (Selectel)"
-    dr_need_cmd rclone
-    dr_need_cmd age
+    dr_ensure_offsite_tools
     [[ -n "$AGE_KEY_FILE" ]] || { usage; dr_die "Missing age private key file path after --from-offsite"; }
     [[ -f "$AGE_KEY_FILE" ]] || dr_die "age private key file not found: $AGE_KEY_FILE"
     dr_load_backup_env
