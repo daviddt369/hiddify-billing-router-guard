@@ -140,6 +140,12 @@ class PlanAdmin(AdminLTEModelView):
         model.sort_order = max(0, int(model.sort_order or 0))
         if not model.added_by:
             model.added_by = g.account.id
+        # Push updated traffic/device limits to already-assigned users. Deliberately
+        # does not touch package_days/start_date, so remaining subscription days
+        # are never affected by editing a plan's other limits.
+        if not is_created:
+            for u in model.users:
+                u.sync_traffic_ip_from_plan()
 
     def get_query(self):
         if not _PLAN_ADMIN_RUNTIME_READY:

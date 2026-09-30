@@ -242,6 +242,15 @@ class User(BaseAccount):
         self.max_ips = self.plan.max_ips
         self.mode = self.plan.mode
 
+    def sync_traffic_ip_from_plan(self):
+        """Propagate only usage_limit and max_ips from the linked plan.
+        Deliberately does NOT touch package_days/start_date, so remaining_days
+        stays exactly as-is when a plan's traffic/device limits are edited."""
+        if not self.plan or not self.plan.enable:
+            return
+        self.usage_limit = self.plan.usage_limit
+        self.max_ips = self.plan.max_ips
+
     @classmethod
     def by_uuid(cls, uuid: str, create: bool = False) -> 'User':
         if not isinstance(uuid, str):

@@ -24,10 +24,12 @@ ensure_ruleset() {
     "$NFT_BIN" list chain "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" >/dev/null 2>&1 || \
         "$NFT_BIN" add chain "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" "{ type filter hook input priority -5; policy accept; }"
 
-    if ! "$NFT_BIN" list chain "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" | grep -Fq "@$SET_V4"; then
+    local chain_listing
+    chain_listing="$("$NFT_BIN" list chain "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME")"
+    if ! grep -Fq "@$SET_V4" <<<"$chain_listing"; then
         "$NFT_BIN" add rule "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" ip saddr "@$SET_V4" counter drop
     fi
-    if ! "$NFT_BIN" list chain "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" | grep -Fq "@$SET_V6"; then
+    if ! grep -Fq "@$SET_V6" <<<"$chain_listing"; then
         "$NFT_BIN" add rule "$TABLE_FAMILY" "$TABLE_NAME" "$CHAIN_NAME" ip6 saddr "@$SET_V6" counter drop
     fi
 }

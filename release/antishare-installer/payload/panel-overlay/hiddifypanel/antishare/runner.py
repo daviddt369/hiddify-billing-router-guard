@@ -149,7 +149,7 @@ def process_user(user: User, recent_ips: dict[str, list[str]], settings: AntiSha
                 ip=ip,
                 first_seen_at=now,
                 last_seen_at=now,
-                seen_days=0,
+                seen_days=1,
                 seen_cycles=0,
                 total_hits=0,
                 trust_score=0.0,
