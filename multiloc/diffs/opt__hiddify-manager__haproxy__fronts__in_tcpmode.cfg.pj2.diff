@@ -1,0 +1,19 @@
+--- a/opt/hiddify-manager/haproxy/fronts/in_tcpmode.cfg.pj2
++++ b/opt/hiddify-manager/haproxy/fronts/in_tcpmode.cfg.pj2
+@@ -73,5 +73,16 @@
+     
+ 
+     
++    {# multi-location: HTTP/1.1 (and fallback) routing of the slot inbounds by their secret random paths #}
++    {% if hconfigs['core_type']=="xray" %}
++    {% for loc in locations %}
++        {% for k in loc['tags'] %}
++            {% if hconfigs[loc['protos'][k]~'_enable'] and hconfigs[loc['streams'][k]~'_enable'] %}
++    use_backend {{ loc['tags'][k] }} if { path_beg /{{ loc['paths'][k] }} }
++            {% endif %}
++        {% endfor %}
++    {% endfor %}
++    {% endif %}
++
+     default_backend to_httpmode
+ 

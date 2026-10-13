@@ -1,0 +1,8 @@
+--- a/opt/hiddify-manager/haproxy/haproxy.cfg.j2
++++ b/opt/hiddify-manager/haproxy/haproxy.cfg.j2
+@@ -45,3 +45,5 @@
+ {% include '/opt/hiddify-manager/haproxy/backends/v10.cfg.pj2' %}
+ 
+ {% include '/opt/hiddify-manager/haproxy/backends/v10-cdn.cfg.pj2' %}
++
++{% include '/opt/hiddify-manager/haproxy/backends/v10-loc.cfg.pj2' %}

@@ -96,7 +96,19 @@ sudo bash disaster-recovery/restore.sh --from-offsite /path/to/age-private-key.t
 # Xray/HAProxy конфиги (apply_configs.sh) → flush Redis → проверяет
 # tls_mixed_case=false → запускает сервисы → прямой (не через CDN) smoke-test.
 
-# 3. РУКАМИ, не автоматизируется:
+# 3. Мульти-локации (страны) - если они были на старом сервере. Их таблицы и данные
+#    (локации, ноды, видимость) уже вернулись вместе с полным дампом БД; не хватает
+#    кода аддона и шаблонов xray / haproxy. Пакет собирается из файлов ЭТОГО сервера
+#    (при сборке на сервер ничего не пишется), ставится с бэкапом, откат одной командой:
+python3 multiloc/installer/assemble_package.py --out /root/multiloc-pkg
+sudo /root/multiloc-pkg/install.sh preflight
+sudo /root/multiloc-pkg/install.sh apply
+sudo /root/multiloc-pkg/install.sh verify
+#    затем в админке «Применить» на странице маршрутизации (вернёт входы стран в router).
+#    Подробности - multiloc/README.ru.md. В репетицию 2026-09-14 этот шаг не входил:
+#    сборка и установка проверены на стенде, но не на «bootstrap.sh + restore.sh» целиком.
+
+# 4. РУКАМИ, не автоматизируется:
 #    - обновить DNS-записи всех доменов на новый IP;
 #    - обновить origin/IP CDN-ресурсов в панелях Gcore/Selectel;
 #    - повторить smoke-test уже ЧЕРЕЗ CDN после того как DNS/CDN обновились.
