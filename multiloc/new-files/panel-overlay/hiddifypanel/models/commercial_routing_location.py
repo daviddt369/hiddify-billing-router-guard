@@ -1,0 +1,66 @@
+"""Multi-location (country selection) tables.
+
+ADDITIVE ONLY: three new tables, no change to any existing table.
+
+commercial_routing_location   one row per *slot* (1..4 country slots, 0 = the virtual AUTO block).
+                              A slot is infrastructure (xray inbounds, HAProxy backends, router entrance); its title / country /
+                              visibility are only labels, so re-labelling a slot never touches xray/HAProxy.
+commercial_routing_location_node    which external node (commercial_routing_upstream) belongs to which slot.
+commercial_routing_location_tester  UUIDs of the test users who may see non-public locations.
+
+Schema is created by hiddifypanel/hutils/multiloc.py::ensure_schema() with explicit idempotent DDL (CREATE TABLE IF NOT EXISTS),
+exactly like the other installers do, and the SQLAlchemy models below map the same tables.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+
+from hiddifypanel.database import db
+# the FK target must be present in SQLAlchemy metadata whenever these models are used (otherwise flush raises NoReferencedTableError)
+from hiddifypanel.models.commercial_routing_upstream import CommercialRoutingUpstream  # noqa: F401
+
+MAX_SLOT = 4  # architecture is laid out for 4 country slots (1..4); slot 0 is the AUTO block (no infrastructure)
+
+
+class CommercialRoutingLocation(db.Model):
+    __tablename__ = "commercial_routing_location"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    slot = db.Column(db.Integer, nullable=False, unique=True)  # 0 = AUTO block, 1..MAX_SLOT = country slots
+    kind = db.Column(db.String(16), nullable=False, default="country")  # 'country' | 'auto'
+    code = db.Column(db.String(16), nullable=False, default="")  # short label, [a-z0-9-]
+    title = db.Column(db.String(64), nullable=False, default="")  # e.g. "Location A"
+    country_iso = db.Column(db.String(2), nullable=False, default="")  # ISO-3166 alpha-2, drives the flag
+    flag = db.Column(db.String(16), nullable=False, default="")  # optional override of the emoji flag
+    sort_order = db.Column(db.Integer, nullable=False, default=100)
+    enabled = db.Column(db.Boolean, nullable=False, default=False)
+    visibility = db.Column(db.String(16), nullable=False, default="testers")  # 'hidden' | 'testers' | 'all'
+    path_xhttp = db.Column(db.String(64), nullable=False, default="")  # secret random paths of the slot's inbounds
+    path_ws = db.Column(db.String(64), nullable=False, default="")
+    path_trojan = db.Column(db.String(64), nullable=False, default="")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<CommercialRoutingLocation slot={self.slot} kind={self.kind} code={self.code!r} enabled={self.enabled}>"
+
+
+class CommercialRoutingLocationNode(db.Model):
+    __tablename__ = "commercial_routing_location_node"
+
+    upstream_id = db.Column(db.Integer, db.ForeignKey("commercial_routing_upstream.id", ondelete="CASCADE"), primary_key=True)
+    location_id = db.Column(db.Integer, db.ForeignKey("commercial_routing_location.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    def __repr__(self) -> str:
+        return f"<CommercialRoutingLocationNode upstream={self.upstream_id} location={self.location_id}>"
+
+
+class CommercialRoutingLocationTester(db.Model):
+    __tablename__ = "commercial_routing_location_tester"
+
+    user_uuid = db.Column(db.String(36), primary_key=True)
+    note = db.Column(db.String(128), nullable=False, default="")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __repr__(self) -> str:
+        return f"<CommercialRoutingLocationTester {self.user_uuid}>"

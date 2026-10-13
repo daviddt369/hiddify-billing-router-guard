@@ -1,0 +1,182 @@
+{% extends 'admin-layout.html' %}
+
+{% block title %}Страны / локации{% endblock %}
+
+{% block body %}
+<section class="content pt-3">
+  <div class="container-fluid">
+
+    <div class="card card-primary card-outline">
+      <div class="card-header">
+        <h3 class="card-title">Страны / локации</h3>
+        <div class="card-tools">
+          <a href="{{ routing_admin_url }}" class="btn btn-sm btn-secondary">← Назад к маршрутизации</a>
+          <a href="{{ upstreams_url }}" class="btn btn-sm btn-secondary ml-1">Внешние ноды</a>
+          {% if router_state.in_sync is true %}<span class="badge badge-success ml-1">router: синхронизирован</span>
+          {% elif router_state.in_sync is false %}<span class="badge badge-warning ml-1">router: ждёт применения</span>
+          {% else %}<span class="badge badge-secondary ml-1">router: состояние неизвестно</span>{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        {% include 'routing-apply-bar.html' %}
+        <small class="text-muted d-block mb-3">Названия, видимость и порядок стран в подписке меняются сразу и применять их не нужно. Ноды стран и включение страны попадают на router после кнопки «Применить»: она сама решает, нужен ли перезапуск (для одних стран — один, ≈ 4–8 минут на проде; если менялись правила или внешние ноды — полный цикл: ≈ 15–20 минут подготовки в фоне без простоя и затем тот же один перезапуск).</small>
+
+        <div class="card card-outline card-info mb-3" id="roscom-card">
+          <div class="card-header py-2"><h3 class="card-title" style="font-size:1rem">Маршрутизация RoscomVPN для Happ / INCY (ссылка <code>…/happ/</code>)</h3></div>
+          <div class="card-body py-2">
+            {% if roscom_error %}<div class="alert alert-danger py-1 mb-2">Профиль не принят, ничего не изменено: {{ roscom_error }}</div>{% endif %}
+            {% if roscom.error %}<div class="alert alert-warning py-1 mb-2">Сейчас профиль использовать нельзя, подписка отдаётся без него: {{ roscom.error }}</div>{% endif %}
+            <p class="mb-2 small">
+              Сейчас: <b>{% if roscom.enabled %}включена{% else %}выключена{% endif %}</b> ·
+              источник: <b>{% if roscom.source == 'custom' %}профиль, вставленный вручную{% else %}автоматический (копия профиля RoscomVPN с лендинга, обновляется раз в 6 часов){% endif %}</b>
+              {% if roscom.profile %}<br>Профиль «{{ roscom.profile.name }}» · обновлён {{ roscom.profile.last_updated }} · порядок «{{ roscom.profile.route_order }}» ·
+              правил: напрямую {{ roscom.profile.counts.direct }}, через VPN {{ roscom.profile.counts.proxy }}, блок {{ roscom.profile.counts.block }}
+              <br><span class="text-muted">geo-файлы: {{ roscom.profile.geoip }} · {{ roscom.profile.geosite }}</span>{% endif %}
+            </p>
+            <form method="post" action="{{ locations_url }}roscom/">
+              <div class="form-group mb-2">
+                <label class="small mb-1" for="roscom-custom">Свой профиль маршрутизации (необязательно): вставьте ссылку <code>happ://routing/onadd/…</code>
+                  (подойдёт и <code>incy://…</code>, base64 или JSON профиля), чтобы заменить автоматический. Пусто — берётся автоматический.</label>
+                <textarea id="roscom-custom" name="custom" rows="4" class="form-control form-control-sm ltr" style="font-family:monospace;font-size:12px"
+                          placeholder="happ://routing/onadd/eyJOYW1lIjoi…">{{ roscom_text if roscom_text is not none else roscom.custom_text }}</textarea>
+              </div>
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="roscom-enabled" name="enabled" value="1" {% if roscom.enabled %}checked{% endif %}>
+                <label class="form-check-label small" for="roscom-enabled">Отдавать эту маршрутизацию в JSON-подписке Happ / INCY</label>
+              </div>
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="roscom-header-lists" name="header_lists" value="1" {% if roscom.header_lists %}checked{% endif %}>
+                <label class="form-check-label small" for="roscom-header-lists">Отдавать в заголовке подписки полный профиль со списками. Приложения Happ / INCY режут трафик на устройстве
+                  именно по спискам активного профиля; с пустым профилем (выключено) всё уходит в туннель.</label>
+              </div>
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="roscom-ru-zone" name="ru_zone" value="1" {% if roscom.ru_zone %}checked{% endif %}>
+                <label class="form-check-label small" for="roscom-ru-zone">Сайты зон <code>.ru</code> / <code>.su</code> / <code>.рф</code> и банки — всегда напрямую с устройства (как на РФ-ноде),
+                  даже если их нет в списках профиля: иначе российский сайт на зарубежном хостинге открывается с IP тоннеля.</label>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+              {% if roscom.source == 'custom' %}<button type="submit" name="action" value="clear" class="btn btn-outline-secondary btn-sm ml-1">Вернуть автоматический</button>{% endif %}
+              <span class="text-muted small ml-2">Действует сразу, при следующем обновлении подписки в приложении; перезапуск router не нужен.</span>
+            </form>
+          </div>
+        </div>
+
+        <div class="alert alert-info mb-3">
+          <strong>Как это работает.</strong>
+          Клиент выбирает страну одной кнопкой в приложении. Для <b>Happ и INCY</b> есть <b>отдельная ссылка</b> <code>…/happ/</code> (её отдаёт бот тестерам):
+          одна кнопка на локацию — <b>AUTO</b> (внутри все остальные протоколы, самый быстрый по пингу), <b>страны</b> — по одной кнопке на каждую (внутри три стабильных протокола:
+          XHTTP, WS, Trojan — клиент сам берёт самый быстрый). <b>Обычная ссылка пользователя не меняется ни для кого</b> (Hiddify, v2RayTun и остальные приложения).
+          Трафик всегда идёт через текущую (локальную) ноду; локальные адреса остаются локальными, остальной трафик уходит через ноды выбранной локации.
+          Если все ноды страны недоступны — страна <b>не</b> переключается на другую (соединение закрывается).
+          Старые профили и AUTO выбирают самый быстрый выход среди всех нод. Полный список по протоколам — на странице пользователя («All Configs»).<br>
+          <b>Видимость:</b> «testers» — профили видят только пользователи из списка тестовых; «all» — все активные; «hidden» — никто.
+          Название, видимость и порядок меняются в подписке сразу; назначение нод и включение страны требуют применения на router — кнопка «Применить» ниже (она сама решает, нужен ли перезапуск router).
+        </div>
+
+        {% if problems %}
+        <div class="alert alert-danger"><b>Проблемы конфигурации:</b><ul class="mb-0">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul></div>
+        {% endif %}
+
+        <h5>Слоты</h5>
+        {# one real <form> per row, fields attached with the HTML5 `form=` attribute (a <form> inside <tr> is invalid HTML) #}
+        {% for r in rows %}<form id="f-slot-{{ r.slot }}" method="post" action="{{ locations_url }}slot/{{ r.slot }}/"></form>{% endfor %}
+        {% if not rows or rows[0].kind != 'auto' %}<form id="f-slot-0" method="post" action="{{ locations_url }}slot/0/"></form>{% endif %}
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr><th>Слот</th><th>Название</th><th>Страна (ISO)</th><th>Код</th><th>Порядок</th><th>Включена</th><th>Видимость</th><th>Ноды</th><th></th></tr>
+          </thead>
+          <tbody>
+          {% for r in rows %}
+            {% set f = 'f-slot-' ~ r.slot %}
+            <tr>
+              <td>{% if r.kind == 'auto' %}AUTO{% else %}{{ r.slot }}{% endif %}<br><small class="text-muted">{{ label_of(r) }}</small></td>
+              <td><input form="{{ f }}" type="text" name="title" class="form-control form-control-sm" maxlength="64" value="{{ r.title }}"></td>
+              <td>{% if r.kind == 'country' %}<input form="{{ f }}" type="text" name="country_iso" class="form-control form-control-sm ltr" maxlength="2" style="width:70px" value="{{ r.country_iso }}">{% else %}—{% endif %}</td>
+              <td>{% if r.kind == 'country' %}<input form="{{ f }}" type="text" name="code" class="form-control form-control-sm ltr" maxlength="16" style="width:90px" value="{{ r.code }}">{% else %}—{% endif %}</td>
+              <td><input form="{{ f }}" type="number" name="sort_order" class="form-control form-control-sm ltr" style="width:80px" value="{{ r.sort_order }}"></td>
+              <td><select form="{{ f }}" name="enabled" class="form-control form-control-sm" style="width:80px"><option value="1" {% if r.enabled %}selected{% endif %}>да</option><option value="0" {% if not r.enabled %}selected{% endif %}>нет</option></select></td>
+              <td><select form="{{ f }}" name="visibility" class="form-control form-control-sm" style="width:110px">{% for v in visibilities %}<option value="{{ v }}" {% if r.visibility == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></td>
+              <td>{% if r.kind == 'country' %}{% for up in upstreams if node_slot.get(up.id) == r.slot %}<span class="badge badge-secondary">{{ up.label or up.name }}</span> {% else %}<span class="text-muted">—</span>{% endfor %}{% else %}все ноды{% endif %}</td>
+              <td><button form="{{ f }}" type="submit" class="btn btn-sm btn-primary">Сохранить</button></td>
+            </tr>
+          {% endfor %}
+          {% if not rows or rows[0].kind != 'auto' %}
+            <tr>
+              <td>AUTO</td>
+              <td><input form="f-slot-0" type="text" name="title" class="form-control form-control-sm" maxlength="64" value="AUTO"></td>
+              <td>—</td><td>—</td>
+              <td><input form="f-slot-0" type="number" name="sort_order" class="form-control form-control-sm ltr" style="width:80px" value="10"></td>
+              <td><select form="f-slot-0" name="enabled" class="form-control form-control-sm" style="width:80px"><option value="1">да</option><option value="0" selected>нет</option></select></td>
+              <td><select form="f-slot-0" name="visibility" class="form-control form-control-sm" style="width:110px">{% for v in visibilities %}<option value="{{ v }}" {% if v == 'testers' %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></td>
+              <td>все ноды</td>
+              <td><button form="f-slot-0" type="submit" class="btn btn-sm btn-primary">Создать AUTO</button></td>
+            </tr>
+          {% endif %}
+          </tbody>
+        </table>
+        </div>
+        <small class="text-muted">Страна без названия не показывается в подписке даже если включена. Секретные пути входов слота создаются автоматически и здесь не показываются.</small>
+      </div>
+    </div>
+
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title">Внешние ноды → страна</h3></div>
+      <div class="card-body">
+        <form method="post" action="{{ locations_url }}assign/">
+          <table class="table table-sm table-bordered">
+            <thead><tr><th>Нода</th><th>Тип</th><th>Включена</th><th>Страна</th></tr></thead>
+            <tbody>
+            {% for up in upstreams %}
+              <tr>
+                <td>{{ up.label or up.name }} <small class="text-muted">({{ up.name }})</small></td>
+                <td>{{ up.tunnel_type }}</td>
+                <td>{{ 'да' if up.enabled else 'нет' }}</td>
+                <td>
+                  <select name="slot_{{ up.id }}" class="form-control form-control-sm" style="max-width:260px">
+                    <option value="0" {% if not node_slot.get(up.id) %}selected{% endif %}>— без страны (только AUTO и старые профили) —</option>
+                    {% for s in slots %}{% for r in rows if r.slot == s %}
+                    <option value="{{ s }}" {% if node_slot.get(up.id) == s %}selected{% endif %}>Слот {{ s }}{% if r.title %} — {{ label_of(r) }}{% endif %}</option>
+                    {% endfor %}{% endfor %}
+                  </select>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-muted">Нод пока нет — добавьте на странице «Внешние ноды».</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          <button type="submit" class="btn btn-primary btn-sm">Сохранить назначения</button>
+          <small class="text-muted ml-2">Нода без страны участвует только в AUTO и в старых профилях (кнопка AUTO — группа из всех остальных протоколов).</small>
+        </form>
+      </div>
+    </div>
+
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title">Тестовые пользователи</h3></div>
+      <div class="card-body">
+        <table class="table table-sm table-bordered">
+          <thead><tr><th>UUID</th><th>Имя</th><th>Заметка</th><th></th></tr></thead>
+          <tbody>
+          {% for t in testers %}
+            <tr>
+              <td class="ltr"><code>{{ t.uuid }}</code></td><td>{{ t.name or '—' }}</td><td>{{ t.note }}</td>
+              <td><form method="post" action="{{ locations_url }}tester/remove/" style="display:inline"><input type="hidden" name="uuid" value="{{ t.uuid }}"><button type="submit" class="btn btn-xs btn-outline-danger">Убрать</button></form></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-muted">Пока никого — страны с видимостью «testers» не видит никто.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <form method="post" action="{{ locations_url }}tester/add/" class="form-inline">
+          <input list="user-choices" name="uuid" class="form-control form-control-sm ltr mr-2" style="min-width:340px" placeholder="UUID пользователя (или выберите из списка)" required>
+          <datalist id="user-choices">{% for u, name in user_choices %}<option value="{{ u }}">{{ name }}</option>{% endfor %}</datalist>
+          <input type="text" name="note" class="form-control form-control-sm mr-2" placeholder="заметка" maxlength="128">
+          <button type="submit" class="btn btn-sm btn-primary">Добавить</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
