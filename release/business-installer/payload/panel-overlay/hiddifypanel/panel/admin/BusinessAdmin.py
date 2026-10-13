@@ -351,7 +351,7 @@ class BusinessAdmin(FlaskView):
         if self._active_section(get_hconfigs()) == "routing":
             _, commercial_routing = _routing_modules()
             if commercial_routing:
-                form.custom_ru_rules_bulk.data = commercial_routing.custom_rules_to_bulk_text(commercial_routing.load_enabled_custom_rules())
+                form.custom_ru_rules_bulk.data = commercial_routing.custom_rules_to_bulk_text(commercial_routing.load_enabled_custom_rules(manual_only=True))
         return form
 
     def index(self):
@@ -535,19 +535,38 @@ class BusinessAdmin(FlaskView):
                 rules, errors = [], []
 
             if errors:
-                for err in errors:
+                for err in errors[:10]:
                     hutils.flask.flash(f"Ошибка в строке {err.line_no} списка правил: {err.error}", "danger")
+                if len(errors) > 10:
+                    hutils.flask.flash(f"…и ещё {len(errors) - 10} ошибок (показаны первые 10). Ничего не сохранено.", "danger")
                 return self._render_settings(form, commercial_routing_notice=None, test_result=None)
 
             unique_rules = {}
             for rule in rules:
                 unique_rules[(rule["rule_type"], rule["normalized_value"])] = rule
 
-            CommercialRoutingCustomRule.query.delete()
-            for rule in unique_rules.values():
+            # The text holds ONLY the manually added rules (enabled, "direct"). The rules imported from the rule sources - and anything else the text cannot show - are never touched.
+            # Changed in place: an unchanged rule keeps its id / order / comment, a rule the text no longer has is deleted, a new one is added, a line that equals a source rule is skipped.
+            from sqlalchemy import and_
+            shown = (CommercialRoutingCustomRule.source_id.is_(None), CommercialRoutingCustomRule.enabled.is_(True), CommercialRoutingCustomRule.outbound_policy == "direct_ru")
+            mine = {(r.rule_type, r.normalized_value): r for r in CommercialRoutingCustomRule.query.filter(*shown).all()}
+            others = {(r.rule_type, r.normalized_value) for r in CommercialRoutingCustomRule.query.filter(~and_(*shown)).all()}
+            removed = added = skipped = 0
+            for key, row in mine.items():
+                if key not in unique_rules:
+                    db.session.delete(row)
+                    removed += 1
+            for key, rule in unique_rules.items():
+                if key in mine:
+                    continue
+                if key in others:
+                    skipped += 1
+                    continue
                 db.session.add(CommercialRoutingCustomRule(**rule))
-
+                added += 1
             db.session.commit()
+            hutils.flask.flash(f"Свои правила сохранены: добавлено {added}, убрано {removed}, без изменений {len(mine) - removed}"
+                               + (f"; {skipped} уже есть в источниках - пропущено" if skipped else "") + f". Правила из источников и прочие ({len(others)}) не затронуты.", "success")
 
             try:
                 import subprocess
