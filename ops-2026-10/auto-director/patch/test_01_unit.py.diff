@@ -1,0 +1,141 @@
+--- a/test_01_unit.py
++++ b/test_01_unit.py
+@@ -347,6 +347,129 @@
+                 b["fallbackTag"] = "upstream-4"
+         self.assertEqual(next(b for b in mr.strip(cfg)["routing"]["balancers"] if b["tag"] == "upstream-balancer")["fallbackTag"], "upstream-4")
+ 
++    # ------------------------------------------------------------------ AUTO director (country-level AUTO under an external controller)
++    @staticmethod
++    def dplan(**kw):
++        p = plan(**kw)
++        p["auto_director"] = {"enabled": True, "api_socket": "/run/xray-router-api.sock"}
++        return p
++
++    def test_director_is_off_unless_the_plan_enables_it(self):
++        out = mr.transform(self.base, plan())
++        self.assertFalse([o for o in out["outbounds"] if o["tag"].startswith("auto-via-")])
++        self.assertNotIn("api", out)
++        self.assertNotIn("auto-director", [b["tag"] for b in out["routing"]["balancers"]])
++        self.assertEqual(rules_of(out)[-1].get("balancerTag"), "upstream-balancer")
++
++    def test_director_structure(self):
++        out = mr.transform(self.base, self.dplan())
++        r = rules_of(out)
++        # the API rule and the loopback passes are the FIRST rules: a looped connection is decided there and can never reach the catch-all again
++        self.assertEqual(r[0], {"type": "field", "inboundTag": ["api"], "outboundTag": "api"})
++        self.assertEqual(r[1], {"type": "field", "inboundTag": ["auto-in-s1"], "balancerTag": "balancer-s1"})
++        self.assertEqual(r[2], {"type": "field", "inboundTag": ["auto-in-s2"], "balancerTag": "balancer-s2"})
++        self.assertEqual(r[-1], {"type": "field", "network": "tcp,udp", "balancerTag": "auto-director"})
++        loops = {o["tag"]: o for o in out["outbounds"] if o["protocol"] == "loopback"}
++        self.assertEqual(sorted(loops), ["auto-via-s1", "auto-via-s2"])
++        self.assertEqual(loops["auto-via-s1"]["settings"], {"inboundTag": "auto-in-s1"})
++        d = next(b for b in out["routing"]["balancers"] if b["tag"] == "auto-director")
++        self.assertEqual((d["selector"], d["fallbackTag"], d["strategy"]["type"]), (["auto-via-s1", "auto-via-s2"], "block", "leastPing"))
++        self.assertEqual(out["api"], {"tag": "api", "services": ["RoutingService"]})
++        api_in = next(i for i in out["inbounds"] if i["tag"] == "api")
++        self.assertEqual(api_in["listen"], "/run/xray-router-api.sock,0600")                    # root-only unix socket, never a TCP port
++        self.assertNotIn("port", api_in)
++        self.assertTrue(set(["auto-via-s1", "auto-via-s2"]) <= set(out["observatory"]["subjectSelector"]))
++        # the plain global balancer is kept for the rules that still use it (proxy-DNS addresses): fail closed, untouched membership
++        g = next(b for b in out["routing"]["balancers"] if b["tag"] == "upstream-balancer")
++        self.assertEqual(g["fallbackTag"], "block")
++        self.assertEqual(mr.check_invariants(out), [])
++
++    def test_director_strip_is_exact_and_the_transform_is_idempotent(self):
++        out = mr.transform(self.base, self.dplan())
++        self.assertEqual(mr.strip(out), self.base)
++        self.assertEqual(mr.transform(out, self.dplan()), out)
++        # switching the director off brings back the layer WITHOUT it, and "feature off" brings back the legacy config
++        self.assertEqual(mr.transform(out, plan()), mr.transform(self.base, plan()))
++        self.assertEqual(mr.transform(out, {"slots": {}}), self.base)
++
++    def test_director_needs_two_countries_that_can_carry_traffic(self):
++        for p in (self.dplan(us_on=False), self.dplan(de_on=False), self.dplan(us=()), self.dplan(de=(), us=())):
++            out = mr.transform(self.base, p)
++            self.assertNotIn("api", out, p)
++            self.assertFalse([o for o in out["outbounds"] if o["tag"].startswith("auto-via-")], p)
++            self.assertEqual(rules_of(out)[-1].get("balancerTag"), "upstream-balancer")
++
++    def test_director_with_single_node_countries_routes_the_loopback_to_the_node(self):
++        out = mr.transform(legacy_router(), self.dplan(de=(4,), us=(5,)))
++        r = rules_of(out)
++        self.assertEqual(r[1], {"type": "field", "inboundTag": ["auto-in-s1"], "outboundTag": "upstream-4"})
++        self.assertEqual(r[2], {"type": "field", "inboundTag": ["auto-in-s2"], "outboundTag": "upstream-5"})
++        self.assertEqual(mr.check_invariants(out), [])
++        self.assertEqual(mr.strip(out), legacy_router())
++
++    def test_director_creates_the_observatory_when_there_is_none_and_follows_the_panel_interval(self):
++        base = legacy_router(observatory=False)
++        out = mr.transform(base, dict(self.dplan(), probe_url="http://p/", probe_interval="10s"))
++        self.assertEqual(out["observatory"]["probeInterval"], "10s")
++        self.assertEqual(mr.check_invariants(out), [])
++        live = mr.transform(legacy_router(), dict(self.dplan(), probe_interval="10s"))
++        self.assertEqual(live["observatory"]["probeInterval"], "10s")                          # the layer-only apply aligns the live interval with the setting
++        self.assertEqual(mr.transform(live, dict(self.dplan(), probe_interval="10s")), live)
++
++    def test_director_invariants_catch_regressions(self):
++        out = mr.transform(self.base, self.dplan())
++
++        def broken(fn):
++            c = copy.deepcopy(out)
++            fn(c)
++            return mr.check_invariants(c)
++        self.assertTrue(any("fallbackTag must be 'block'" in p for p in broken(lambda c: next(b for b in c["routing"]["balancers"] if b["tag"] == "auto-director").pop("fallbackTag"))))
++        self.assertTrue(any("needs the API entrance" in p for p in broken(lambda c: c.pop("api"))))
++        self.assertTrue(any("unix socket" in p for p in broken(lambda c: next(i for i in c["inbounds"] if i["tag"] == "api").update(listen="127.0.0.1", port=20899))))
++        self.assertTrue(any("not a loopback" in p for p in broken(lambda c: c["outbounds"].__setitem__(
++            next(i for i, o in enumerate(c["outbounds"]) if o["tag"] == "auto-via-s1"), {"tag": "auto-via-s1", "protocol": "freedom"}))))
++        self.assertTrue(any("no rule routes the inbound" in p for p in broken(lambda c: c["routing"]["rules"].pop(1))))
++        self.assertTrue(any("could loop" in p for p in broken(lambda c: c["routing"]["rules"].append(c["routing"]["rules"].pop(1)))))
++        self.assertTrue(any("catch-all must use auto-director" in p for p in broken(lambda c: c["routing"]["rules"][-1].update(balancerTag="upstream-balancer"))))
++        self.assertTrue(any("not covered by the observatory" in p for p in broken(lambda c: c["observatory"].update(subjectSelector=["upstream-4"]))))
++        self.assertTrue(any("no rule routes the API entrance" in p for p in broken(lambda c: c["routing"]["rules"].pop(0))))
++
++    def test_the_installers_view_agrees_with_the_layer_for_the_director_too(self):
++        inst = installer_module()
++        cases = [(legacy_router(), self.dplan()), (legacy_router(), self.dplan(de=(4,), us=(5,))), (legacy_router(observatory=False), dict(self.dplan(), probe_interval="10s")),
++                 (legacy_router(), dict(self.dplan(), probe_interval="10s"))]
++        for base, p in cases:
++            out = mr.transform(base, p)
++            self.assertEqual(inst.layer_free(out), inst.layer_free(base))
++            self.assertEqual(inst.layer_free(out), inst.layer_free(mr.strip(out)))
++            self.assertEqual(inst.foreign_changes(out, base), [], "the director's own output must be explained completely (also the shorter probe interval)")
++            self.assertEqual(inst.foreign_changes(mr.transform(out, p), base), [])
++        # somebody else's change next to the director is still visible
++        out = mr.transform(legacy_router(), self.dplan())
++        out["outbounds"].append({"tag": "upstream-777", "protocol": "freedom"})
++        self.assertTrue(inst.foreign_changes(out, legacy_router()))
++        # the shorter interval is explained ONLY together with the director
++        plain = mr.transform(legacy_router(), plan())
++        plain["observatory"]["probeInterval"] = "10s"
++        self.assertTrue(inst.foreign_changes(plain, legacy_router()))
++
++    def test_real_xray_accepts_the_director_config(self):
++        import subprocess
++        import tempfile
++        from hiddifypanel.hutils.proxy import router_core
++        ups = [{"id": i, "tunnel_type": "vless",
++                "vless_uri": f"vless://aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa@127.0.0.{i}:9443?type=xhttp&security=tls&sni=x.test&alpn=h2&path=%2Fp{i}&encryption=none"}
++               for i in (4, 5, 6, 10, 11, 15)]
++        base = router_core.render_xray_router_config({"commercial_router_port": 20808}, [], ups)
++        out = mr.transform(base, self.dplan())
++        self.assertEqual(mr.check_invariants(out), [])
++        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
++            json.dump(out, f)
++        r = subprocess.run(["/opt/hiddify-manager/xray/bin/xray", "run", "-test", "-config", f.name], capture_output=True, text=True)
++        os.unlink(f.name)
++        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
++        self.assertIn("Configuration OK", r.stdout + r.stderr)
++
+     def test_production_sized_config_15k_rules(self):
+         big = legacy_router(n_ru=15076)
+         t0 = time.monotonic()
+@@ -466,7 +589,7 @@
+         bal = c["routing"]["balancers"]
+         self.assertEqual(bal, [{"tag": "loc0-balancer", "selector": ["🟢 AUTO"], "strategy": {"type": "leastPing"}, "fallbackTag": "🟢 AUTO"}])
+         self.assertEqual(c["burstObservatory"], {"subjectSelector": ["🟢 AUTO"], "pingConfig": {
+-            "destination": "http://probe.test/", "connectivity": "", "interval": "1m", "sampling": 3, "timeout": "5s"}})
++            "destination": "http://probe.test/", "connectivity": "", "interval": "30s", "sampling": 2, "timeout": "5s"}})
+ 
+     def test_catch_all_goes_to_the_balancer_and_other_rules_are_untouched(self):
+         c = self.build()

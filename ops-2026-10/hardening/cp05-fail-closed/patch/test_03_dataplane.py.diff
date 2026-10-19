@@ -1,0 +1,61 @@
+--- a/tests/test_03_dataplane.py
++++ b/tests/test_03_dataplane.py
+@@ -111,6 +111,58 @@
+             systemd("start", "stand-exit-a")
+         wait_until(lambda: set(via_many(PROFILES["DE XHTTP"], 3)) == {"exit-a"}, timeout=60, step=3, what="Germany recovers")
+ 
++    def test_dead_second_country_fails_closed_never_borrowing_the_first(self):
++        """The mirror of the test above. Germany's node is the FIRST outbound of the router file, so killing Germany was "closed" by accident (Xray's default
++        handler for a balancer without a live node picks the first outbound = the dead German node). Killing the USA is the real test: without a fallbackTag
++        the same default handler would carry the American profiles through the first outbound = out of GERMANY."""
++        systemd("stop", "stand-exit-b")
++        try:
++            # watch the whole transition (the observatory needs a couple of 3 s probe intervals to notice): not a single answer may come from exit A
++            seen = []
++            with sc.Client(PROFILES["US XHTTP"]) as c:
++                t0 = time.monotonic()
++                while time.monotonic() - t0 < 24:
++                    try:
++                        _, body = c.get(FOREIGN, timeout=5)
++                        seen.append(body.get("via") if isinstance(body, dict) else None)
++                    except Exception:
++                        seen.append(None)
++                    time.sleep(1.5)
++            self.assertNotIn("exit-a", seen, f"the American profile was carried out of Germany: {seen}")
++            self.assertEqual(seen[-3:], [None] * 3, f"USA must be closed once its exit is known to be dead: {seen}")
++            for tname in ("XHTTP", "WS", "Trojan"):
++                got = via_many(PROFILES[f"US {tname}"], 3, timeout=6)
++                self.assertEqual(got, [None] * 3, f"US {tname}: must fail closed, got {got} (exit-a here = the American traffic was borrowed by Germany)")
++            # the other country and the reserve behaviour of AUTO are unaffected
++            self.assertEqual(set(via_many(PROFILES["DE XHTTP"], 3)), {"exit-a"})
++            self.assertEqual(set(via_many(PROFILES["AUTO XHTTP"], 3)), {"exit-a"}, "AUTO keeps its reserve behaviour")
++            self.assertEqual(set(via_many(PROFILES["LEGACY xhttp"], 3)), {"exit-a"})
++            # RU destinations never needed an exit
++            self.assertEqual(via(PROFILES["US WS"], RU_DOMAIN), "direct")
++        finally:
++            systemd("start", "stand-exit-b")
++        wait_until(lambda: set(via_many(PROFILES["US XHTTP"], 3)) == {"exit-b"}, timeout=60, step=3, what="USA recovers")
++
++    def test_when_the_observatory_sees_no_live_node_every_balancer_is_closed_and_ru_stays_direct(self):
++        """The "false dead" case, the worst one for the default handler: every probe of the observatory fails (the exits answer slower than its timeout) while the
++        data path still works. Without a fallbackTag Xray hands each balancer to the FIRST outbound of the file (a node on exit A = Germany): the American profile
++        leaves through Germany and AUTO through a node nobody chose. With fallbackTag=block all of them are closed; RU destinations never needed an exit."""
++        set_delay("a", 3000)
++        set_delay("b", 3000)
++        try:
++            time.sleep(12)                                    # a few 3 s probe rounds: the observatory now believes that nothing is alive
++            for name in ("US XHTTP", "DE XHTTP", "AUTO XHTTP", "LEGACY ws"):
++                got = via(PROFILES[name], timeout=25)
++                self.assertIsNone(got, f"{name}: must be closed while no node is known to be alive, got {got!r} (a result = the default handler used the first outbound)")
++            for name in ("US WS", "DE Trojan", "AUTO XHTTP"):
++                self.assertEqual(via(PROFILES[name], RU_DOMAIN), "direct", f"{name}: RU destinations must not depend on any exit")
++                self.assertEqual(via(PROFILES[name], RU_CIDR), "direct", f"{name}: RU destinations must not depend on any exit")
++        finally:
++            set_delay("a", 0)
++            set_delay("b", 0)
++        wait_until(lambda: via(PROFILES["AUTO XHTTP"]) in ("exit-a", "exit-b") and via(PROFILES["US XHTTP"]) == "exit-b" and via(PROFILES["DE XHTTP"]) == "exit-a",
++                   timeout=90, step=3, what="everything recovers once the probes succeed again")
++
+     def test_reserve_inside_a_country_when_one_of_its_nodes_dies(self):
+         # give Germany one node on exit A and one on exit B ("two servers in one country"), then kill exit A
+         ctl("unassign", 2)

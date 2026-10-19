@@ -1,0 +1,82 @@
+--- a/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/multiloc_router.py
++++ b/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/multiloc_router.py
+@@ -2,13 +2,15 @@
+ 
+ transform(config, plan) is a PURE function (unit-testable, idempotent):
+   * adds one socks entrance per slot  (from-hiddify-s<N>, 127.0.0.1:<router_port>+2+N, same sniffing as the default entrance)
+-  * adds one balancer per slot with >=2 live-capable nodes (leastPing, NO fallbackTag -> a dead country fails closed)
++  * adds one balancer per slot with >=2 live-capable nodes (leastPing, `fallbackTag: "block"` -> a dead country fails closed: without a fallbackTag Xray
++    hands a balancer that has no live node to its "default handler", which is the FIRST outbound of the file = some node of ANOTHER country)
+   * inserts the slot final rules right BEFORE the generic catch-all, i.e. after every RU-direct / DNS / block rule that the
+     existing layers produced, so RU traffic from any entrance still stays in Russia
+   * duplicates the "global-upstream-bound" specific rules (e.g. proxy-DNS IPs -> upstream-balancer) per slot, so even those
+     connections keep the chosen country
+-  * makes sure the observatory covers the slot nodes.
+-Nothing in the existing layers (and not `_is_final_global_rule`) is modified.
++  * makes sure the observatory covers the slot nodes
++  * makes the global (AUTO) balancer fail closed too (`fallbackTag: "block"`): with no live node in ANY country foreign traffic is blocked.
++Nothing else in the existing layers (and not `_is_final_global_rule`) is modified.
+ """
+ from __future__ import annotations
+ 
+@@ -28,6 +30,7 @@
+ 
+ RUNTIME_PATH = "/etc/xray-router/config.json"
+ GLOBAL_BALANCER = "upstream-balancer"
++FAIL_CLOSED_TAG = "block"           # blackhole outbound that a country balancer falls back to when none of its nodes is alive
+ _SPECIFIC_KEYS = ("domain", "ip", "port", "inboundTag", "protocol", "user", "source", "sourcePort", "attrs")
+ 
+ 
+@@ -53,6 +56,9 @@
+     r["rules"] = [x for x in r.get("rules", []) if not _is_ours(x)]
+     if "balancers" in r:
+         r["balancers"] = [b for b in r["balancers"] if not str(b.get("tag", "")).startswith("balancer-s")]
++        for b in r["balancers"]:
++            if b.get("tag") == GLOBAL_BALANCER and b.get("fallbackTag") == FAIL_CLOSED_TAG:
++                del b["fallbackTag"]                       # added by transform(): AUTO fails closed as well
+         if not r["balancers"]:
+             del r["balancers"]
+     return c
+@@ -114,7 +120,8 @@
+             used_selector += tags
+         else:
+             bal = multiloc.balancer_tag(slot)
+-            new_balancers.append({"tag": bal, "selector": tags, "strategy": copy.deepcopy(strategy)})  # no fallbackTag
++            # fallbackTag = blackhole: with no live node Xray must NOT use its default handler (the first outbound of the file = another country's node)
++            new_balancers.append({"tag": bal, "selector": tags, "strategy": copy.deepcopy(strategy), "fallbackTag": FAIL_CLOSED_TAG})
+             target = {"balancerTag": bal}
+             used_selector += tags
+         slot_target[slot] = target
+@@ -148,6 +155,11 @@
+                 if not any(t == s or t.startswith(s) for s in sel):
+                     sel.append(t)
+             obs["subjectSelector"] = sel
++    # AUTO (the global balancer) fails closed as well: when both countries are down, foreign traffic is blocked instead of being handed to the
++    # first outbound of the file (the RU-direct rules sit before every balancer rule, so Russian destinations are not affected)
++    for b in routing.get("balancers", []):
++        if b.get("tag") == GLOBAL_BALANCER:
++            b["fallbackTag"] = FAIL_CLOSED_TAG
+     return c
+ 
+ 
+@@ -166,10 +178,17 @@
+     # 2) slot finals precede the generic catch-all
+     if ours and final_idx is not None and max(ours) > final_idx:
+         problems.append("a slot final rule appears after the generic catch-all")
+-    # 3) fail-closed: no slot balancer has a fallback
++    # 3) fail-closed: every country balancer falls back to the blackhole and to nothing else (a country never borrows another country's node)
+     for tag, b in bals.items():
+-        if tag.startswith("balancer-s") and b.get("fallbackTag"):
+-            problems.append(f"{tag} has a fallbackTag (must fail closed)")
++        if tag.startswith("balancer-s") and b.get("fallbackTag") != FAIL_CLOSED_TAG:
++            problems.append(f"{tag}: fallbackTag must be '{FAIL_CLOSED_TAG}' to fail closed, got {b.get('fallbackTag')!r}")
++    layer_active = any(str(i.get("tag", "")).startswith("from-hiddify-s") for i in config.get("inbounds", []))
++    if layer_active and GLOBAL_BALANCER in bals and bals[GLOBAL_BALANCER].get("fallbackTag") != FAIL_CLOSED_TAG:
++        problems.append(f"{GLOBAL_BALANCER}: fallbackTag must be '{FAIL_CLOSED_TAG}' (AUTO fails closed when both countries are down), got {bals[GLOBAL_BALANCER].get('fallbackTag')!r}")
++    if any(b.get("fallbackTag") == FAIL_CLOSED_TAG for b in bals.values()):
++        block = next((o for o in config.get("outbounds", []) if o.get("tag") == FAIL_CLOSED_TAG), None)
++        if block is None or block.get("protocol") != "blackhole":
++            problems.append(f"outbound '{FAIL_CLOSED_TAG}' is missing or is not a blackhole: the balancers cannot fail closed")
+     # 4) slot rules only reference existing outbounds / balancers
+     for r in rules:
+         if _is_ours(r):

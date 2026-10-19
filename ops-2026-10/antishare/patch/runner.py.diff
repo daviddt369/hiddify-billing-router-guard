@@ -1,0 +1,21 @@
+--- a/antishare/runner.py
++++ b/antishare/runner.py
+@@ -13,4 +13,5 @@
+ from hiddifypanel.antishare.nftables import NftBanBackend
+ from hiddifypanel.antishare.scoring import age_trust, derive_state, pick_allowed_ips, record_seen, score_bump_for_excess
++from hiddifypanel.antishare.shared import load_networks, split_shared
+ from hiddifypanel.antishare.telegram import notify_state_change
+ from hiddifypanel.antishare.traffic import compute_cycle_usage_delta, compute_traffic_multiplier
+@@ -137,4 +138,6 @@
+     profiles = load_profiles(user.id)
+     current_ips = [ip for ip in recent_ips.get(user.uuid.lower(), []) if ip]
++    # CDN edges are shared by many users and are not their devices: they neither count towards the limit nor can they be banned (see antishare/shared.py)
++    current_ips, shared_ips = split_shared(current_ips, load_networks())
+     allowed_count = max(1, int(user.max_ips or 1))
+ 
+@@ -245,4 +248,5 @@
+             "current_delta_usage": current_delta_usage,
+             "learning": learning,
++            "shared_ips_ignored": len(shared_ips),
+         },
+     )

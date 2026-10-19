@@ -1,0 +1,22 @@
+--- a/multiloc.py
++++ b/multiloc.py
+@@ -485,6 +485,10 @@
+ XRAY_JSON_PROTOS = {"vless", "trojan", "vmess", "shadowsocks"}      # what ONE full xray config can run (tuic / hysteria2 / naive / mieru cannot)
+ DEFAULT_PROBE_URL = "https://www.gstatic.com/generate_204"
+ DEFAULT_PROBE_INTERVAL = "1m"
++# the CLIENT's own burst probes (Happ / INCY pick the fastest TRANSPORT of a group) are decoupled from the router's probe interval: 30 s x 2 samples finds a dead
++# transport in 1-2 minutes (3 x 1 m took 3-6). They never decide the exit country - that is the router's job (AUTO director).
++CLIENT_PROBE_INTERVAL = "30s"
++CLIENT_PROBE_SAMPLING = 2
+ 
+ 
+ def json_layout_enabled(user_uuid: str | None) -> bool:
+@@ -923,7 +927,7 @@
+         routing["rules"] = rules
+     routing["balancers"] = [{"tag": balancer, "selector": [label], "strategy": {"type": "leastPing"}, "fallbackTag": label}]
+     cfg["burstObservatory"] = {"subjectSelector": [label],
+-                               "pingConfig": {"destination": probe[0], "connectivity": "", "interval": probe[1], "sampling": 3, "timeout": "5s"}}
++                               "pingConfig": {"destination": probe[0], "connectivity": "", "interval": CLIENT_PROBE_INTERVAL, "sampling": CLIENT_PROBE_SAMPLING, "timeout": "5s"}}
+     return cfg
+ 
+ 

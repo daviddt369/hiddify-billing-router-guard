@@ -1,0 +1,15 @@
+--- a/antishare/models.py
++++ b/antishare/models.py
+@@ -126,2 +126,12 @@
+         nullable=False,
+     )
++
++
++class AntiShareSharedIP(db.Model):
++    """addresses of shared infrastructure (CDN edges) added in the admin page: they are not a user's device and are never banned (see antishare/shared.py)"""
++    __tablename__ = "anti_share_shared_ip"
++
++    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
++    cidr = db.Column(db.String(64), nullable=False, unique=True)
++    note = db.Column(db.String(200), default="", nullable=False)
++    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)

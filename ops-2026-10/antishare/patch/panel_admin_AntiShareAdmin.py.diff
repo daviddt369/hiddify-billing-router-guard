@@ -1,0 +1,81 @@
+--- a/panel/admin/AntiShareAdmin.py
++++ b/panel/admin/AntiShareAdmin.py
+@@ -1,4 +1,5 @@
+ import json
+ import datetime
++import ipaddress
+ 
+ import wtforms as wtf
+@@ -13,5 +14,6 @@
+ from hiddifypanel.models import Role, User
+ from hiddifypanel.antishare.config import AntiShareSettings
+-from hiddifypanel.antishare.models import AntiShareConfig, AntiShareEvent, AntiShareIPProfile, AntiShareState, AntiShareUserOverride
++from hiddifypanel.antishare.models import AntiShareConfig, AntiShareEvent, AntiShareIPProfile, AntiShareSharedIP, AntiShareState, AntiShareUserOverride
++from hiddifypanel.antishare.shared import load_networks
+ from hiddifypanel.antishare.nftables import NftBanBackend
+ from hiddifypanel.antishare.runner import ensure_tables
+@@ -161,4 +163,38 @@
+             "states": states,
+         }
++
++    def _shared_context(self) -> dict:
++        rows = AntiShareSharedIP.query.order_by(AntiShareSharedIP.id.asc()).all()
++        return {"shared_rows": rows, "shared_file_count": len(load_networks())}
++
++    def _handle_shared_action(self, action: str) -> None:
++        """white list of shared addresses (CDN edges): they do not count as a user's device and are never banned"""
++        if action == "shared_remove":
++            try:
++                row = AntiShareSharedIP.query.filter(AntiShareSharedIP.id == int(request.form.get("shared_id") or 0)).first()
++            except ValueError:
++                row = None
++            if row:
++                db.session.delete(row)
++                db.session.commit()
++                hutils.flask.flash(f"Адрес {row.cidr} убран из списка общих адресов.", "success")
++            return
++        raw = (request.form.get("shared_cidr") or "").strip()
++        note = (request.form.get("shared_note") or "").strip()[:200]
++        try:
++            net = ipaddress.ip_network(raw, strict=False)
++        except ValueError:
++            hutils.flask.flash("Не похоже на IP-адрес или диапазон (пример: 198.51.100.151 или 198.51.100.0/24).", "danger")
++            return
++        if (net.version == 4 and net.prefixlen < 16) or (net.version == 6 and net.prefixlen < 32):
++            hutils.flask.flash("Слишком широкий диапазон: так можно случайно выключить учёт для всех. Минимум /16 для IPv4 и /32 для IPv6.", "danger")
++            return
++        cidr = str(net)
++        if AntiShareSharedIP.query.filter(AntiShareSharedIP.cidr == cidr).first():
++            hutils.flask.flash(f"{cidr} уже есть в списке.", "warning")
++            return
++        db.session.add(AntiShareSharedIP(cidr=cidr, note=note))
++        db.session.commit()
++        hutils.flask.flash(f"{cidr} добавлен: он больше не считается устройством пользователя и не банится.", "success")
+ 
+     def _override_row(self, user_id: int) -> AntiShareUserOverride:
+@@ -364,4 +400,5 @@
+             summary=self._summary(),
+             user_rows=self._user_rows(),
++            **self._shared_context(),
+         )
+ 
+@@ -369,4 +406,7 @@
+         ensure_tables()
+         action = (request.form.get("action") or "").strip().lower()
++        if action in ("shared_add", "shared_remove"):
++            self._handle_shared_action(action)
++            return redirect(request.path)
+         if action:
+             self._handle_user_action()
+@@ -381,4 +421,5 @@
+                 summary=self._summary(),
+                 user_rows=self._user_rows(),
++                **self._shared_context(),
+             )
+ 
+@@ -412,3 +453,4 @@
+             summary=self._summary(),
+             user_rows=self._user_rows(),
+-        )
++            **self._shared_context(),
++        )

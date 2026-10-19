@@ -1,0 +1,78 @@
+--- a/tests/test_01_unit.py
++++ b/tests/test_01_unit.py
+@@ -197,14 +197,15 @@
+                                  "from-hiddify-s3": 20813, "from-hiddify-s4": 20814})
+         for i in out["inbounds"]:
+             self.assertEqual(i["sniffing"], self.base["inbounds"][0]["sniffing"])
+-        # balancers: exact membership, leastPing, NO fallback (fail closed)
++        # balancers: exact membership, leastPing, fail closed (fallbackTag = the blackhole: a country never borrows another country's node)
+         b = {x["tag"]: x for x in out["routing"]["balancers"]}
+         self.assertEqual(sorted(b["balancer-s1"]["selector"]), ["upstream-10", "upstream-4", "upstream-6"])
+         self.assertEqual(sorted(b["balancer-s2"]["selector"]), ["upstream-11", "upstream-15", "upstream-5"])
+         for t in ("balancer-s1", "balancer-s2"):
+             self.assertEqual(b[t]["strategy"], {"type": "leastPing"})
+-            self.assertNotIn("fallbackTag", b[t])
++            self.assertEqual(b[t]["fallbackTag"], "block")
+         self.assertIn("upstream-balancer", b)
++        self.assertEqual(b["upstream-balancer"]["fallbackTag"], "block")                 # AUTO fails closed too: no live node in ANY country = foreign traffic blocked
+         # the legacy part is untouched: removing our additions gives back the original
+         self.assertEqual(mr.strip(out), self.base)
+ 
+@@ -294,6 +295,57 @@
+         bad3 = copy.deepcopy(out)
+         rules_of(bad3)[idx_final(rules_of(bad3)) - 1]["balancerTag"] = "balancer-nope"
+         self.assertTrue(any("missing balancer" in p for p in mr.check_invariants(bad3)))
++        # a country balancer WITHOUT its fallbackTag is exactly the hole Xray's default handler opens (traffic goes to the first outbound of the file)
++        bad4 = copy.deepcopy(out)
++        del bad4["routing"]["balancers"][1]["fallbackTag"]
++        self.assertTrue(any("fallbackTag must be 'block'" in p for p in mr.check_invariants(bad4)), mr.check_invariants(bad4))
++        bad7 = copy.deepcopy(out)
++        del next(b for b in bad7["routing"]["balancers"] if b["tag"] == "upstream-balancer")["fallbackTag"]
++        self.assertTrue(any("AUTO fails closed" in p for p in mr.check_invariants(bad7)), mr.check_invariants(bad7))
++        # the blackhole it falls back to must really exist and really be a blackhole
++        bad5 = copy.deepcopy(out)
++        bad5["outbounds"] = [o for o in bad5["outbounds"] if o.get("tag") != "block"]
++        self.assertTrue(any("not a blackhole" in p for p in mr.check_invariants(bad5)), mr.check_invariants(bad5))
++        bad6 = copy.deepcopy(out)
++        next(o for o in bad6["outbounds"] if o.get("tag") == "block")["protocol"] = "freedom"
++        self.assertTrue(any("not a blackhole" in p for p in mr.check_invariants(bad6)), mr.check_invariants(bad6))
++
++    def test_a_config_from_before_the_fix_is_brought_to_fail_closed_by_one_transform(self):
++        """what the first `multiloc_ctl.py apply` after the update sees: the LIVE config has balancers (countries and AUTO) without fallbackTag. transform() must
++        fix exactly that (nothing else), the fixed config must pass the invariants, and a second pass must change nothing."""
++        p = plan()
++        fixed = mr.transform(self.base, p)
++        old_live = copy.deepcopy(fixed)
++        for b in old_live["routing"]["balancers"]:
++            b.pop("fallbackTag", None)
++        self.assertTrue(mr.check_invariants(old_live))                                    # the old shape is now reported as a problem
++        again = mr.transform(old_live, p)
++        self.assertEqual(again, fixed)
++        self.assertEqual(mr.check_invariants(again), [])
++        self.assertEqual(mr.transform(again, p), again)                                   # idempotent: no restart for an already fixed router
++        changed = [b["tag"] for b, o in zip(again["routing"]["balancers"], old_live["routing"]["balancers"]) if b != o]
++        self.assertEqual(changed, ["upstream-balancer", "balancer-s1", "balancer-s2"])    # only the fallbackTag of the balancers differs
++
++    def test_auto_fails_closed_too_and_the_layer_still_strips_cleanly(self):
++        out = mr.transform(self.base, plan())
++        g = next(b for b in out["routing"]["balancers"] if b["tag"] == "upstream-balancer")
++        self.assertEqual(g["fallbackTag"], "block")
++        self.assertEqual(g["selector"], next(b for b in self.base["routing"]["balancers"] if b["tag"] == "upstream-balancer")["selector"])     # membership untouched
++        self.assertEqual(mr.strip(out), self.base)                                         # removing the layer removes the AUTO fallback it added
++        self.assertEqual(mr.transform(out, {"slots": {}}), self.base)                      # feature off -> exact legacy config
++        # the RU-direct rules still precede every balancer rule: AUTO closing cannot touch Russian destinations
++        r = rules_of(out)
++        last_ru = max(i for i, x in enumerate(r) if x.get("outboundTag") == "direct-ru")
++        first_bal = min(i for i, x in enumerate(r) if x.get("balancerTag") == "upstream-balancer" and x.get("network") == "tcp,udp")
++        self.assertLess(last_ru, first_bal)
++
++    def test_a_legacy_fallback_on_auto_is_not_removed_by_strip(self):
++        """only the layer's own value ('block') counts as the layer's contribution"""
++        cfg = copy.deepcopy(self.base)
++        for b in cfg["routing"]["balancers"]:
++            if b["tag"] == "upstream-balancer":
++                b["fallbackTag"] = "upstream-4"
++        self.assertEqual(next(b for b in mr.strip(cfg)["routing"]["balancers"] if b["tag"] == "upstream-balancer")["fallbackTag"], "upstream-4")
+ 
+     def test_production_sized_config_15k_rules(self):
+         big = legacy_router(n_ru=15076)
