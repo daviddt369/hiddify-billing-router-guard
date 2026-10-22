@@ -1,0 +1,17 @@
+747,749c747,750
+< def roscom_app_headers() -> dict:
+<     """the response headers that make Happ (and any client that reads the same provider headers) keep the listed apps outside the tunnel on Android:
+<     `per-app-proxy-mode: bypass` + `per-app-proxy-list: a,b,c` (https://www.happ.su/main/dev-docs/app-management); Happ needs the provider id too for these settings"""
+---
+> def roscom_app_headers(client: str | None = None) -> dict:
+>     """the response headers that keep the listed apps outside the tunnel on Android: `per-app-proxy-mode: bypass` + `per-app-proxy-list: a,b,c`.
+>     Happ (https://www.happ.su/main/dev-docs/app-management) needs the provider id too; INCY (https://incy.gitbook.io/docs/docs-en/app-management.en) needs
+>     no provider id but its per-app mode is switched on by `per-app-proxy-enable: 1`. Each client gets only the headers it documents."""
+753a755,757
+>     if client == "incy":
+>         out["per-app-proxy-enable"] = "1"
+>         return out
+891c895
+<                     extra = roscom_app_headers()
+---
+>                     extra = roscom_app_headers(client)

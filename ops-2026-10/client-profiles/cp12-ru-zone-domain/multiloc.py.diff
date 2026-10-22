@@ -1,0 +1,6 @@
+549c549,551
+< ROSCOM_RU_ZONE = ("regexp:.*\\.ru$", "regexp:.*\\.su$", "regexp:.*\\.xn\\-\\-p1ai$")
+---
+> # `domain:` entries first: every client matches them in its routing (INCY, measured 2026-10-22, takes the `regexp:` entries into its DNS rules only and sent the .ru sites that
+> # are not on the whitelist into the tunnel). The `regexp:` entries stay for the clients that read them in the routing too (Happ) and for the DNS rules.
+> ROSCOM_RU_ZONE = ("domain:ru", "domain:su", "domain:xn--p1ai", "regexp:.*\\.ru$", "regexp:.*\\.su$", "regexp:.*\\.xn\\-\\-p1ai$")

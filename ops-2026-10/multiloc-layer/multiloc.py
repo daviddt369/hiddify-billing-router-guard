@@ -546,7 +546,9 @@ ROSCOM_JSON_NAME = "RoscomVPN JSON"                               # NOT "RoscomV
 ROSCOM_CLIENTS = ("happ", "incy")
 # the national zones + the banks go DIRECT from the device (the RU node has the same masks and bank domains in its direct list). The apps cut the traffic by the lists of the profile
 # (block -> proxy -> direct), and the RoscomVPN lists miss a Russian site hosted abroad and the banks' other-zone domains - those would leave through the tunnel with a foreign IP.
-ROSCOM_RU_ZONE = ("regexp:.*\\.ru$", "regexp:.*\\.su$", "regexp:.*\\.xn\\-\\-p1ai$")
+# `domain:` entries first: every client matches them in its routing (INCY, measured 2026-10-22, takes the `regexp:` entries into its DNS rules only and sent the .ru sites that
+# are not on the whitelist into the tunnel). The `regexp:` entries stay for the clients that read them in the routing too (Happ) and for the DNS rules.
+ROSCOM_RU_ZONE = ("domain:ru", "domain:su", "domain:xn--p1ai", "regexp:.*\\.ru$", "regexp:.*\\.su$", "regexp:.*\\.xn\\-\\-p1ai$")
 ROSCOM_RU_BANKS = ("domain:sberbank.com", "domain:tbank-online.com", "domain:alfabank.com", "domain:alfa-bank.com", "domain:gazprombank.com")
 _ROSCOM_DEEPLINK = {c: re.compile(rf"^{c}://routing/onadd/([A-Za-z0-9+/]+={{0,2}})$") for c in ROSCOM_CLIENTS}
 _ROSCOM_GROUPS = (("block", "BlockSites", "BlockIp"), ("proxy", "ProxySites", "ProxyIp"), ("direct", "DirectSites", "DirectIp"))
@@ -732,9 +734,48 @@ def roscom_enabled() -> bool:
     return os.path.exists(ROSCOM_FLAG)
 
 
-def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP) -> dict:
-    """change the switch, the pasted profile (None / "" = back to the automatic copy) and / or the shape of the header profile. Atomic. Returns the new settings."""
+_APP_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$")        # an Android package name: com.example.app
+_PROVIDER_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def roscom_app_ids() -> list:
+    """the Android packages that must stay OUT of the VPN (they refuse to work when the system reports a VPN): the settings file key `bypass_apps`"""
+    raw = _roscom_settings_read().get("bypass_apps")
+    return list(dict.fromkeys(x for x in (raw if isinstance(raw, list) else []) if isinstance(x, str) and _APP_ID.match(x)))
+
+
+def roscom_app_headers(client: str | None = None) -> dict:
+    """the response headers that keep the listed apps outside the tunnel on Android: `per-app-proxy-mode: bypass` + `per-app-proxy-list: a,b,c`.
+    Happ (https://www.happ.su/main/dev-docs/app-management) needs the provider id too; INCY (https://incy.gitbook.io/docs/docs-en/app-management.en) needs
+    no provider id but its per-app mode is switched on by `per-app-proxy-enable: 1`. Each client gets only the headers it documents."""
+    apps = roscom_app_ids()
+    if not apps:
+        return {}
+    out = {"per-app-proxy-mode": "bypass", "per-app-proxy-list": ",".join(apps)}
+    if client == "incy":
+        out["per-app-proxy-enable"] = "1"
+        return out
+    pid = _roscom_settings_read().get("provider_id")
+    if isinstance(pid, str) and _PROVIDER_ID.match(pid):
+        out["providerid"] = pid
+    return out
+
+
+def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP, bypass_apps: Any = _KEEP, provider_id: Any = _KEEP) -> dict:
+    """change the switch, the pasted profile (None / "" = back to the automatic copy) and / or the shape of the header profile. Atomic. Returns the new settings.
+    bypass_apps: a list of Android package names (or None / [] = none); provider_id: the Happ provider id (or None)."""
     d = _roscom_settings_read()
+    if bypass_apps is not _KEEP:
+        apps = [str(x).strip() for x in (bypass_apps or []) if str(x).strip()]
+        bad = [x for x in apps if not _APP_ID.match(x)]
+        if bad or len(apps) > 100:
+            raise ValueError(f"not Android package names (or more than 100): {bad[:3]}")
+        d["bypass_apps"] = list(dict.fromkeys(apps))
+    if provider_id is not _KEEP:
+        pid = str(provider_id).strip() if provider_id else ""
+        if pid and not _PROVIDER_ID.match(pid):
+            raise ValueError("the provider id has letters, digits, - and _ only (64 at most)")
+        d["provider_id"] = pid or None
     if enabled is not _KEEP:
         d["enabled"] = bool(enabled)
     if header_lists is not _KEEP:
@@ -851,6 +892,19 @@ def roscom_for_request() -> dict | None:
                 if client:
                     prof, source = roscom_profile(client)
                     found = {"client": client, "profile": prof, "source": source, "header": roscom_header_value(client, prof)}
+                    extra = roscom_app_headers(client)
+                    if extra:                       # added to the response only if it really carries the RoscomVPN rules (same condition as the `routing` header)
+                        from flask import after_this_request
+
+                        @after_this_request
+                        def _app_control_headers(resp, _extra=extra):
+                            try:
+                                if roscom_header_used():
+                                    for k, v in _extra.items():
+                                        resp.headers[k] = v
+                            except Exception:
+                                pass
+                            return resp
         except Exception as exc:
             logger.warning(f"multiloc.roscom_for_request: RoscomVPN routing skipped, the stock rules are served: {exc}")
             found = None
@@ -874,7 +928,8 @@ def roscom_header_used() -> str | None:
 def roscom_status() -> dict:
     """for `multiloc_ctl.py roscom status|on`: the switch and, per client, whether the landing copy is usable"""
     custom = _roscom_settings_read().get("custom")
-    out = {"enabled": roscom_enabled(), "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "flag": ROSCOM_FLAG, "settings": ROSCOM_SETTINGS, "dir": ROSCOM_DIR, "source": "custom" if custom else "landing",
+    out = {"bypass_apps": roscom_app_ids(), "provider_id_set": bool(roscom_app_headers().get("providerid")),
+           "enabled": roscom_enabled(), "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "flag": ROSCOM_FLAG, "settings": ROSCOM_SETTINGS, "dir": ROSCOM_DIR, "source": "custom" if custom else "landing",
            "clients": {}}
     if custom:
         try:
