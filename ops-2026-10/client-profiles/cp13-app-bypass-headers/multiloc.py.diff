@@ -1,0 +1,61 @@
+737,738c737,762
+< def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP) -> dict:
+<     """change the switch, the pasted profile (None / "" = back to the automatic copy) and / or the shape of the header profile. Atomic. Returns the new settings."""
+---
+> _APP_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$")        # an Android package name: com.example.app
+> _PROVIDER_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+> 
+> 
+> def roscom_app_ids() -> list:
+>     """the Android packages that must stay OUT of the VPN (they refuse to work when the system reports a VPN): the settings file key `bypass_apps`"""
+>     raw = _roscom_settings_read().get("bypass_apps")
+>     return list(dict.fromkeys(x for x in (raw if isinstance(raw, list) else []) if isinstance(x, str) and _APP_ID.match(x)))
+> 
+> 
+> def roscom_app_headers() -> dict:
+>     """the response headers that make Happ (and any client that reads the same provider headers) keep the listed apps outside the tunnel on Android:
+>     `per-app-proxy-mode: bypass` + `per-app-proxy-list: a,b,c` (https://www.happ.su/main/dev-docs/app-management); Happ needs the provider id too for these settings"""
+>     apps = roscom_app_ids()
+>     if not apps:
+>         return {}
+>     out = {"per-app-proxy-mode": "bypass", "per-app-proxy-list": ",".join(apps)}
+>     pid = _roscom_settings_read().get("provider_id")
+>     if isinstance(pid, str) and _PROVIDER_ID.match(pid):
+>         out["providerid"] = pid
+>     return out
+> 
+> 
+> def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP, bypass_apps: Any = _KEEP, provider_id: Any = _KEEP) -> dict:
+>     """change the switch, the pasted profile (None / "" = back to the automatic copy) and / or the shape of the header profile. Atomic. Returns the new settings.
+>     bypass_apps: a list of Android package names (or None / [] = none); provider_id: the Happ provider id (or None)."""
+739a764,774
+>     if bypass_apps is not _KEEP:
+>         apps = [str(x).strip() for x in (bypass_apps or []) if str(x).strip()]
+>         bad = [x for x in apps if not _APP_ID.match(x)]
+>         if bad or len(apps) > 100:
+>             raise ValueError(f"not Android package names (or more than 100): {bad[:3]}")
+>         d["bypass_apps"] = list(dict.fromkeys(apps))
+>     if provider_id is not _KEEP:
+>         pid = str(provider_id).strip() if provider_id else ""
+>         if pid and not _PROVIDER_ID.match(pid):
+>             raise ValueError("the provider id has letters, digits, - and _ only (64 at most)")
+>         d["provider_id"] = pid or None
+855a891,903
+>                     extra = roscom_app_headers()
+>                     if extra:                       # added to the response only if it really carries the RoscomVPN rules (same condition as the `routing` header)
+>                         from flask import after_this_request
+> 
+>                         @after_this_request
+>                         def _app_control_headers(resp, _extra=extra):
+>                             try:
+>                                 if roscom_header_used():
+>                                     for k, v in _extra.items():
+>                                         resp.headers[k] = v
+>                             except Exception:
+>                                 pass
+>                             return resp
+879c927,928
+<     out = {"enabled": roscom_enabled(), "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "flag": ROSCOM_FLAG, "settings": ROSCOM_SETTINGS, "dir": ROSCOM_DIR, "source": "custom" if custom else "landing",
+---
+>     out = {"bypass_apps": roscom_app_ids(), "provider_id_set": bool(roscom_app_headers().get("providerid")),
+>            "enabled": roscom_enabled(), "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "flag": ROSCOM_FLAG, "settings": ROSCOM_SETTINGS, "dir": ROSCOM_DIR, "source": "custom" if custom else "landing",

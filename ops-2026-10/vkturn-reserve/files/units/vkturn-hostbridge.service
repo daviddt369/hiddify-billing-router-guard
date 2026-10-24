@@ -1,0 +1,17 @@
+[Unit]
+Description=VK TURN reserve entry: host side of the unix-socket bridge to the router's SOCKS inbound (loopback only)
+After=xray-router.service
+Wants=xray-router.service
+
+[Service]
+RuntimeDirectory=vkturn
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/socat UNIX-LISTEN:/run/vkturn/s.sock,fork,mode=0600,unlink-early TCP:127.0.0.1:${ROUTER_SOCKS_PORT}
+EnvironmentFile=/etc/vkturn/env
+Restart=always
+RestartSec=3
+MemoryMax=64M
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

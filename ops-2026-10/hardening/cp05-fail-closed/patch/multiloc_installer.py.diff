@@ -1,0 +1,12 @@
+--- a/multiloc_installer.py
++++ b/multiloc_installer.py
+@@ -201,6 +201,9 @@
+                   if not (isinstance(x, dict) and any(str(t).startswith("from-hiddify-s") for t in (x.get("inboundTag") or [])))]
+     if "balancers" in r:
+         r["balancers"] = [b for b in r["balancers"] if not str(b.get("tag", "")).startswith("balancer-s")]
++        for b in r["balancers"]:
++            if b.get("tag") == "upstream-balancer" and b.get("fallbackTag") == "block":
++                del b["fallbackTag"]                       # the layer makes AUTO fail closed (mirrors multiloc_router.strip())
+         if not r["balancers"]:
+             del r["balancers"]
+     c["routing"] = r

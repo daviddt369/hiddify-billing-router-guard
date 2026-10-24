@@ -1,0 +1,15 @@
+[Unit]
+Description=VK TURN reserve entry: public UDP port -> server inside the namespace (the ONLY thing reachable from outside)
+After=vkturn-server.service
+Wants=vkturn-server.service
+
+[Service]
+EnvironmentFile=/etc/vkturn/env
+ExecStart=/usr/bin/socat -T 300 UDP4-LISTEN:${PUBLIC_PORT},fork,reuseaddr UDP4:10.99.0.2:56000
+Restart=always
+RestartSec=3
+MemoryMax=64M
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

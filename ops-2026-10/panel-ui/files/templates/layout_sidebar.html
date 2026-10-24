@@ -1,0 +1,13 @@
+{% set _m = admin_v2_layout_menu() %}
+<aside id="main-sidebar" class="main-sidebar v2-sidebar">
+  <nav class="v2-menu">
+    <div class="v2-group">Обзор</div>
+    <a class="v2-link" href="{{ _m.v2_url }}"><i class="fa-solid fa-house"></i><span>Обзор</span></a>
+    {% for grp in _m.groups %}
+    <div class="v2-group">{{ grp.label }}</div>
+    {% for it in grp['items'] %}
+    <a class="v2-link{% if it.method == 'post' %} form_post{% endif %}{% if it.url == _m.active %} active{% endif %}" href="{{ it.url }}"{% if it.target == '_blank' %} target="_blank" rel="noopener"{% endif %}><i class="{{ it.fa }}"></i><span>{{ it.label }}</span></a>
+    {% endfor %}
+    {% endfor %}
+  </nav>
+</aside>

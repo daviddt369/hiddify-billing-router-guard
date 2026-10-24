@@ -1,0 +1,59 @@
+--- a/panel/admin/BusinessAdmin.py
++++ b/panel/admin/BusinessAdmin.py
+@@ -150,6 +150,22 @@
+ def _telegram_registration_mode_value() -> str:
+     value = (_telegram_ui_value("telegram_registration_mode", "") or _secret_file_value("HIDDIFY_TELEGRAM_REGISTRATION_MODE") or os.environ.get("HIDDIFY_TELEGRAM_REGISTRATION_MODE", "") or "admin_only").strip().lower()
+     return value if value in {"auto", "admin_only"} else "admin_only"
++
++
++def _tg_text_groups() -> list:
++    try:
++        from hiddifypanel.hutils import tg_texts
++        return tg_texts.form_groups()
++    except Exception:
++        return []
++
++
++def _tg_trial() -> dict:
++    try:
++        from hiddifypanel.hutils import tg_texts
++        return tg_texts.trial_form()
++    except Exception:
++        return {}
+ 
+ 
+ def _normalize_multiline_text(value: str) -> str:
+@@ -297,6 +313,8 @@
+             yookassa_section_url=f"{request.path}?{urlencode({'section': 'yookassa'})}",
+             page_title={"telegram": "Бизнес: Telegram", "yookassa": "Бизнес: YooKassa", "routing": "Маршрутизация"}.get(active_section, "Бизнес"),
+             show_section_tabs=False,
++            bot_text_groups=_tg_text_groups() if active_section == "telegram" else [],
++            bot_trial=_tg_trial() if active_section == "telegram" else {},
+         )
+ 
+     def _build_form(self):
+@@ -352,6 +370,14 @@
+         if not form.validate_on_submit():
+             hutils.flask.flash(_("config.validation-error"), "danger")
+             return self._render_settings(form, commercial_routing_notice=None, test_result=None)
++
++        if self._active_section(old_configs) == "telegram":
++            try:
++                from hiddifypanel.hutils import tg_texts
++                tg_texts.check_form(request.form)
++            except ValueError as exc:
++                hutils.flask.flash(str(exc), "danger")
++                return self._render_settings(form, commercial_routing_notice=None, test_result=None)
+ 
+         if (form.commercial_router_port.data or "").strip():
+             try:
+@@ -561,6 +587,9 @@
+             db.session.commit()
+ 
+         _write_telegram_ui_value("telegram_registration_mode", telegram_registration_mode)
++        if self._active_section(old_configs) == "telegram":
++            from hiddifypanel.hutils import tg_texts
++            tg_texts.save_from_form(request.form)
+         os.environ["HIDDIFY_TELEGRAM_REGISTRATION_MODE"] = telegram_registration_mode
+ 
+         telegram_related_keys = {

@@ -1,0 +1,12 @@
+[Unit]
+Description=VK TURN reserve entry: isolated network namespace (veth + routing plumbing only)
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/vkturn/bin/ns-up.sh
+ExecStop=/opt/vkturn/bin/ns-down.sh
+
+[Install]
+WantedBy=multi-user.target

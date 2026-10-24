@@ -1,0 +1,33 @@
+--- a/panel/admin/AntiShareAdmin.py
++++ b/panel/admin/AntiShareAdmin.py
+@@ -197,4 +197,22 @@
+         db.session.commit()
+         hutils.flask.flash(f"{cidr} добавлен: он больше не считается устройством пользователя и не банится.", "success")
++
++    def _handle_reset_all(self) -> None:
++        """clear ALL observations (events, address profiles, scores, warnings, blocks); a copy is kept in the database (see antishare/reset.py)"""
++        if (request.form.get("reset_confirm") or "").strip().upper() != "ОЧИСТИТЬ":
++            hutils.flask.flash("Статистика не очищена: нужно ввести слово ОЧИСТИТЬ.", "danger")
++            return
++        from hiddifypanel.antishare.reset import reset_all
++        settings = AntiShareSettings.load()
++        backend = NftBanBackend(helper_path=settings.nft_helper, enabled=settings.nft_enabled, dry_run=settings.nft_dry_run)
++        try:
++            r = reset_all(backend)
++        except Exception as exc:
++            db.session.rollback()
++            hutils.flask.flash(f"Очистка не выполнена, данные не тронуты: {exc}", "danger")
++            return
++        hutils.flask.flash(
++            f"Статистика очищена: событий {r['event_rows']}, адресов пользователей {r['profile_rows']}, состояний сброшено {r['state_rows']}, разбанено адресов {r['unbanned']}. "
++            f"Копия до очистки сохранена в таблицах anti_share_bak_{r['stamp']}_* (хранится только последняя).", "success")
+ 
+     def _override_row(self, user_id: int) -> AntiShareUserOverride:
+@@ -406,4 +424,7 @@
+         ensure_tables()
+         action = (request.form.get("action") or "").strip().lower()
++        if action == "reset_all":
++            self._handle_reset_all()
++            return redirect(request.path)
+         if action in ("shared_add", "shared_remove"):
+             self._handle_shared_action(action)
