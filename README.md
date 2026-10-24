@@ -14,6 +14,18 @@ Overlay-аддон поверх Hiddify Manager 12.0.0: серверная ма�
 
 ---
 
+## Установка одной командой («Чебурнатор»)
+
+На чистую Ubuntu 24.04 от root: панель с биллингом, маршрутизацией, антишерингом, мониторингом и дашбордом. Скрипт сам спросит название, домен и контакт поддержки, поставит всё из этого репозитория и напечатает ссылку админки.
+
+```bash
+git clone https://github.com/daviddt369/hiddify-billing-router-guard.git && cd hiddify-billing-router-guard && sudo bash install.sh
+```
+
+Выходные ноды (DE, NL...): `sudo bash install.sh --node`, подключение к панели - `node/README.ru.md`. Перенос существующего узла с данными - `golden/README.ru.md`. Что здесь чужое и под какими лицензиями: `NOTICE.md` (проект для личного некоммерческого использования).
+
+---
+
 ## Быстрый старт
 
 ```bash
@@ -184,6 +196,18 @@ sudo bash release/rollback-all.sh
 > Not affiliated with or officially supported by the Hiddify project.
 
 Overlay addon stack on top of Hiddify Manager 12.0.0: server-side routing, upstream relay-node management, anti-sharing, billing, and Telegram bot.
+
+---
+
+## One-command install ("Cheburnator")
+
+On a fresh Ubuntu 24.04, as root: the panel with billing, routing, anti-share, monitoring and the dashboard. The script asks for a name, a domain and a support contact, installs everything from this repository and prints the admin link.
+
+```bash
+git clone https://github.com/daviddt369/hiddify-billing-router-guard.git && cd hiddify-billing-router-guard && sudo bash install.sh
+```
+
+Exit nodes (DE, NL...): `sudo bash install.sh --node`, connecting them to the panel - `node/README.ru.md`. Moving an existing node with its data - `golden/README.ru.md`. What is third-party here and under which licences: `NOTICE.md` (a personal, non-commercial project).
 
 ---
 

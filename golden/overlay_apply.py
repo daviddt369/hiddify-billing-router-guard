@@ -61,6 +61,7 @@ for r in rows_all:
 
 os.makedirs(a.backup, exist_ok=True)
 new_files = []
+by_params = []   # files whose content differs from the captured node only because the parameters (IP, domain, name...) are this node's own
 done = 0
 for path, mode, owner, sha, kind in rows:
     src = os.path.join(HERE, "overlay", stored(path))
@@ -70,7 +71,7 @@ for path, mode, owner, sha, kind in rows:
         text = data.decode("utf-8")
         data = PH.sub(lambda m: params[m.group(1)], text).encode("utf-8")
         if hashlib.sha256(data).hexdigest() != sha:
-            print(f"note: {path} renders to a different content than the node had (parameters differ from the captured ones)")
+            by_params.append(path)
     if os.path.exists(dst):
         b = os.path.join(a.backup, path.lstrip("/"))
         os.makedirs(os.path.dirname(b), exist_ok=True)
@@ -90,5 +91,7 @@ for path, mode, owner, sha, kind in rows:
         print(f"note: user/group {owner} does not exist yet for {path}: left as root")
     os.replace(tmp, dst)
     done += 1
+if by_params:
+    print(f"note: {len(by_params)} file(s) carry this node's own parameters, not the captured ones (expected for a new node): " + ", ".join(os.path.basename(p) for p in by_params))
 open(os.path.join(a.backup, "NEW_FILES"), "w").write("\n".join(new_files) + ("\n" if new_files else ""))
 print(f"installed {done} files ({len(new_files)} new); backup of the replaced ones: {a.backup}")
