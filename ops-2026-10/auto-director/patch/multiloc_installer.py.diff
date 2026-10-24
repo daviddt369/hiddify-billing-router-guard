@@ -1,0 +1,57 @@
+--- a/multiloc_installer.py
++++ b/multiloc_installer.py
+@@ -195,12 +195,23 @@
+     """a router config WITHOUT what the multi-location layer adds (its entrances, rules, balancers) and without `observatory` (compared separately, see
+     observatory_foreign_change). Mirrors hutils/multiloc_router.strip() on purpose: the rollback must not depend on code it is about to remove."""
+     c = copy.deepcopy(cfg)
+-    c["inbounds"] = [i for i in c.get("inbounds", []) if not str(i.get("tag", "")).startswith("from-hiddify-s")]
++    c["inbounds"] = [i for i in c.get("inbounds", []) if not str(i.get("tag", "")).startswith("from-hiddify-s") and i.get("tag") != "api"]
+     r = c.get("routing") or {}
++
++    def _director_rule(x):          # AUTO director (mirrors multiloc_router._is_director_rule): loopback passes `auto-in-s<N>` and the API entrance
++        tags = [str(t) for t in ((x.get("inboundTag") or []) if isinstance(x, dict) else [])]
++        return bool(tags) and all(t.startswith("auto-in-s") or t == "api" for t in tags)
+     r["rules"] = [x for x in r.get("rules", [])
+-                  if not (isinstance(x, dict) and any(str(t).startswith("from-hiddify-s") for t in (x.get("inboundTag") or [])))]
++                  if not (isinstance(x, dict) and any(str(t).startswith("from-hiddify-s") for t in (x.get("inboundTag") or [])))
++                  and not _director_rule(x)]
++    for x in r["rules"]:
++        if isinstance(x, dict) and x.get("balancerTag") == "auto-director":
++            x["balancerTag"] = "upstream-balancer"
++    c["outbounds"] = [o for o in c.get("outbounds", []) if not str(o.get("tag", "")).startswith("auto-via-s")]
++    if (c.get("api") or {}).get("tag") == "api":
++        del c["api"]
+     if "balancers" in r:
+-        r["balancers"] = [b for b in r["balancers"] if not str(b.get("tag", "")).startswith("balancer-s")]
++        r["balancers"] = [b for b in r["balancers"] if not str(b.get("tag", "")).startswith("balancer-s") and b.get("tag") != "auto-director"]
+         for b in r["balancers"]:
+             if b.get("tag") == "upstream-balancer" and b.get("fallbackTag") == "block":
+                 del b["fallbackTag"]                       # the layer makes AUTO fail closed (mirrors multiloc_router.strip())
+@@ -214,7 +225,7 @@
+ _OBSERVATORY_KEYS = {"subjectSelector", "probeUrl", "probeInterval", "enableConcurrency"}
+ 
+ 
+-def observatory_foreign_change(live, snap):
++def observatory_foreign_change(live, snap, interval_ok=False):
+     """None when `live` differs from the pre-install observatory only the way the layer changes it (created when there was none; selectors APPENDED
+     to subjectSelector), else the reason. Every other change - probe URL / interval / concurrency edited, entries removed or reordered, the whole
+     observatory removed - is somebody else's."""
+@@ -226,7 +237,7 @@
+         return "observatory was created with keys the layer does not write"
+     if not isinstance(live, dict) or not isinstance(snap, dict):
+         return "observatory was removed or replaced"
+-    for k in (set(live) | set(snap)) - {"subjectSelector"}:
++    for k in (set(live) | set(snap)) - {"subjectSelector"} - ({"probeInterval"} if interval_ok else set()):     # the AUTO director shortens the probe interval
+         if live.get(k) != snap.get(k):
+             return f"observatory.{k} was changed"
+     ls, ss = list(live.get("subjectSelector") or []), list(snap.get("subjectSelector") or [])
+@@ -240,7 +251,8 @@
+     reasons = []
+     if layer_free(live_cfg) != layer_free(snap_cfg):
+         reasons.append("the config differs outside the feature's entrances, rules and balancers")
+-    why = observatory_foreign_change(live_cfg.get("observatory"), snap_cfg.get("observatory"))
++    director = any(b.get("tag") == "auto-director" for b in (live_cfg.get("routing") or {}).get("balancers", []))
++    why = observatory_foreign_change(live_cfg.get("observatory"), snap_cfg.get("observatory"), interval_ok=director)
+     if why:
+         reasons.append(why)
+     return reasons

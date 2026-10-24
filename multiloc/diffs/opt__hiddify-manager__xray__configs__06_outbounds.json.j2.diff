@@ -1,0 +1,18 @@
+--- a/opt/hiddify-manager/xray/configs/06_outbounds.json.j2
++++ b/opt/hiddify-manager/xray/configs/06_outbounds.json.j2
+@@ -96,6 +96,14 @@
+         "address": "{{ hconfigs['commercial_router_host'] }}",
+         "port": {{ hconfigs['commercial_router_port']|int }}
+       }
+-    }{% endif %}
++    }{% for loc in locations %},
++    {
++      "tag": "{{ loc['router_outbound'] }}",
++      "protocol": "socks",
++      "settings": {
++        "address": "{{ hconfigs['commercial_router_host'] }}",
++        "port": {{ loc['router_port'] }}
++      }
++    }{% endfor %}{% endif %}
+   ]
+ }

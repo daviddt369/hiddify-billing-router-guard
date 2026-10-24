@@ -1,0 +1,17 @@
+{# One look for every page's instruction: a collapsed blue panel under the page title.
+   {% from 'pt-faq.html' import faq, acc %}
+   {% call faq() %} ... {% endcall %}                       - "Инструкция" (collapsed)
+   {% call acc("Заголовок", hint="пояснение") %}..{% endcall %} - a collapsible section of a long form (collapsed unless open=True) #}
+{% macro faq(title="Инструкция", open=False) -%}
+<details class="pt-faq"{% if open %} open{% endif %}>
+  <summary><i class="fa-regular fa-circle-question"></i><span>{{ title }}</span></summary>
+  <div class="pt-faq-body">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{% macro acc(title, hint="", open=False, badge="") -%}
+<details class="pt-acc"{% if open %} open{% endif %}>
+  <summary><span class="pt-acc-title">{{ title }}</span>{% if badge %}<span class="badge badge-info pt-acc-badge">{{ badge }}</span>{% endif %}</summary>
+  <div class="pt-acc-body">{% if hint %}<p class="pt-acc-hint">{{ hint }}</p>{% endif %}{{ caller() }}</div>
+</details>
+{%- endmacro %}

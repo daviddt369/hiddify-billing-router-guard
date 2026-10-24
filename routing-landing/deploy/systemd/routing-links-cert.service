@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep the routing landing TLS certificate installed and renewed
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/routing-links/cert-maintain.sh
+Environment=ROUTING_HOST=@ROUTING_HOST@
+PrivateTmp=true
+TimeoutStartSec=300

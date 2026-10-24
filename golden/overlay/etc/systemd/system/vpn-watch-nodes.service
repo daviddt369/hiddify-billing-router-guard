@@ -1,0 +1,17 @@
+[Unit]
+Description=vpn-watch: проверка каждого узла-апстрима отдельно (временный клиент Xray из живого конфига router + WG через интерфейс)
+After=network-online.target xray-router.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/vpn-watch/vpn_watch.py nodes --quiet
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=240
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=vpn-watch
+StateDirectoryMode=0700
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes

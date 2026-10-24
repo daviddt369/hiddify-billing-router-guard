@@ -1,0 +1,80 @@
+{
+  "role": "exit",
+  "host_label": "DE-190",
+  "services": [
+    "hiddify-haproxy",
+    "hiddify-xray",
+    "hiddify-singbox",
+    "hiddify-nginx",
+    "hiddify-panel",
+    "mariadb",
+    "unbound",
+    "wg-quick@wg-rude"
+  ],
+  "wireguard": {
+    "interfaces": [
+      "wg-rude"
+    ],
+    "max_handshake_age": 240
+  },
+  "egress": {
+    "url": "https://1.1.1.1/cdn-cgi/trace",
+    "extract": "trace",
+    "expect": "203.0.113.20"
+  },
+  "disks": [
+    "/"
+  ],
+  "min_disk_free_pct": 12,
+  "min_mem_available_mb": 150,
+  "max_load_per_core": 2.0,
+  "certs": [
+    {
+      "glob": "/opt/hiddify-manager/ssl/203.0.113.20.crt",
+      "warn_days": 2,
+      "crit_days": 1
+    },
+    {
+      "glob": "/opt/hiddify-manager/ssl/*.crt",
+      "exclude": [
+        "203.0.113.20.crt"
+      ]
+    }
+  ],
+  "fingerprints": [
+    {
+      "name": "wg-rude-conf",
+      "glob": "/etc/wireguard/wg-rude.conf",
+      "why": "изменён wg-rude.conf (после CP-07 это ожидаемо: SNAT вместо MASQUERADE для RU)"
+    },
+    {
+      "name": "hiddify-version",
+      "cmd": "cat /opt/hiddify-manager/VERSION 2>/dev/null",
+      "why": "изменилась версия Hiddify на выходе DE"
+    }
+  ],
+  "telegram": {
+    "env_file": "/etc/vpn-watch/telegram.env"
+  },
+  "thresholds": {
+    "crit_runs": 3,
+    "warn_runs": 5,
+    "repeat_minutes": 180
+  },
+  "daily_summary_hour": 9,
+  "ignore_ports": [],
+  "ignore_procs": [],
+  "tcp_targets": [
+    {
+      "name": "RU-front-443",
+      "host": "203.0.113.10",
+      "port": 443
+    }
+  ],
+  "notify_only": [
+    "svc:",
+    "egress:own",
+    "ports:new",
+    "cert:"
+  ]
+}

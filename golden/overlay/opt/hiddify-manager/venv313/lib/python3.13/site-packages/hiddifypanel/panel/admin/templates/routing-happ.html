@@ -1,0 +1,135 @@
+{% extends 'admin-layout.html' %}
+{% from 'pt-faq.html' import faq, acc %}
+
+{% block title %}Happ / INCY{% endblock %}
+
+{% block body %}
+<section class="content pt-3">
+  <div class="container-fluid">
+
+    <div class="card card-primary card-outline">
+      <div class="card-header">
+        <h3 class="card-title">Happ / INCY: маршрутизация и приложения (ссылка <code>…/happ/</code>)</h3>
+        <div class="card-tools">
+          <a href="{{ routing_admin_url }}" class="btn btn-sm btn-secondary">← Назад к маршрутизации</a>
+          <a href="{{ locations_url }}" class="btn btn-sm btn-secondary ml-1">Страны / локации</a>
+        </div>
+      </div>
+      <div class="card-body">
+        {% call faq() %}
+          <p>Всё на этой странице относится только к отдельной ссылке <code>…/happ/</code> для приложений Happ и INCY. Обычная ссылка пользователя и другие приложения не меняются. Перезапускать router не нужно: изменения подхватываются при следующем обновлении подписки в приложении.</p>
+
+          <h6>1. Маршрутизация RoscomVPN</h6>
+          <ul>
+            <li>Профиль — готовый набор «что напрямую, что через VPN, что блокировать» для пользователей из России. По умолчанию берётся автоматический: копия профиля RoscomVPN с лендинга, обновляется раз в 6 часов.</li>
+            <li><b>Свой профиль</b>: вставьте ссылку <code>happ://routing/onadd/…</code> (подойдёт и <code>incy://…</code>, base64 или JSON профиля), чтобы заменить автоматический. Пустое поле — снова автоматический.</li>
+            <li><b>Отдавать маршрутизацию в подписке</b> — выключатель: без галки подписка уходит без профиля.</li>
+            <li><b>Полный профиль в заголовке</b> — приложения режут трафик на устройстве именно по спискам активного профиля. Если галку снять, профиль пустой и всё уходит в туннель.</li>
+            <li><b>Зоны .ru / .su / .рф и банки напрямую</b> — такие сайты идут с устройства напрямую (как на РФ-ноде), даже если их нет в списках профиля. Иначе российский сайт на зарубежном хостинге открывался бы с IP туннеля.</li>
+          </ul>
+
+          <h6>2. Свои домены в подписке</h6>
+          <ul>
+            <li>Домены добавляются в начало списков профиля и уходят в приложение вместе с подпиской. Один в строке: просто домен (<code>example.ru</code> — он и все его поддомены), либо <code>full:api.example.ru</code> (только этот адрес), <code>geosite:…</code>, <code>regexp:…</code>.</li>
+            <li><b>Напрямую</b> — с устройства, без VPN; <b>Через VPN</b> — через туннель.</li>
+            <li>Порядок правил профиля прежний: блок → прокси → напрямую. Домен, который уже есть в списке «через VPN» профиля, уйдёт через VPN, даже если вы вписали его в «напрямую».</li>
+          </ul>
+
+          <h6>3. Приложения вне VPN (Android)</h6>
+          <ul>
+            <li>Приложения из списка Android не пускает в туннель: они работают как без VPN и не жалуются на него (банки, Госуслуги, налоговая, домофон, Max). Список уходит заголовками подписки (<code>per-app-proxy-mode: bypass</code>, <code>per-app-proxy-list</code>; INCY — ещё <code>per-app-proxy-enable</code>).</li>
+            <li>Только Android: на iPhone Apple такого не позволяет, заголовки там игнорируются.</li>
+            <li>Имена пакетов — по одному в строке, например <code>ru.rostel</code> (Госуслуги); экспорт списка из приложения подходит как есть. Пустой список — заголовки не отправляются.</li>
+            <li><b>Provider ID Happ</b> нужен только Happ (личный кабинет happ-proxy.com, домен подписки там должен быть добавлен). INCY его не требует.</li>
+          </ul>
+        {% endcall %}
+
+        <div class="row">
+          <div class="col-xl-4 col-lg-6">
+            <div class="card card-outline card-info mb-3" id="roscom-card">
+              <div class="card-header py-2"><h3 class="card-title" style="font-size:1rem">1. Маршрутизация RoscomVPN для Happ / INCY</h3></div>
+              <div class="card-body py-2">
+                {% if roscom_error %}<div class="alert alert-danger py-1 mb-2">Профиль не принят, ничего не изменено: {{ roscom_error }}</div>{% endif %}
+                {% if roscom.error %}<div class="alert alert-warning py-1 mb-2">Сейчас профиль использовать нельзя, подписка отдаётся без него: {{ roscom.error }}</div>{% endif %}
+                <p class="mb-2 small">
+                  Сейчас: <b>{% if roscom.enabled %}включена{% else %}выключена{% endif %}</b> ·
+                  источник: <b>{% if roscom.source == 'custom' %}профиль, вставленный вручную{% else %}автоматический (копия профиля RoscomVPN с лендинга, обновляется раз в 6 часов){% endif %}</b>
+                  {% if roscom.profile %}<br>Профиль «{{ roscom.profile.name }}» · обновлён {{ roscom.profile.last_updated }} · порядок «{{ roscom.profile.route_order }}»<br>
+                  правил: напрямую {{ roscom.profile.counts.direct }}, через VPN {{ roscom.profile.counts.proxy }}, блок {{ roscom.profile.counts.block }}{% endif %}
+                </p>
+                <form method="post" action="{{ happ_url }}roscom/">
+                  <div class="form-group mb-2">
+                    <label class="small mb-1" for="roscom-custom">Свой профиль (необязательно)</label>
+                    <textarea id="roscom-custom" name="custom" rows="4" class="form-control form-control-sm ltr" style="font-family:monospace;font-size:12px"
+                              placeholder="happ://routing/onadd/eyJOYW1lIjoi…">{{ roscom_text if roscom_text is not none else roscom.custom_text }}</textarea>
+                  </div>
+                  <div class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" id="roscom-enabled" name="enabled" value="1" {% if roscom.enabled %}checked{% endif %}>
+                    <label class="form-check-label small" for="roscom-enabled">Отдавать маршрутизацию в подписке</label>
+                  </div>
+                  <div class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" id="roscom-header-lists" name="header_lists" value="1" {% if roscom.header_lists %}checked{% endif %}>
+                    <label class="form-check-label small" for="roscom-header-lists">Полный профиль со списками в заголовке</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="roscom-ru-zone" name="ru_zone" value="1" {% if roscom.ru_zone %}checked{% endif %}>
+                    <label class="form-check-label small" for="roscom-ru-zone">Зоны <code>.ru</code> / <code>.su</code> / <code>.рф</code> и банки напрямую</label>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                  {% if roscom.source == 'custom' %}<button type="submit" name="action" value="clear" class="btn btn-outline-secondary btn-sm ml-1">Вернуть автоматический</button>{% endif %}
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-4 col-lg-6">
+            <div class="card card-outline card-info mb-3" id="domains-card">
+              <div class="card-header py-2"><h3 class="card-title" style="font-size:1rem">2. Свои домены в подписке</h3></div>
+              <div class="card-body py-2">
+                {% if extra_error %}<div class="alert alert-danger py-1 mb-2">Не сохранено, ничего не изменено: {{ extra_error }}</div>{% endif %}
+                <form method="post" action="{{ happ_url }}domains/">
+                  <div class="form-group mb-2">
+                    <label class="small mb-1" for="extra-direct"><b>Напрямую</b> (с устройства, без VPN)</label>
+                    <textarea id="extra-direct" name="extra_direct" rows="6" class="form-control form-control-sm ltr" style="font-family:monospace;font-size:12px"
+                              placeholder="example.ru&#10;full:api.example.ru">{{ extra_direct_text if extra_direct_text is defined else roscom.extra_direct_text }}</textarea>
+                  </div>
+                  <div class="form-group mb-2">
+                    <label class="small mb-1" for="extra-proxy"><b>Через VPN</b> (через туннель)</label>
+                    <textarea id="extra-proxy" name="extra_proxy" rows="6" class="form-control form-control-sm ltr" style="font-family:monospace;font-size:12px"
+                              placeholder="example.com">{{ extra_proxy_text if extra_proxy_text is defined else roscom.extra_proxy_text }}</textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-sm">Сохранить домены</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-4 col-lg-12">
+            <div class="card card-outline card-info mb-3" id="apps-card">
+              <div class="card-header py-2"><h3 class="card-title" style="font-size:1rem">3. Приложения вне VPN (Android) · сейчас: {{ roscom.app_count }}</h3></div>
+              <div class="card-body py-2">
+                {% if apps_error %}<div class="alert alert-danger py-1 mb-2">Не сохранено, ничего не изменено: {{ apps_error }}</div>{% endif %}
+                <form method="post" action="{{ happ_url }}apps/">
+                  <div class="form-group mb-2">
+                    <label class="small mb-1" for="apps-list">Имена пакетов Android, по одному в строке</label>
+                    <textarea id="apps-list" name="apps" rows="12" class="form-control form-control-sm ltr" style="font-family:monospace;font-size:12px"
+                              placeholder="ru.rostel&#10;com.gnivts.selfemployed">{{ apps_text if apps_text is defined else roscom.apps_text }}</textarea>
+                  </div>
+                  <div class="form-group mb-2">
+                    <label class="small mb-1" for="provider-id">Provider ID Happ (только для Happ)</label>
+                    <input id="provider-id" type="text" name="provider_id" class="form-control form-control-sm ltr" style="max-width:260px" maxlength="64"
+                           value="{{ provider_id_text if provider_id_text is defined else roscom.provider_id }}" autocomplete="off">
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-sm">Сохранить список</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

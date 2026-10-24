@@ -1,0 +1,9 @@
+[sshd]
+enabled = true
+backend = systemd
+port = 22
+filter = sshd
+maxretry = 5
+findtime = 10m
+bantime = 12h
+ignoreip = 127.0.0.1/8 ::1 @@ADMIN_IP_1@@ @@ADMIN_IP_2@@ @@ADMIN_IP_3@@ @@RU_IP@@

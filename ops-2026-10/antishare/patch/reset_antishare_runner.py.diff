@@ -1,0 +1,31 @@
+--- a/antishare/runner.py
++++ b/antishare/runner.py
+@@ -142,4 +142,8 @@
+     current_ips, shared_ips = split_shared(current_ips, all_networks())
+     allowed_count = max(1, int(user.max_ips or 1))
++    # a CDN edge takes ONE slot of the limit (limit 3 = the edge + 2 other addresses), but it is only ever counted, never "extra": it cannot be banned.
++    # With a limit of 1 the user still keeps one real address (a single device that switches between the CDN and a direct path must not be punished).
++    shared_slot = 1 if shared_ips else 0
++    real_allowed = max(1, allowed_count - shared_slot)
+ 
+     for profile in profiles.values():
+@@ -165,5 +169,5 @@
+     prune_profiles(profiles, now, settings)
+ 
+-    allowed_ips, extra_ips = pick_allowed_ips(current_ips, profiles, allowed_count, now, settings)
++    allowed_ips, extra_ips = pick_allowed_ips(current_ips, profiles, real_allowed, now, settings)
+     for profile in profiles.values():
+         profile.is_trusted = profile.ip in allowed_ips
+@@ -172,5 +176,5 @@
+     current_delta_usage = compute_cycle_usage_delta(user.current_usage, previous_cycle_usage)
+     traffic_multiplier = compute_traffic_multiplier(current_delta_usage, previous_cycle_usage)
+-    excess = max(0, len(current_ips) - allowed_count)
++    excess = max(0, len(current_ips) - real_allowed)
+ 
+     score_before = float(state.score or 0.0)
+@@ -250,4 +254,5 @@
+             "learning": learning,
+             "shared_ips_ignored": len(shared_ips),
++            "real_allowed": real_allowed,
+         },
+     )

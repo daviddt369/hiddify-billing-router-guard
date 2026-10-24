@@ -1,0 +1,55 @@
+--- a/panel/commercial/telegrambot/Usage.py
++++ b/panel/commercial/telegrambot/Usage.py
+@@ -1,7 +1,9 @@
+ from __future__ import annotations
+ from hiddifypanel.panel import hiddify
+ from telebot import types
+-from flask_babel import gettext as _
++from flask_babel import gettext as _flask_gettext
++from hiddifypanel.hutils.tg_texts import make_gettext, trial_settings
++_ = make_gettext(_flask_gettext)  # texts edited on the panel (Бизнес -> Telegram-бот) replace the built-in phrases
+ from flask_babel import force_locale
+ from flask import current_app as app, has_request_context, g
+ import datetime
+@@ -503,9 +505,9 @@
+         telegram_id=sender_id,
+         added_by=_default_added_by_id(),
+         enable=True,
+-        usage_limit=TRIAL_USAGE_LIMIT_GB * ONE_GIG,
+-        package_days=TRIAL_PACKAGE_DAYS,
+-        max_ips=TRIAL_MAX_IPS,
++        usage_limit=int(trial_settings()["gb"] * ONE_GIG),
++        package_days=trial_settings()["days"],
++        max_ips=trial_settings()["max_ips"],
+         mode=UserMode.no_reset,
+         start_date=datetime.date.today(),
+         last_reset_time=datetime.date.today(),
+@@ -540,7 +542,7 @@
+             "Вот ваши ссылки на подписку:\n\n"
+             "Hiddify и другие приложения:\n"
+             "%(user_link)s\n\n"
+-            "Happ и INCY (три кнопки: AUTO, Германия, США):\n"
++            "Happ и INCY (кнопки: AUTO и страны):\n"
+             "%(happ_link)s\n\n"
+             "Скопируйте нужную ссылку и вставьте в ваш клиент. Первая ссылка открывает личный кабинет.",
+             user_link=user_link,
+@@ -567,7 +569,7 @@
+     ]
+     happ_link = _multiloc_happ_link(user, user_link)
+     if happ_link:
+-        rows.append([types.InlineKeyboardButton(text=_("Happ / INCY: три кнопки"), url=happ_link)])
++        rows.append([types.InlineKeyboardButton(text=_("Happ / INCY (AUTO и страны)"), url=happ_link)])
+     return types.InlineKeyboardMarkup(keyboard=rows)
+ 
+ 
+@@ -860,8 +862,8 @@
+         bot.reply_to(message, _("Не удалось создать пробный доступ. Попробуйте позже или обратитесь к администратору."), reply_markup=_admin_contact_keyboard())
+         return
+ 
+-    bot.reply_to(message, _("Добро пожаловать! Вам выдан пробный доступ: %(gb)s ГБ на %(days)s дн.", gb=TRIAL_USAGE_LIMIT_GB, days=TRIAL_PACKAGE_DAYS), reply_markup=_user_menu_keyboard())
+-    _notify_admins_for_user(user, text=(f"Новый пользователь зарегистрирован\nTelegram ID: {sender_id}\nСтатус: trial {TRIAL_USAGE_LIMIT_GB} ГБ / {TRIAL_PACKAGE_DAYS} дн."))
++    bot.reply_to(message, _("Добро пожаловать! Вам выдан пробный доступ: %(gb)s ГБ на %(days)s дн.", gb=trial_settings()["gb_text"], days=trial_settings()["days"]), reply_markup=_user_menu_keyboard())
++    _notify_admins_for_user(user, text=(f"Новый пользователь зарегистрирован\nTelegram ID: {sender_id}\nСтатус: trial {trial_settings()['gb_text']} ГБ / {trial_settings()['days']} дн."))
+     _send_first_link_welcome(message.chat.id, user)
+     plans_markup = _plans_keyboard()
+     if plans_markup:

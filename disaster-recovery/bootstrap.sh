@@ -102,10 +102,10 @@ apply_headers_patch() {
     [[ -f "$xray_py" ]] || dr_die "xray.py not found at expected path: $xray_py"
     [[ -f "$checker" ]] || dr_die "Checker tool not found: $checker"
 
-    set +e
-    "$(dr_detect_venv_python)" "$checker" "$xray_py"
-    patch_result=$?
-    set -e
+    # exit 0 / 1 / 2 are ANSWERS of the checker (fix present / bug present / unknown layout): `|| patch_result=$?` keeps them away from errexit AND from the ERR trap
+    # (found by the clean-room rebuild 2026-10-24: with plain `set +e` the trap still fired on the normal answer 1 and stopped the run)
+    patch_result=0
+    "$(dr_detect_venv_python)" "$checker" "$xray_py" || patch_result=$?
 
     case "$patch_result" in
         0)
@@ -167,13 +167,19 @@ main() {
     mkdir -p "$LOG_DIR"
     exec > >(tee -a "$LOG_DIR/bootstrap.log") 2>&1
 
-    preflight
-    dr_step "Installing offsite tooling (rclone, age) so restore.sh --from-offsite works without extra setup"
-    dr_ensure_offsite_tools
-    install_base_hiddify
-    install_addons
-    apply_headers_patch
-    install_selectel_templates
+    # DR_STAGES lets a failed run continue where it stopped, e.g. DR_STAGES="headers selectel" bash bootstrap.sh (default: everything)
+    local stages=" ${DR_STAGES:-preflight offsite base addons headers selectel} " st
+    for st in preflight offsite base addons headers selectel; do
+        [[ "$stages" == *" $st "* ]] || { dr_log "skipping stage: $st"; continue; }
+        case "$st" in
+            preflight) preflight ;;
+            offsite)   dr_step "Installing offsite tooling (rclone, age) so restore.sh --from-offsite works without extra setup"; dr_ensure_offsite_tools ;;
+            base)      install_base_hiddify ;;
+            addons)    install_addons ;;
+            headers)   apply_headers_patch ;;
+            selectel)  install_selectel_templates ;;
+        esac
+    done
 
     dr_step "BOOTSTRAP COMPLETE — platform only, no real data yet"
     dr_log "Services are currently running against a FRESH/DEFAULT database."

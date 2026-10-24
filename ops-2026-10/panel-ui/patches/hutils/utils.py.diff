@@ -1,0 +1,10 @@
+--- a/hutils/utils.py
++++ b/hutils/utils.py
+@@ -45,6 +45,7 @@
+ 
+ 
+ def is_panel_outdated() -> bool:
++    return False  # frozen custom fork: upstream updates are never applied, the 'outdated' notice is meaningless
+     # TODO: handle beta and develop version too
+     pm = hconfig(ConfigEnum.package_mode)
+     try:

@@ -1,0 +1,10 @@
+[Unit]
+Description=Hiddify anti-share: daily retention of the event table
+
+[Timer]
+OnCalendar=*-*-* 04:20:00
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

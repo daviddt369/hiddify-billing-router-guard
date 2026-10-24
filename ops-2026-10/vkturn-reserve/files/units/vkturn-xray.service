@@ -1,0 +1,19 @@
+[Unit]
+Description=VK TURN reserve entry: xray TUN inside the namespace (everything the clients send goes to the router's SOCKS inbound)
+After=vkturn-ns.service vkturn-hostbridge.service
+Requires=vkturn-ns.service
+BindsTo=vkturn-ns.service
+
+[Service]
+NetworkNamespacePath=/run/netns/vkturn
+EnvironmentFile=/etc/vkturn/env
+ExecStart=@XRAY_BIN@ run -c /etc/vkturn/xray-ns.json
+ExecStartPost=/opt/vkturn/bin/tun-up.sh
+Restart=always
+RestartSec=3
+MemoryMax=300M
+CPUQuota=100%
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,88 @@
+{
+  "role": "exit",
+  "host_label": "NL-238",
+  "services": [
+    "hiddify-core",
+    "hiddify-xray",
+    "hiddify-haproxy",
+    "hiddify-rpxy-l4",
+    "hiddify-nginx",
+    "hiddify-panel",
+    "hiddify-redis",
+    "hiddify-mysql",
+    "wg-quick@wg-runl",
+    "wg-quick@hiddifywg"
+  ],
+  "wireguard": {
+    "interfaces": [
+      "wg-runl"
+    ],
+    "max_handshake_age": 240
+  },
+  "egress": {
+    "url": "https://1.1.1.1/cdn-cgi/trace",
+    "extract": "trace",
+    "expect": "203.0.113.30"
+  },
+  "disks": [
+    "/"
+  ],
+  "min_disk_free_pct": 12,
+  "min_mem_available_mb": 200,
+  "max_load_per_core": 2.0,
+  "certs": [
+    {
+      "glob": "/opt/hiddify-manager/data/services/acme.sh/certs/203.0.113.30_ecc/fullchain.cer",
+      "warn_days": 2,
+      "crit_days": 1
+    },
+    {
+      "glob": "/opt/hiddify-manager/data/services/acme.sh/certs/*_ecc/fullchain.cer",
+      "exclude": [
+        "203.0.113.30_ecc"
+      ]
+    }
+  ],
+  "fingerprints": [
+    {
+      "name": "haproxy-path-maps",
+      "glob": "/opt/hiddify-manager/generated/include/haproxy/server/maps/path_*",
+      "mode": "keys",
+      "why": "изменился набор URL-путей HAProxy: RU хранит эти пути в URI апстримов — проверьте узлы NL (после обновления Hiddify?)"
+    },
+    {
+      "name": "xray-inbound-kinds",
+      "json_summary": "/opt/hiddify-manager/generated/xray.json",
+      "why": "изменился набор или шифрование (ML-KEM) inbound'ов Xray на NL: проверьте URI апстримов на RU"
+    },
+    {
+      "name": "hiddify-version",
+      "cmd": "cat /opt/hiddify-manager/VERSION 2>/dev/null",
+      "why": "версия Hiddify на выходе NL изменилась (автообновление включено по решению владельца): проверьте после обновления узлы NL с RU (ML-KEM, пути HAProxy) — отчёт придёт отдельным сообщением, если изменится набор inbound/путей"
+    }
+  ],
+  "telegram": {
+    "env_file": "/etc/vpn-watch/telegram.env"
+  },
+  "thresholds": {
+    "crit_runs": 3,
+    "warn_runs": 5,
+    "repeat_minutes": 180
+  },
+  "daily_summary_hour": 9,
+  "ignore_ports": [],
+  "ignore_procs": [],
+  "tcp_targets": [
+    {
+      "name": "RU-front-443",
+      "host": "203.0.113.10",
+      "port": 443
+    }
+  ],
+  "notify_only": [
+    "svc:",
+    "egress:own",
+    "ports:new",
+    "cert:"
+  ]
+}

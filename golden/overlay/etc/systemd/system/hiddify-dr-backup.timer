@@ -1,0 +1,10 @@
+[Unit]
+Description=VPN Ru Node disaster-recovery backup — twice a week (Mon+Thu 03:00 server time)
+
+[Timer]
+OnCalendar=Mon,Thu 03:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

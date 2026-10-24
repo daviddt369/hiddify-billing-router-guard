@@ -1,0 +1,17 @@
+{# Multi-location slot backends (xray core only). Same shape as backends/v10.cfg.pj2; the matching front rules / map lines live in
+   fronts/in_tcpmode.cfg.pj2 and maps/path_v10.j2. #}
+{% if hconfigs['core_type']=="xray" %}
+{% for loc in locations %}
+{% for k in loc['tags'] %}
+{% if hconfigs[loc['protos'][k]~'_enable'] and hconfigs[loc['streams'][k]~'_enable'] %}
+backend {{ loc['tags'][k] }}
+    server xray abns@{{ loc['tags'][k] }} send-proxy-v2 tfo
+
+backend {{ loc['tags'][k] }}-http
+    mode http
+    server xray abns@{{ loc['tags'][k] }} send-proxy-v2 tfo proto {{ "h1" if loc['streams'][k] in ['ws','httpupgrade'] else "h2" }}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}

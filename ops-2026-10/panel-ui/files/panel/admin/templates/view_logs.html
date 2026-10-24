@@ -1,0 +1,33 @@
+{% extends 'admin-layout.html' %}
+{% block title %}Журналы{% endblock %}
+
+{% block body %}
+<div class="card">
+  <div class="card-header"><h3 class="card-title">Журналы сервера</h3></div>
+  <div class="card-body">
+    <p>Нажмите на файл, журнал откроется в новой вкладке.</p>
+    <div class="list-group">
+      {% for file in log_files %}
+      <a class="list-group-item list-group-item-action log-file-link" href="{{hurl_for('api_admin.AdminLogApi')}}">{{file}}</a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block tail %}
+{{ super() }}
+<script>
+  $(".log-file-link").on("click", function (event) {
+    event.preventDefault();
+    $.ajax({
+      url: $(this).attr("href"),
+      type: 'POST',
+      data: { file: $(this).text() },
+      xhrFields: { withCredentials: true }
+    }).then(response => {
+      window.open('', '_blank').document.body.outerHTML = response;
+    });
+  });
+</script>
+{% endblock %}

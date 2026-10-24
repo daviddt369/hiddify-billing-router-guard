@@ -1,0 +1,12 @@
+[Unit]
+Description=Load nftables monitoring rules (Zabbix port 10050)
+After=hiddify-panel.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /etc/nftables-monitoring.conf
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

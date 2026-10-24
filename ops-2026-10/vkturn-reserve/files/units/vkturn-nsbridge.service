@@ -1,0 +1,16 @@
+[Unit]
+Description=VK TURN reserve entry: namespace side of the unix-socket bridge (127.0.0.1:1080 inside the namespace only)
+After=vkturn-ns.service vkturn-hostbridge.service
+Requires=vkturn-ns.service
+BindsTo=vkturn-ns.service
+
+[Service]
+NetworkNamespacePath=/run/netns/vkturn
+ExecStart=/usr/bin/socat TCP-LISTEN:1080,bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:/run/vkturn/s.sock
+Restart=always
+RestartSec=3
+MemoryMax=64M
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

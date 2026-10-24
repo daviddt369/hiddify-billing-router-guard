@@ -1,0 +1,106 @@
+{# The ONE "Apply" of the routing area (Маршрутизация, Источники правил, Внешние ноды, Страны). Same button, same label, same action on every page: it compares the
+   router with the database and does the minimum - nothing / only the countries (one restart) / the full cycle. Needs g.apply_url / g.apply_status_url
+   (set by RoutingLocationAdmin.before_request); renders nothing without them. `show_apply_button = False` before the include: status only (the page's own form is the button). #}
+{% if g.apply_url is defined and g.apply_status_url is defined %}
+{% set _show_button = (show_apply_button is not defined) or show_apply_button %}
+<div class="card card-outline card-warning mb-3" id="apply-bar">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center flex-wrap">
+      {% if _show_button %}
+      <form method="post" action="{{ g.apply_url }}" id="apply-form" class="mr-3 me-3 mb-1">
+        <button type="submit" id="apply-btn" class="btn btn-warning btn-sm">Применить</button>
+      </form>
+      {% endif %}
+      <div class="mb-1"><b>Применение на router:</b> <span id="apply-state" class="badge badge-secondary bg-secondary">…</span>
+        <span id="apply-info" class="text-muted small ml-1 ms-1"></span></div>
+    </div>
+    <div id="apply-plan" class="small mt-1"></div>
+    <div id="apply-staged" class="alert alert-danger small mt-2 mb-0" style="display:none">
+      <b>Новый конфиг router собран, но заменять рабочий без вашего решения я не буду.</b> Он отличается от рабочего не только вашими правками:
+      <ul id="staged-lines" class="mb-1 mt-1"></ul>
+      <div id="staged-warn" class="mb-2"></div>
+      <div id="staged-ok" class="text-muted mb-2"></div>
+      {% if g.apply_accept_url is defined %}
+      <form method="post" action="{{ g.apply_accept_url }}" id="staged-accept-form" class="d-inline mr-2 me-2">
+        <button type="submit" class="btn btn-danger btn-sm">Применить новый конфиг</button>
+      </form>
+      <form method="post" action="{{ g.apply_discard_url }}" id="staged-discard-form" class="d-inline">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Не применять</button>
+      </form>
+      {% endif %}
+      <div class="mt-2 text-muted">«Применить новый конфиг» заменит рабочий и перезапустит router (обычно секунды, соединения через router на это время сбросятся). «Не применять» оставит рабочий конфиг как есть;
+        правки в базе останутся неприменёнными - их можно вернуть или собрать конфиг заново.</div>
+    </div>
+    <details id="apply-log-box" class="mt-2" style="display:none"><summary class="small" style="cursor:pointer">Журнал применения (для диагностики)</summary>
+      <pre id="apply-log" class="small p-2 mt-1 mb-0" style="max-height:14em;overflow:auto"></pre></details>
+  </div>
+</div>
+<script>
+(function () {
+  var url = "{{ g.apply_status_url }}";
+  var cls = {idle: 'secondary', running: 'warning', ok: 'success', failed: 'danger', aborted: 'danger', 'needs-confirm': 'danger'};
+  var confirmText = "", prev = null;
+  function draw(d) {
+    var s = d.status || {}, p = d.plan || {};
+    var b = document.getElementById('apply-state');
+    b.textContent = s.state_text || s.state || '';
+    b.className = 'badge badge-' + (cls[s.state] || 'secondary') + ' bg-' + (cls[s.state] || 'secondary');
+    var t = [];
+    if (s.mode_text) t.push('режим: ' + s.mode_text);
+    if (s.started_text) t.push('начато ' + s.started_text);
+    if (s.elapsed !== undefined && s.elapsed !== null) t.push((s.state === 'running' ? 'идёт ' : 'длилось ') + s.elapsed + ' с');
+    if (s.summary && (s.state === 'failed' || s.state === 'aborted' || s.state === 'needs-confirm')) t.push(s.summary);      // the usual 'all fine' summary is technical English: not shown
+    document.getElementById('apply-info').textContent = t.join(' · ');
+    var pl = document.getElementById('apply-plan');
+    var sg = d.staged, box = document.getElementById('apply-staged');
+    if (box) {
+      box.style.display = sg ? '' : 'none';
+      if (sg) {
+        var ul = document.getElementById('staged-lines'); ul.innerHTML = '';
+        (sg.unexplained || []).forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+        document.getElementById('staged-warn').textContent = (sg.warnings || []).map(function (w) { return '⚠ ' + w; }).join('  ');
+        document.getElementById('staged-ok').textContent = (sg.explained || []).length ? 'Ваши правки дают: ' + sg.explained.join('; ') : '';
+      }
+    }
+    if (sg && s.state !== 'running') {
+      pl.className = 'small mt-1 text-danger';
+      pl.textContent = '⚠ ' + (p.text || '');
+    } else if (s.state === 'running') {
+      pl.className = 'small mt-1 text-muted';
+      pl.textContent = 'Идёт применение в фоне — страницу можно закрыть. Повторно кнопку не нажимайте.';
+    } else if (p.action === 'none') {
+      pl.className = 'small mt-1 text-success';
+      pl.textContent = '✓ ' + p.text;
+    } else {
+      pl.className = 'small mt-1 text-danger';
+      pl.textContent = '⚠ Есть неприменённые изменения. ' + (p.text || '');
+    }
+    confirmText = p.confirm || '';
+    var l = document.getElementById('apply-log');
+    var lb = document.getElementById('apply-log-box');
+    if (s.log_tail && s.log_tail.length) { lb.style.display = ''; l.textContent = s.log_tail.join('\n'); l.scrollTop = l.scrollHeight; if (s.state === 'failed' || s.state === 'aborted') lb.open = true; }
+    var btn = document.getElementById('apply-btn');
+    if (btn) { btn.disabled = (s.state === 'running') || (p.action === 'none') || !!sg; btn.title = (p.action === 'none') ? 'Всё уже применено' : (sg ? 'Сначала решите про собранный конфиг ниже' : ''); }
+  }
+  function poll() {
+    fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        draw(d);
+        var st = (d.status || {}).state;
+        if (prev === 'running' && st !== 'running') { location.reload(); return; }   // lists and badges of the page are rendered by the server
+        prev = st;
+        setTimeout(poll, st === 'running' ? 4000 : 30000);
+      })
+      .catch(function () { setTimeout(poll, 10000); });
+  }
+  var form = document.getElementById('apply-form');
+  if (form) form.addEventListener('submit', function (e) { if (confirmText && !confirm(confirmText)) e.preventDefault(); });
+  var af = document.getElementById('staged-accept-form');
+  if (af) af.addEventListener('submit', function (e) { if (!confirm('Заменить рабочий конфиг router на собранный и перезапустить router? Обычно секунды, соединения через router на это время сбросятся.')) e.preventDefault(); });
+  var df = document.getElementById('staged-discard-form');
+  if (df) df.addEventListener('submit', function (e) { if (!confirm('Не применять собранный конфиг? Рабочий конфиг router останется как есть.')) e.preventDefault(); });
+  poll();
+})();
+</script>
+{% endif %}

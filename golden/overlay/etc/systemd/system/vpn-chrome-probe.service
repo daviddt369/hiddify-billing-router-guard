@@ -1,0 +1,25 @@
+[Unit]
+Description=Avito CRM vpn_chrome position probe (peer of server_chrome, on VPN VPS)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=avitobrowser
+Group=avitobrowser
+Environment=HOME=/home/avitobrowser
+ExecStart=/home/avitobrowser/server-chrome-probe.sh /home/avitobrowser/server-chrome-probe.env
+Restart=on-failure
+RestartSec=30
+
+# This host: 3.8GB RAM, 2 vCPU, 2.6GB available at baseline (Phase-1 check 2026-09-03).
+# Chrome headless=new measured peak ~140-210MB above baseline (same as original server_chrome VPS).
+# MemoryMax=400M gives ~190MB headroom above observed peak; kills runaway Chrome before it
+# affects VPN services (xray-router, hiddify-* stack).
+# CPUQuota=80% = 80% of one core on the 2-core host.
+MemoryMax=400M
+MemoryHigh=300M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target

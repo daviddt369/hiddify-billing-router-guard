@@ -1,0 +1,18 @@
+--- a/opt/hiddify-manager/common/commander.py
++++ b/opt/hiddify-manager/common/commander.py
+@@ -245,5 +245,15 @@
+     )
+ # ROUTING_INSTALL_END --- do not remove this line
+ 
++
++# MULTILOC_ROUTER_APPLY_BEGIN --- the panel's apply buttons start the router apply in the BACKGROUND (scripts/multiloc_router_apply.py); do not remove this line
++@cli.command('router-apply-start')
++@click.option('--mode', type=click.Choice(['auto', 'countries', 'full', 'accept', 'discard']), required=True)
++def router_apply_start(mode):
++    # fixed command, fixed script, a whitelisted mode: prints one JSON line; exit 0 = started, 3 = another apply is running, 2 = could not start
++    raise SystemExit(subprocess.run([os.path.join(HIDDIFY_DIR, '.venv313/bin/python'), os.path.join(HIDDIFY_DIR, 'scripts/multiloc_router_apply.py'),
++                                     'start', '--mode', mode]).returncode)
++# MULTILOC_ROUTER_APPLY_END --- do not remove this line
++
+ if __name__ == "__main__":
+     cli()

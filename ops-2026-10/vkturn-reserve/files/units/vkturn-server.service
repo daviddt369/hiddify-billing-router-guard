@@ -1,0 +1,20 @@
+[Unit]
+Description=VK TURN reserve entry: qWDTT server (GPL-3.0, built from audited source) inside the namespace
+After=vkturn-xray.service
+Requires=vkturn-xray.service
+BindsTo=vkturn-ns.service
+
+[Service]
+NetworkNamespacePath=/run/netns/vkturn
+EnvironmentFile=/etc/vkturn/env
+ExecStart=/opt/vkturn/bin/wdtt-server -listen 10.99.0.2:56000 -listen-direct 10.99.0.2:56002 -wg-port 56001 -config-dir /etc/vkturn/wdtt -password-file /etc/vkturn/wdtt/owner.pw -dns ${CLIENT_DNS}
+Restart=always
+RestartSec=5
+MemoryMax=400M
+CPUQuota=100%
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

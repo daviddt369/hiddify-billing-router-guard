@@ -1,0 +1,10 @@
+[Unit]
+Description=vpn-watch: быстрые проверки раз в минуту
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

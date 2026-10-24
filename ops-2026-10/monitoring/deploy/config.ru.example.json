@@ -1,0 +1,166 @@
+{
+  "role": "ru",
+  "host_label": "RU",
+  "services": [
+    "xray-router",
+    "hiddify-xray",
+    "hiddify-haproxy",
+    "hiddify-nginx",
+    "hiddify-panel",
+    "hiddify-panel-background-tasks",
+    "hiddify-redis",
+    "hiddify-singbox",
+    "hiddify-ss-faketls",
+    "mariadb",
+    "auto-director"
+  ],
+  "timers": [
+    "hiddify-anti-share.timer",
+    "hiddify-routing-health.timer",
+    "hiddify-dr-backup.timer"
+  ],
+  "router_config": "/etc/xray-router/config.json",
+  "router_unit": "xray-router",
+  "router_ports": [
+    20808,
+    20811,
+    20813
+  ],
+  "slots": {
+    "1": "DE",
+    "3": "NL"
+  },
+  "probe": {
+    "url": "https://1.1.1.1/cdn-cgi/trace",
+    "extract": "trace",
+    "timeout": 10
+  },
+  "canaries": [
+    {
+      "name": "DE",
+      "port": 20811,
+      "expect": "203.0.113.20"
+    },
+    {
+      "name": "NL",
+      "port": 20813,
+      "expect": "203.0.113.30"
+    },
+    {
+      "name": "AUTO",
+      "port": 20808,
+      "expect": [
+        "203.0.113.20",
+        "203.0.113.30"
+      ]
+    }
+  ],
+  "wireguard": {
+    "tun_only": true,
+    "interfaces": [
+      "wg0",
+      "wg1"
+    ],
+    "rx_window": 240,
+    "rx_min_packets": 3
+  },
+  "wg_nodes": true,
+  "expected_dead_nodes": [],
+  "node_probe_base_port": 21900,
+  "disks": [
+    "/"
+  ],
+  "min_disk_free_pct": 12,
+  "min_mem_available_mb": 200,
+  "max_load_per_core": 2.0,
+  "certs": [
+    {
+      "glob": "/opt/hiddify-manager/ssl/203.0.113.10.crt",
+      "warn_days": 2,
+      "crit_days": 1
+    },
+    {
+      "glob": "/opt/hiddify-manager/ssl/*.crt",
+      "exclude": [
+        "203.0.113.10.crt"
+      ]
+    }
+  ],
+  "backup_dir": "/opt/hiddify-manager/hiddify-panel/backup",
+  "max_backup_age_h": 8,
+  "tcp_targets": [
+    {
+      "name": "DE-exit-443",
+      "host": "203.0.113.20",
+      "port": 443
+    },
+    {
+      "name": "NL-exit-443",
+      "host": "203.0.113.30",
+      "port": 443
+    }
+  ],
+  "fingerprints": [
+    {
+      "name": "first-hop-dns",
+      "glob": "/opt/hiddify-manager/xray/configs/02_dns.json",
+      "why": "DNS первого хопа изменён: проверьте утечку DNS (F-03)"
+    },
+    {
+      "name": "first-hop-routing",
+      "glob": "/opt/hiddify-manager/xray/configs/03_routing.json",
+      "why": "маршрутизация первого хопа изменена"
+    },
+    {
+      "name": "multiloc-layer",
+      "glob": "/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/multiloc_router.py",
+      "why": "изменён код слоя маршрутизации стран"
+    },
+    {
+      "name": "hiddify-version",
+      "cmd": "cat /opt/hiddify-manager/VERSION 2>/dev/null",
+      "why": "изменилась версия Hiddify на RU"
+    }
+  ],
+  "telegram": {
+    "env_file": "/etc/vpn-watch/telegram.env"
+  },
+  "thresholds": {
+    "crit_runs": 3,
+    "warn_runs": 5,
+    "repeat_minutes": 180,
+    "node_crit_runs": 3,
+    "node_warn_runs": 3
+  },
+  "dns_error_window_min": 10,
+  "dns_error_limit": 40,
+  "daily_summary_hour": 9,
+  "ignore_ports": [],
+  "ignore_procs": [],
+  "ignore_ephemeral": [
+    {
+      "proc": "xray",
+      "proto": "udp",
+      "min_port": 30000
+    }
+  ],
+  "auto_director": {
+    "state_dir": "/var/lib/auto-director",
+    "max_age_s": 60,
+    "max_switches_per_hour": 4
+  },
+  "notify_only": [
+    "svc:",
+    "port:",
+    "canary:AUTO",
+    "director:closed",
+    "egress:own",
+    "ports:new",
+    "routercfg:failclosed",
+    "cert:"
+  ],
+  "notify_slow": {
+    "canary:DE": 10,
+    "canary:NL": 10
+  }
+}

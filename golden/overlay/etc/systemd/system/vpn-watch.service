@@ -1,0 +1,18 @@
+[Unit]
+Description=vpn-watch: быстрые проверки (канарейки стран, службы, WireGuard, порты, сертификаты)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/vpn-watch/vpn_watch.py run --quiet
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=150
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=vpn-watch
+StateDirectoryMode=0700
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes

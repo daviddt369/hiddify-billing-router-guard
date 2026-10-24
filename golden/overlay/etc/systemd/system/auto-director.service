@@ -1,0 +1,22 @@
+[Unit]
+Description=auto-director: choice of the AUTO exit country for xray-router (smoothing, hysteresis, fail-closed)
+After=xray-router.service
+Wants=xray-router.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/auto-director/auto_director.py run
+# when the controller stops or crashes the override is removed: the router falls back to its own country-level leastPing and AUTO keeps working
+ExecStopPost=-/usr/bin/xray api bo --server=unix:///run/xray-router-api.sock -b auto-director -r
+Restart=always
+RestartSec=5
+Nice=5
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=auto-director
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

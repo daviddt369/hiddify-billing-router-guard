@@ -1,0 +1,23 @@
+--- a/templates/anti-share-settings.html
++++ b/templates/anti-share-settings.html
+@@ -126,4 +126,20 @@
+         <input type="text" name="shared_note" class="form-control" style="min-width:260px;" placeholder="заметка (например: G-Core, новый узел)">
+         <button type="submit" class="btn btn-primary">Добавить</button>
++      </form>
++    </div>
++  </div>
++
++  <div class="box box-danger">
++    <div class="box-header with-border">
++      <h3 class="box-title">Очистить всю статистику анти-шаринга</h3>
++    </div>
++    <div class="box-body">
++      <p class="text-muted">Стирает все наблюдения: события, адреса пользователей, баллы, предупреждения и блокировки (активные баны снимаются). Настройки, отключения по пользователям и список общих адресов остаются.
++        Перед очисткой копия сохраняется в базе (хранится только последняя). После очистки наблюдение идёт с нуля.</p>
++      <form method="post" class="form-inline" onsubmit="return confirm('Стереть всю статистику анти-шаринга?');">
++        {{ form.csrf_token }}
++        <input type="hidden" name="action" value="reset_all">
++        <input type="text" name="reset_confirm" class="form-control" style="min-width:220px;" placeholder="введите слово ОЧИСТИТЬ" autocomplete="off" required>
++        <button type="submit" class="btn btn-danger">Очистить всё</button>
+       </form>
+     </div>

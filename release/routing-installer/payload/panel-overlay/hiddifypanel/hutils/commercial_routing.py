@@ -98,6 +98,11 @@ def normalize_domain_rule(rule_type: str, value: str) -> str:
 def normalize_ip_rule(rule_type: str, value: str) -> str:
     v = value.strip().lower()
     if rule_type == "ip":
+        if "/" in v:                                     # one host written as a network (x.x.x.x/32, ::1/128): how the rule sources store them and how the text printed them back
+            net = ipaddress.ip_network(v, strict=False)
+            if net.prefixlen != net.max_prefixlen:
+                raise ValueError("'ip:' takes one address (a single host may be written /32); a network needs the 'cidr:' prefix")
+            return str(net.network_address)
         return str(ipaddress.ip_address(v))
     if rule_type == "cidr":
         return str(ipaddress.ip_network(v, strict=False))
@@ -168,7 +173,11 @@ def suffix_to_xray_tld_regex(suffix: str) -> str:
     return f"regexp:.*\\.{re.escape(suffix)}$"
 
 
-def load_enabled_custom_rules() -> list[dict[str, Any]]:
+def load_enabled_custom_rules(manual_only: bool = False) -> list[dict[str, Any]]:
+    """the enabled rules in id order; manual_only = only the rules added by hand (not imported from a rule source) - what the routing form's text shows"""
+    query = CommercialRoutingCustomRule.query.filter_by(enabled=True)
+    if manual_only:
+        query = query.filter(CommercialRoutingCustomRule.source_id.is_(None))
     return [
         {
             "id": r.id,
@@ -179,7 +188,7 @@ def load_enabled_custom_rules() -> list[dict[str, Any]]:
             "enabled": r.enabled,
             "comment": r.comment,
         }
-        for r in CommercialRoutingCustomRule.query.filter_by(enabled=True).order_by(CommercialRoutingCustomRule.id.asc()).all()
+        for r in query.order_by(CommercialRoutingCustomRule.id.asc()).all()
     ]
 
 

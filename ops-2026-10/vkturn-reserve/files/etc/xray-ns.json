@@ -1,0 +1,16 @@
+{
+  "log": {"loglevel": "warning"},
+  "dns": {"servers": ["tcp://1.1.1.1", "tcp://8.8.8.8"], "queryStrategy": "UseIPv4", "tag": "dns-int"},
+  "inbounds": [{"tag": "tun-in", "protocol": "tun", "settings": {"name": "vkt0", "MTU": 1400}}],
+  "outbounds": [
+    {"tag": "to-router", "protocol": "socks", "settings": {"servers": [{"address": "127.0.0.1", "port": 1080}]}},
+    {"tag": "dns-out", "protocol": "dns"},
+    {"tag": "block", "protocol": "blackhole"}
+  ],
+  "routing": {"rules": [
+    {"inboundTag": ["tun-in"], "network": "udp", "port": 53, "outboundTag": "dns-out"},
+    {"inboundTag": ["tun-in"], "network": "udp", "outboundTag": "block"},
+    {"inboundTag": ["tun-in"], "outboundTag": "to-router"},
+    {"inboundTag": ["dns-int"], "outboundTag": "to-router"}
+  ]}
+}
