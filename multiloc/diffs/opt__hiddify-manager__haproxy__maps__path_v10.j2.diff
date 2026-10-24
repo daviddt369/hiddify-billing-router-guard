@@ -1,0 +1,20 @@
+--- a/opt/hiddify-manager/haproxy/maps/path_v10.j2
++++ b/opt/hiddify-manager/haproxy/maps/path_v10.j2
+@@ -15,6 +15,17 @@
+ /__SELECTEL_XHTTP_PATH__ v10-vless-xhttp-cdn-http
+ {% endif %}
+ 
++{# multi-location slot inbounds (secret random paths, prefix-checked at creation) #}
++{% if hconfigs['core_type']=="xray" %}
++{% for loc in locations %}
++{% for k in loc['tags'] %}
++{% if hconfigs[loc['protos'][k]~'_enable'] and hconfigs[loc['streams'][k]~'_enable'] %}
++/{{ loc['paths'][k] }} {{ loc['tags'][k] }}-http
++{% endif %}
++{% endfor %}
++{% endfor %}
++{% endif %}
++
+ /{{hconfigs['proxy_path_client']}}/generate_204 generate_204
+ /{{hconfigs['proxy_path']}}/generate_204 generate_204
+ 

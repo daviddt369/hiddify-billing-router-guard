@@ -16,6 +16,14 @@ git clone <this-repo-url> && cd hiddify-billing-router-guard
 sudo bash disaster-recovery/bootstrap.sh          # platform only, no data
 sudo bash disaster-recovery/restore.sh <bundle>   # restores DB/secrets/certs
 
+# If the old server had the multi-location (countries) addon: its tables and data came back with
+# the full DB dump; the code and the xray / haproxy templates are put back from this repository
+# (the package is assembled from THIS server's own files, installed with a backup, one-command rollback):
+python3 multiloc/installer/assemble_package.py --out /root/multiloc-pkg
+sudo /root/multiloc-pkg/install.sh preflight && sudo /root/multiloc-pkg/install.sh apply && sudo /root/multiloc-pkg/install.sh verify
+#   then press "Apply" on a routing page of the admin panel. See multiloc/README.md.
+#   (not part of the 2026-09-14 rehearsal: assembly and install are verified on the stand, not inside bootstrap.sh + restore.sh)
+
 # Manual, cannot be scripted from here:
 #   - point DNS at the new server
 #   - update Gcore/Selectel CDN origin to the new server's IP
