@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "api_socket": "/run/xray-router-api.sock",
+  "balancer": "auto-director",
+  "block_outbound": "block",
+  "countries": [
+    {
+      "name": "DE",
+      "slot": 1,
+      "entrance": 20811,
+      "outbound": "auto-via-s1"
+    },
+    {
+      "name": "NL",
+      "slot": 3,
+      "entrance": 20813,
+      "outbound": "auto-via-s3"
+    }
+  ],
+  "probe_url": "http://cp.cloudflare.com/generate_204",
+  "probe_ok_codes": [
+    200,
+    204
+  ],
+  "interval_s": 10,
+  "probes_per_cycle": 2,
+  "probe_timeout_s": 5,
+  "margin_ms": 20,
+  "confirm_cycles": 3,
+  "fail_cycles": 3,
+  "min_dwell_s": 300,
+  "ewma_alpha": 0.3,
+  "recover_cycles": 2
+}

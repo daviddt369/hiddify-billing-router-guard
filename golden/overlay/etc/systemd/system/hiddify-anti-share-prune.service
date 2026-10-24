@@ -1,0 +1,13 @@
+[Unit]
+Description=Hiddify anti-share: retention of the event table (cycle rows 14 days, the rest 365 days)
+After=mariadb.service
+
+[Service]
+Type=oneshot
+User=hiddify-panel
+WorkingDirectory=/opt/hiddify-manager/hiddify-panel
+ExecStart=/opt/hiddify-manager/.venv313/bin/python -m hiddifypanel.antishare.prune
+Nice=10
+IOSchedulingClass=idle
+SyslogIdentifier=hiddify-anti-share-prune
+TimeoutStartSec=600

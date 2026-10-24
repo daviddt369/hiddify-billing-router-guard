@@ -1,0 +1,37 @@
+{# Multi-location slot inbounds: 3 per slot (vless-xhttp, vless-ws, trojan-ws), each with its own secret random path.
+   Rendered for ALL slots once the feature schema exists (a disabled slot is routed to a blocking router entrance), so enabling a
+   country later never needs a hiddify-xray restart. File name sorts after 05_inbounds_09_* and is not matched by replace_variables' rm patterns. #}
+{
+    "inbounds":[
+        {% if hconfigs['core_type']=="xray" %}
+        {% for loc in locations %}
+            {% for k in loc['tags'] %}
+                {% if hconfigs[loc['protos'][k]~'_enable'] and hconfigs[loc['streams'][k]~'_enable'] %}
+                {
+                    "tag":"{{ loc['tags'][k] }}",
+                    "listen": "@@{{ loc['tags'][k] }}",
+                    {% include '/opt/hiddify-manager/xray/configs/common/protocols/'~loc['protos'][k]~'.pj2' %},
+
+                    "streamSettings": {
+                        {% with path=loc['paths'][k] %}
+                            {% include '/opt/hiddify-manager/xray/configs/common/streams/'~loc['streams'][k]~'.pj2' %},
+                        {%endwith %}
+
+                        "security": "none",
+                        "sockopt": {
+                            "acceptProxyProtocol": true,
+                            "tcpFastOpen": true
+                        }
+                    },
+
+                    "sniffing": {
+                        "enabled": true,
+                        "destOverride": ["http","tls", "quic"]
+                    }
+                },
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        {% endif %}
+    ]
+}

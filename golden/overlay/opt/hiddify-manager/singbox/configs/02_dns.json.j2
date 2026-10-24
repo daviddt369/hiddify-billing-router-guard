@@ -1,0 +1,13 @@
+{
+  "dns": {
+    "servers": [
+      {
+        "tag": "cloudflare",
+        "type": "https",
+        "server": "{{ hconfigs['dns_server'] or "1.1.1.1" }}"
+      }
+    ],
+    "final": "cloudflare",
+    "strategy": "prefer_ipv4"
+  }
+}

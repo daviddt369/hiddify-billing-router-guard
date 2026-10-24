@@ -1,0 +1,13 @@
+# systemd units the golden node has enabled beyond the base Hiddify ones; install.sh enables (and starts) them AFTER the data is restored
+auto-director.service
+xray-router.service
+nftables-monitoring.service
+vpn-chrome-probe.service
+hiddify-anti-share.timer
+hiddify-anti-share-prune.timer
+hiddify-routing-health.timer
+routing-links-cert.timer
+routing-links-update.timer
+vpn-watch.timer
+vpn-watch-nodes.timer
+hiddify-dr-backup.timer

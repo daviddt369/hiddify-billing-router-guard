@@ -1,0 +1,10 @@
+[Unit]
+Description=vpn-watch: проверка узлов раз в 5 минут
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
