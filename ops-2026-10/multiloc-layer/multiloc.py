@@ -761,12 +761,68 @@ def roscom_app_headers(client: str | None = None) -> dict:
     return out
 
 
-def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP, bypass_apps: Any = _KEEP, provider_id: Any = _KEEP) -> dict:
+_EXTRA_MAX = 100
+
+
+def split_lines(text: Any) -> list:
+    """what the panel fields hold: one entry per line (commas and semicolons also separate), blanks and '#' comments dropped, order kept, no duplicates"""
+    raw = text if isinstance(text, (list, tuple)) else re.split(r"[\n\r,;]+", str(text or ""))
+    return list(dict.fromkeys(x.strip() for x in raw if isinstance(x, str) and x.strip() and not x.strip().startswith("#")))
+
+
+def normalize_sites(text: Any) -> list:
+    """domain entries of a field -> the xray strings (a bare host = domain:host; geosite: / domain: / full: / regexp: / keyword: as they are). ValueError names the bad line."""
+    out = []
+    for item in split_lines(text):
+        try:
+            out.append(_roscom_item(item, "site"))
+        except ValueError:
+            raise ValueError(f"не похоже на домен или правило: {item[:60]}") from None
+    out = list(dict.fromkeys(out))
+    if len(out) > _EXTRA_MAX:
+        raise ValueError(f"слишком много строк (не больше {_EXTRA_MAX})")
+    return out
+
+
+def roscom_extra_sites(kind: str) -> list:
+    """the owner's own extra domains kept in the settings file: kind "direct" or "proxy" (broken entries are skipped, never fatal)"""
+    raw = _roscom_settings_read().get("extra_" + kind)
+    out = []
+    for x in (raw if isinstance(raw, list) else []):
+        try:
+            out.append(_roscom_item(x, "site"))
+        except ValueError:
+            continue
+    return list(dict.fromkeys(out))
+
+
+def roscom_with_extras(prof: dict) -> dict:
+    """the profile with the owner's extra domains at the FRONT of its direct / proxy list (a copy; the profile itself when there are none).
+    The profile's order (block -> proxy -> direct) still decides: a domain in the proxy list is not rescued by being listed as direct."""
+    d, p = roscom_extra_sites("direct"), roscom_extra_sites("proxy")
+    if not d and not p:
+        return prof
+    out = dict(prof)
+    if d:
+        have = list(prof.get("DirectSites", []))
+        out["DirectSites"] = [x for x in d if x not in have] + have
+    if p:
+        have = list(prof.get("ProxySites", []))
+        out["ProxySites"] = [x for x in p if x not in have] + have
+    return out
+
+
+def roscom_set(enabled: Any = _KEEP, custom: Any = _KEEP, header_lists: Any = _KEEP, ru_zone: Any = _KEEP, bypass_apps: Any = _KEEP, provider_id: Any = _KEEP,
+               extra_direct: Any = _KEEP, extra_proxy: Any = _KEEP) -> dict:
     """change the switch, the pasted profile (None / "" = back to the automatic copy) and / or the shape of the header profile. Atomic. Returns the new settings.
-    bypass_apps: a list of Android package names (or None / [] = none); provider_id: the Happ provider id (or None)."""
+    bypass_apps: a list of Android package names (or None / [] = none); provider_id: the Happ provider id (or None);
+    extra_direct / extra_proxy: the owner's own domain entries added to the direct / proxy list of the served profile (text or list; [] = none)."""
     d = _roscom_settings_read()
+    for key, val in (("extra_direct", extra_direct), ("extra_proxy", extra_proxy)):
+        if val is not _KEEP:
+            d[key] = normalize_sites(val)
     if bypass_apps is not _KEEP:
-        apps = [str(x).strip() for x in (bypass_apps or []) if str(x).strip()]
+        apps = split_lines(bypass_apps or [])
         bad = [x for x in apps if not _APP_ID.match(x)]
         if bad or len(apps) > 100:
             raise ValueError(f"not Android package names (or more than 100): {bad[:3]}")
@@ -845,7 +901,7 @@ def roscom_profile_raw(client: str) -> tuple[dict, str]:
 def roscom_profile(client: str) -> tuple[dict, str]:
     """(profile, source) as it is SERVED: the raw profile with the RU zones + banks added to its direct list (option ru_zone)"""
     prof, source = roscom_profile_raw(client)
-    return roscom_with_ru_zone(prof), source
+    return roscom_with_extras(roscom_with_ru_zone(prof)), source
 
 
 def _profile_summary(prof: dict) -> dict:
@@ -865,7 +921,9 @@ def roscom_ui_state() -> dict:
     s = _roscom_settings_read()
     custom = s.get("custom") or ""
     st: dict = {"enabled": roscom_enabled(), "custom_text": custom, "source": "custom" if custom else "landing", "profile": None, "error": None,
-                "header_profile": ROSCOM_JSON_NAME, "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "updated": s.get("updated")}
+                "header_profile": ROSCOM_JSON_NAME, "header_lists": roscom_header_lists(), "ru_zone": roscom_ru_zone(), "updated": s.get("updated"),
+                "extra_direct_text": "\n".join(s.get("extra_direct") or []), "extra_proxy_text": "\n".join(s.get("extra_proxy") or []),
+                "apps_text": "\n".join(roscom_app_ids()), "app_count": len(roscom_app_ids()), "provider_id": s.get("provider_id") or ""}
     try:
         prof = parse_roscom_input(custom) if custom else roscom_profile_raw("happ")[0]
         st["profile"] = _profile_summary(prof)

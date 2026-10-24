@@ -1,0 +1,30 @@
+--- a/templates/master.html
++++ b/templates/master.html
+@@ -5,7 +5,7 @@
+ <html>
+ 
+ <head>
+-  <title>{% block title %}{% endblock %} | {{_("master.page-title")}} | {{version}}</title>
++  <title>{% block title %}{% endblock %} | VPN Panel</title>
+   {% block head_meta %}
+   <meta name="robots" content="noindex, nofollow">
+   <meta name="googlebot" content="noindex, nofollow">
+@@ -153,8 +153,7 @@
+     <footer class="main-footer d-flex flex-wrap justify-content-between align-items-center " dir="ltr">
+       <div class="nav col-md-8 d-flex align-items-center">
+ 
+-        <strong><span class="mb-3 mb-md-0 text-muted">© 2025 Hiddify {{"Central" if hutils.node.is_parent() else
+-            ""}} <span class="badge">{{version}}</span>
++        <strong><span class="mb-3 mb-md-0 text-muted">© VPN Panel
+           </span>
+         </strong>
+       </div>
+@@ -461,7 +460,7 @@
+       })
+     }
+     is_ios = false
+-    {% if g.install_pwa %}
++    {% if g.install_pwa and '/admin/' not in request.path %}{# the admin panel never offers to install itself #}
+ 
+     {% if g.user_agent['os'] == "iOS" %}
+     is_ios = true
