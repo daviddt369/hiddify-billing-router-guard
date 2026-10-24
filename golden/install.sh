@@ -10,6 +10,7 @@
 #   pins     the xray version the node runs (golden/pins.env), downloaded from the official release and checked by sha256
 #   post     compile, daemon-reload, the routing tables (scripts/multiloc_ctl.py init), restart of the panel services
 #   data     the database, users, keys, certificates, secrets from a disaster-recovery snapshot (restore.sh SNAPSHOT_DIR)  - only with --data
+#   router   builds /etc/xray-router/config.json from the restored database (scripts/multiloc_ctl.py apply --full)                - only after data
 #   enable   enables and starts the node's own units (golden/UNITS.enabled): monitoring, auto-director, router, timers      - only after data
 #   verify   golden/verify.py (every file of the manifest identical to the node's) and golden/smoke.py (the panel answers, all menu pages open)
 # Do not point DNS / CDN at the server before `data` and `verify` have passed.
@@ -32,7 +33,7 @@ while [[ $# -gt 0 ]]; do
 done
 if [[ -z "$STAGES" ]]; then
     STAGES="base overlay vendor pins post"
-    [[ -n "$DATA" ]] && STAGES="$STAGES data enable"
+    [[ -n "$DATA" ]] && STAGES="$STAGES data router enable"
     STAGES="$STAGES verify"
 fi
 has() { [[ " $STAGES " == *" $1 "* ]]; }
@@ -69,25 +70,39 @@ if has vendor; then
 fi
 
 if has pins; then
-    say "stage pins: xray"
+    say "stage pins: xray and geo data"
     # shellcheck disable=SC1091
     source "$HERE/pins.env"
-    if [[ "$(sha256sum /usr/bin/xray 2>/dev/null | cut -d' ' -f1)" == "$XRAY_BIN_SHA256" ]]; then
+    T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+    fetch() {   # fetch <local file name in --vendor> <url> <sha256> <dest>
+        if [[ -n "$VENDOR" && -f "$VENDOR/$1" ]]; then cp "$VENDOR/$1" "$4"; say "using the local copy $VENDOR/$1 (checksum is verified anyway)"
+        else curl -fsSL -m 600 -o "$4" "$2" || die "cannot download $2"; fi
+        [[ "$(sha256sum "$4" | cut -d' ' -f1)" == "$3" ]] || die "$1: checksum differs from the pinned one"
+    }
+    mkdir -p "$BACKUP/pins"
+    REAL="$(readlink -f /opt/hiddify-manager/xray/bin/xray 2>/dev/null || echo /opt/hiddify-manager/xray/bin/xray)"
+    if [[ -f "$REAL" && "$(sha256sum "$REAL" | cut -d' ' -f1)" == "$XRAY_BIN_SHA256" ]]; then
         say "xray $XRAY_VERSION already in place"
     else
-        T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
-        curl -fsSL -m 300 -o "$T/xray.zip" "$XRAY_ZIP_URL" || die "cannot download $XRAY_ZIP_URL"
-        [[ "$(sha256sum "$T/xray.zip" | cut -d' ' -f1)" == "$XRAY_ZIP_SHA256" ]] || die "xray zip checksum differs from the pinned one"
+        fetch Xray-linux-64.zip "$XRAY_ZIP_URL" "$XRAY_ZIP_SHA256" "$T/xray.zip"
         python3 -c "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extract('xray', sys.argv[2])" "$T/xray.zip" "$T"
         [[ "$(sha256sum "$T/xray" | cut -d' ' -f1)" == "$XRAY_BIN_SHA256" ]] || die "xray binary checksum differs from the pinned one"
-        mkdir -p "$BACKUP/pins"
         for t in $XRAY_TARGETS; do
-            [[ -f "$t" ]] && cp -a "$t" "$BACKUP/pins/$(echo "$t" | tr / _)"
-            mkdir -p "$(dirname "$t")"; install -m 755 "$T/xray" "$t"
+            real="$(readlink -f "$t" 2>/dev/null || echo "$t")"
+            [[ -f "$real" ]] && cp -a "$real" "$BACKUP/pins/$(echo "$real" | tr / _)"
+            mkdir -p "$(dirname "$real")"; install -m 755 "$T/xray" "$real"
         done
-        systemctl restart hiddify-xray 2>/dev/null || true
-        say "xray $XRAY_VERSION installed (old binaries kept in $BACKUP/pins)"
+        [[ -e /usr/bin/xray ]] || ln -s /opt/hiddify-manager/xray/bin/xray /usr/bin/xray
+        say "xray $XRAY_VERSION installed (old binary kept in $BACKUP/pins)"
     fi
+    for g in geoip geosite; do
+        up="${g^^}_URL"; sh="${g^^}_SHA256"
+        if [[ -f "$GEO_DIR/$g.dat" && "$(sha256sum "$GEO_DIR/$g.dat" | cut -d' ' -f1)" == "${!sh}" ]]; then say "$g.dat release $GEO_RELEASE already in place"; continue; fi
+        fetch "$g.dat" "${!up}" "${!sh}" "$T/$g.dat"
+        [[ -f "$GEO_DIR/$g.dat" ]] && cp -a "$GEO_DIR/$g.dat" "$BACKUP/pins/$g.dat.old"
+        install -m 644 "$T/$g.dat" "$GEO_DIR/$g.dat"; say "$g.dat release $GEO_RELEASE installed"
+    done
+    systemctl restart hiddify-xray 2>/dev/null || true
 fi
 
 if has post; then
@@ -108,6 +123,12 @@ if has data; then
     bash "$REPO_ROOT/disaster-recovery/restore.sh" "$DATA"
     # restore.sh swaps the database and appends the CDN snippets: the overlay must still be the node's
     python3 "$HERE/verify.py" --params "$PARAMS" || say "WARNING: the overlay differs after the restore (listed above)"
+fi
+
+if has router; then
+    say "stage router: the local router-core config (/etc/xray-router) from the restored database"
+    (cd /opt/hiddify-manager/hiddify-panel && timeout 1500 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py apply --full --accept-diff) || say "WARNING: the router apply did not finish cleanly (see the output above)"
+    (cd /opt/hiddify-manager/hiddify-panel && timeout 300 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py baseline) || true
 fi
 
 if has enable; then
