@@ -50,6 +50,8 @@ dr_ensure_offsite_tools() {
     command -v age >/dev/null 2>&1 || missing+=("age")
     [[ "${#missing[@]}" -eq 0 ]] && return 0
     dr_log "Installing missing offsite tool(s): ${missing[*]}"
+    # a fresh VPS / cloud image has no package lists yet: without this `apt-get install` answers "Unable to locate package" (found by the clean-room rebuild, 2026-10-24)
+    DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null 2>&1 || dr_warn "apt-get update failed - trying the install with the lists we have"
     DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}" \
         || dr_die "Failed to install: ${missing[*]} (apt-get install -y ${missing[*]})"
 }
