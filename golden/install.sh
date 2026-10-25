@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # golden/install.sh - brings a FRESH Ubuntu 24.04 server to the state of the golden node.
 #
-#   sudo bash golden/install.sh --params /path/params.env [--vendor DIR] [--data SNAPSHOT_DIR]
+#   sudo bash golden/install.sh --params /path/params.env [--vendor DIR] [--data SNAPSHOT_DIR | --fresh]
+#   --fresh = a NEW node with an empty database (no --data): the same stages without `data`, the optional units follow FEATURES= of the params file
 #
 # Stages, in this order (the default is all of them; a failed run can be repeated, every stage is idempotent; --stages "a b c" runs only those):
 #   base     Hiddify Manager v12.0.0 + the business / routing / antishare addons (disaster-recovery/bootstrap.sh)
@@ -19,13 +20,14 @@
 set -Eeuo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
-PARAMS=""; VENDOR=""; DATA=""; STAGES=""
+PARAMS=""; VENDOR=""; DATA=""; STAGES=""; FRESH=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --params) PARAMS="$2"; shift ;;
         --vendor) VENDOR="$2"; shift ;;
         --data) DATA="$2"; shift ;;
         --stages) STAGES="$2"; shift ;;
+        --fresh) FRESH=1 ;;
         -h|--help) sed -n 2,22p "$0"; exit 0 ;;
         *) echo "unknown argument: $1" >&2; exit 1 ;;
     esac
@@ -34,6 +36,7 @@ done
 if [[ -z "$STAGES" ]]; then
     STAGES="base overlay vendor pins post"
     [[ -n "$DATA" ]] && STAGES="$STAGES data router enable"
+    [[ -z "$DATA" && "$FRESH" == 1 ]] && STAGES="$STAGES router enable"
     STAGES="$STAGES verify"
 fi
 has() { [[ " $STAGES " == *" $1 "* ]]; }
@@ -66,6 +69,23 @@ fi
 if has vendor; then
     say "stage vendor: Admin V2 app"
     tar -xzf "$VENDOR/admin-v2.tar.gz" -C "$(SP)/static"
+    # the public build carries the product name as @@PRODUCT_NAME@@ (the node's own build, taken with capture, already has its name in it: nothing to do then)
+    python3 - "$PARAMS" "$(SP)/static/admin-v2" <<'PY'
+import os, re, sys
+params = dict(l.rstrip("\n").split("=", 1) for l in open(sys.argv[1], encoding="utf-8") if "=" in l and not l.startswith("#"))
+name = params.get("PRODUCT_NAME", "")
+n = 0
+for root, _, files in os.walk(sys.argv[2]):
+    for f in files:
+        if not f.endswith((".js", ".html")):
+            continue
+        p = os.path.join(root, f)
+        s = open(p, encoding="utf-8").read()
+        if "@@PRODUCT_NAME@@" in s:
+            open(p, "w", encoding="utf-8", newline="").write(s.replace("@@PRODUCT_NAME@@", name))
+            n += 1
+print(f"[golden] Admin V2: product name set in {n} file(s)")
+PY
     chown -R root:root "$(SP)/static/admin-v2"; find "$(SP)/static/admin-v2" -type d -exec chmod 755 {} +; find "$(SP)/static/admin-v2" -type f -exec chmod 644 {} +
 fi
 
@@ -108,6 +128,7 @@ fi
 if has post; then
     say "stage post"
     "$PYV" -m compileall -q "$(SP)" >/dev/null || die "a Python file of the overlay does not compile"
+    "$PYV" "$HERE/translations.py" || say "WARNING: the status texts could not be added to the translation catalogs"
     systemctl daemon-reload
     if [[ -f /opt/hiddify-manager/scripts/multiloc_ctl.py ]]; then
         (cd /opt/hiddify-manager/hiddify-panel && timeout 300 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py init) || say "WARNING: multiloc_ctl init failed (tables of the routing layer)"
@@ -126,16 +147,31 @@ if has data; then
 fi
 
 if has router; then
-    say "stage router: the local router-core config (/etc/xray-router) from the restored database"
-    (cd /opt/hiddify-manager/hiddify-panel && timeout 1500 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py apply --full --accept-diff) || say "WARNING: the router apply did not finish cleanly (see the output above)"
-    (cd /opt/hiddify-manager/hiddify-panel && timeout 300 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py baseline) || true
+    say "stage router: the local router-core config (/etc/xray-router) from the database"
+    N_UP="$(mysql hiddifypanel -N -B -e 'SELECT COUNT(*) FROM commercial_routing_upstream' 2>/dev/null || echo 0)"
+    if [[ "${N_UP:-0}" == 0 ]]; then
+        say "router: there is no exit node in the panel yet, so there is nothing to route to: skipped. The first exit connected with node/ru-attach-wg.sh (or added in the panel) builds the router config."
+    else
+        (cd /opt/hiddify-manager/hiddify-panel && timeout 1500 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py apply --full --accept-diff) || say "WARNING: the router apply did not finish cleanly (see the output above)"
+        (cd /opt/hiddify-manager/hiddify-panel && timeout 300 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py baseline) || true
+    fi
 fi
 
 if has enable; then
     say "stage enable: the node's own units"
     systemctl daemon-reload
-    while IFS= read -r u; do
+    # a unit line may end with @feature: it is enabled only when the params file lists that feature in FEATURES= (a node restored from a snapshot gets all of them)
+    FEATURES="$(grep -E '^FEATURES=' "$PARAMS" | head -1 | cut -d= -f2-)"; [[ -n "$DATA" ]] && FEATURES="all"
+    while read -r u feat; do
         [[ -z "$u" || "$u" == \#* ]] && continue
+        if [[ "$u" == xray-router.service && ! -s /etc/xray-router/config.json ]]; then
+            # without a config the unit would restart in a loop: let systemd skip it until the first exit node creates the config
+            install -d /etc/systemd/system/xray-router.service.d
+            printf '[Unit]\nConditionPathExists=/etc/xray-router/config.json\n' > /etc/systemd/system/xray-router.service.d/10-needs-config.conf
+            systemctl daemon-reload; systemctl stop xray-router 2>/dev/null || true; systemctl reset-failed xray-router 2>/dev/null || true
+            say "skipped $u (no router config yet: it starts with the first exit node)"; continue
+        fi
+        if [[ -n "${feat:-}" && "$FEATURES" != "all" && " $FEATURES " != *" ${feat#@} "* ]]; then say "skipped $u (feature ${feat#@} is off)"; continue; fi
         if systemctl cat "$u" >/dev/null 2>&1; then systemctl enable --now "$u" >/dev/null 2>&1 && say "enabled $u" || say "WARNING: $u did not start"; else say "WARNING: unit $u does not exist here"; fi
     done < "$HERE/UNITS.enabled"
 fi

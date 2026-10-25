@@ -1,13 +1,14 @@
-# systemd units the golden node has enabled beyond the base Hiddify ones; install.sh enables (and starts) them AFTER the data is restored
+# systemd units the golden node has enabled beyond the base Hiddify ones; install.sh enables (and starts) them AFTER the data is restored.
+# "unit @feature": only when FEATURES= of the params file has that word (or the node is restored from a snapshot)
 auto-director.service
 xray-router.service
-nftables-monitoring.service
+nftables-monitoring.service @zabbix
 vpn-chrome-probe.service
 hiddify-anti-share.timer
 hiddify-anti-share-prune.timer
 hiddify-routing-health.timer
-routing-links-cert.timer
-routing-links-update.timer
-vpn-watch.timer
-vpn-watch-nodes.timer
-hiddify-dr-backup.timer
+routing-links-cert.timer @routing_links
+routing-links-update.timer @routing_links
+vpn-watch.timer @monitoring
+vpn-watch-nodes.timer @monitoring
+hiddify-dr-backup.timer @dr_backup

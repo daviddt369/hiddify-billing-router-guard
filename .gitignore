@@ -43,3 +43,6 @@ backups/
 AGENTS.md
 assistant-fix*/
 codex-changes-backup.patch
+
+# the public (name-neutral) Admin V2 build used by install.sh
+!vendor/admin-v2.tar.gz
