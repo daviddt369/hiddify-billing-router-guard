@@ -28,6 +28,8 @@ sudo bash golden/install.sh --params /root/params.env --vendor /root/vendor --da
 
 Откат слоя: `sudo bash golden/rollback.sh /root/golden-backup-<время>`.
 
+Необязательные службы включаются словами в строке `FEATURES=` файла параметров (при переносе узла со снимком включено всё): `routing_links` (страница быстрого импорта в Happ; нужна DNS-запись `routing.<домен>`), `monitoring` (сторож `vpn-watch` с уведомлениями в Telegram; нужен свой `/etc/vpn-watch/config.json`, образец - `ops-2026-10/monitoring`), `dr_backup` (ночной бэкап в офсайт; нужна настройка хранилища), `zabbix` (правила брандмауэра для агента Zabbix хостера).
+
 ## Что остаётся руками (скриптом не сделать)
 
 - DNS всех доменов на новый IP; в кабинетах Gcore / Selectel сменить origin на новый IP; проверка через CDN (до этого DNS/CDN на сервер не переключать).

@@ -4,7 +4,7 @@
 #   bash ru-attach-wg.sh keygen NAME
 #       creates this node's key for the tunnel to the exit NAME (/etc/wireguard/wg-NAME_private.key, kept if it exists) and prints the PUBLIC key:
 #       give it to the exit:   bash wg-exit.sh --apply --peer-pub <that key> ...
-#   bash ru-attach-wg.sh attach NAME --server-pub KEY --endpoint IP:PORT [--tunnel-addr 10.66.70.2/32] [--slot N [--title TEXT --iso NL]] [--mtu 1280] [--priority 8]
+#   bash ru-attach-wg.sh attach NAME --server-pub KEY --endpoint IP:PORT [--tunnel-addr 10.66.70.2/32] [--slot N [--title TEXT --iso NL]] [--mtu 1280] [--priority 8] [--accept-diff]
 #       takes the lines wg-exit.sh printed (SERVER_PUBLIC_KEY, ENDPOINT, PEER_TUNNEL_IP), adds the exit to the panel as an upstream (Routing -> Upstreams),
 #       puts it into location slot N (a country of the "Countries / locations" page) and presses "Apply" (one router restart).
 #       Before any change: a backup of the routing tables and of the router config in /root/attach-NAME-backup-<time>; a failure before Apply puts the database back.
@@ -45,7 +45,7 @@ status)
     echo "the handshake itself is seen on the exit:  bash wg-exit.sh --status --if <its interface>  (latest handshake, transfer)"
     ;;
 attach)
-    SERVER_PUB=""; ENDPOINT=""; ADDR="10.66.70.2/32"; MTU=1280; PRIORITY=8; SLOT=""; TITLE=""; ISO=""
+    SERVER_PUB=""; ENDPOINT=""; ADDR="10.66.70.2/32"; MTU=1280; PRIORITY=8; SLOT=""; TITLE=""; ISO=""; ACCEPT=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --server-pub) SERVER_PUB="$2"; shift ;;
@@ -56,6 +56,7 @@ attach)
             --slot) SLOT="$2"; shift ;;
             --title) TITLE="$2"; shift ;;
             --iso) ISO="$2"; shift ;;
+            --accept-diff) ACCEPT="--accept-diff" ;;
             *) echo "unknown argument: $1" >&2; exit 2 ;;
         esac
         shift
@@ -128,7 +129,7 @@ attach)
 
     log "applying (the same as the panel button): one router restart"
     # `if` on purpose: a plain failing command would fire the ERR trap (and roll the database back) even with `set +e`
-    if $CTL apply --auto; then rc=0; else rc=$?; fi
+    if $CTL apply --auto $ACCEPT; then rc=0; else rc=$?; fi
     log "apply rc=${rc}"
     if [ "$rc" = "0" ] && [ "$FIRST_EXIT" = "1" ]; then
         # the very first config of a node is built the classic way (without the director layer); one more pass makes it the full pipeline result.
@@ -138,7 +139,9 @@ attach)
     fi
     if [ "$rc" = "4" ]; then
         FINISHED=1
-        log "the config is built but differs from the working one by more than this change: it is held and waits for your decision (router untouched). See the panel -> Routing. Backup: $BK"
+        log "the config is built but differs from the working one by more than this change (typically: the second exit switches the AUTO director layer on): it is held and waits for your decision, the router is untouched. Backup: $BK"
+        log "to accept it:  press 'Apply new config' in the panel (Routing), or run:  cd /opt/hiddify-manager/hiddify-panel && $PY /opt/hiddify-manager/scripts/multiloc_ctl.py apply --accept-staged"
+        log "to discard it: 'Do not apply' in the panel, or:  ... multiloc_ctl.py apply --discard-staged   (next time add --accept-diff to this command to accept such a change at once)"
         exit 4
     fi
     if [ "$rc" != "0" ]; then rollback_db; FINISHED=1; die "apply finished with code ${rc}: the database is back as it was, the router was not changed (backup: $BK)"; fi
