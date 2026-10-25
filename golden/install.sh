@@ -164,7 +164,13 @@ if has enable; then
     FEATURES="$(grep -E '^FEATURES=' "$PARAMS" | head -1 | cut -d= -f2-)"; [[ -n "$DATA" ]] && FEATURES="all"
     while read -r u feat; do
         [[ -z "$u" || "$u" == \#* ]] && continue
-        if [[ "$u" == xray-router.service && ! -s /etc/xray-router/config.json ]]; then say "skipped $u (no router config yet: it starts with the first exit node)"; continue; fi
+        if [[ "$u" == xray-router.service && ! -s /etc/xray-router/config.json ]]; then
+            # without a config the unit would restart in a loop: let systemd skip it until the first exit node creates the config
+            install -d /etc/systemd/system/xray-router.service.d
+            printf '[Unit]\nConditionPathExists=/etc/xray-router/config.json\n' > /etc/systemd/system/xray-router.service.d/10-needs-config.conf
+            systemctl daemon-reload; systemctl stop xray-router 2>/dev/null || true; systemctl reset-failed xray-router 2>/dev/null || true
+            say "skipped $u (no router config yet: it starts with the first exit node)"; continue
+        fi
         if [[ -n "${feat:-}" && "$FEATURES" != "all" && " $FEATURES " != *" ${feat#@} "* ]]; then say "skipped $u (feature ${feat#@} is off)"; continue; fi
         if systemctl cat "$u" >/dev/null 2>&1; then systemctl enable --now "$u" >/dev/null 2>&1 && say "enabled $u" || say "WARNING: $u did not start"; else say "WARNING: unit $u does not exist here"; fi
     done < "$HERE/UNITS.enabled"

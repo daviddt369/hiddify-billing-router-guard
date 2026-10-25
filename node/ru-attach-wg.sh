@@ -34,12 +34,15 @@ keygen)
     echo "PEER_PUBLIC_KEY=$(wg pubkey < "$KEYFILE")"
     ;;
 status)
-    # the tunnel is a kernel interface of the router core, find it by the peer's endpoint in the panel database
-    ep="$(sql "SELECT wg_endpoint FROM commercial_routing_upstream WHERE name='${UPNAME}'")"
-    [ -n "$ep" ] || { echo "no upstream ${UPNAME} in the panel" >&2; exit 1; }
-    for i in $(wg show interfaces 2>/dev/null); do
-        if wg show "$i" endpoints | grep -qF "$ep"; then echo "interface $i"; wg show "$i" | sed -E 's/(private key: ).*/\1(hidden)/'; fi
+    # the tunnel lives inside the router core (xray: its own WireGuard on a TUN device), so `wg show` does not list it here
+    row="$(sql "SELECT CONCAT('id=', id, ' enabled=', enabled, ' endpoint=', wg_endpoint, ' health=', COALESCE(last_status,''), ' checked=', COALESCE(last_checked_at,'')) FROM commercial_routing_upstream WHERE name='${UPNAME}'")"
+    [ -n "$row" ] || { echo "no upstream ${UPNAME} in the panel" >&2; exit 1; }
+    echo "panel:  $row"
+    echo "router: $(systemctl is-active xray-router)"
+    for i in $(ls /sys/class/net | grep -E '^wg[0-9]+$' || true); do
+        echo "tunnel device $i: rx=$(cat /sys/class/net/$i/statistics/rx_bytes) tx=$(cat /sys/class/net/$i/statistics/tx_bytes) bytes"
     done
+    echo "the handshake itself is seen on the exit:  bash wg-exit.sh --status --if <its interface>  (latest handshake, transfer)"
     ;;
 attach)
     SERVER_PUB=""; ENDPOINT=""; ADDR="10.66.70.2/32"; MTU=1280; PRIORITY=8; SLOT=""; TITLE=""; ISO=""
@@ -124,8 +127,15 @@ attach)
     fi
 
     log "applying (the same as the panel button): one router restart"
-    set +e; $CTL apply --auto; rc=$?; set -e
+    # `if` on purpose: a plain failing command would fire the ERR trap (and roll the database back) even with `set +e`
+    if $CTL apply --auto; then rc=0; else rc=$?; fi
     log "apply rc=${rc}"
+    if [ "$rc" = "0" ] && [ "$FIRST_EXIT" = "1" ]; then
+        # the very first config of a node is built the classic way (without the director layer); one more pass makes it the full pipeline result.
+        # Nothing was edited in between, so the difference between the two is accepted.
+        log "first exit of this node: converging the router config to the full pipeline once"
+        if $CTL apply --full --accept-diff; then log "second pass done"; else log "WARNING: the second pass returned $? - the first config is working; press Apply in the panel to see what is pending"; fi
+    fi
     if [ "$rc" = "4" ]; then
         FINISHED=1
         log "the config is built but differs from the working one by more than this change: it is held and waits for your decision (router untouched). See the panel -> Routing. Backup: $BK"

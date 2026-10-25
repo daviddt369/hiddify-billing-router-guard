@@ -47,8 +47,38 @@ preflight() {
     done
 }
 
+# Hiddify's own installer runs the database upgrade (all-configs) while the panel and its background worker are already up on the same fresh
+# database. Their idle connections can keep a read lock on `str_config` for good, and the upgrade (ALTER TABLE) then waits for it forever (seen on
+# clean boxes: waits of 18 hours, the install never finished; the same install passes on other runs, it depends on timing). Closing the idle
+# connections frees the upgrade at once (the panel reconnects by itself). So: when a session has waited for a table metadata lock longer than
+# MDL_WAIT_LIMIT seconds, close every idle panel connection; if that does not help within a minute, stop the panel and its worker, the
+# installer's own command then finishes the upgrade alone and the installer starts the services again afterwards.
+mdl_waiting() {
+    mysql -N -B -e "select count(*) from information_schema.processlist where state like 'Waiting for table metadata lock' and time > ${MDL_WAIT_LIMIT:-90}" 2>/dev/null || echo 0
+}
+mdl_watchdog() {
+    local n id
+    while sleep 15; do
+        n="$(mdl_waiting)"
+        [[ "${n:-0}" =~ ^[0-9]+$ && "${n:-0}" -gt 0 ]] || continue
+        dr_warn "database upgrade is blocked (${n} session(s) wait for a metadata lock for more than ${MDL_WAIT_LIMIT:-90}s): closing the idle panel connections"
+        for id in $(mysql -N -B -e "select id from information_schema.processlist where user='hiddifypanel' and command='Sleep'" 2>/dev/null); do
+            mysql -e "kill $id" 2>/dev/null || true
+        done
+        sleep 45
+        n="$(mdl_waiting)"
+        if [[ "${n:-0}" =~ ^[0-9]+$ && "${n:-0}" -gt 0 ]]; then
+            dr_warn "still blocked: stopping the panel and its worker so the installer can finish the upgrade alone"
+            systemctl stop "$DR_SERVICE_PANEL" hiddify-panel-background-tasks 2>/dev/null || true
+            sleep 60
+        fi
+    done
+}
+
 install_base_hiddify() {
     dr_step "Installing base Hiddify Manager $HIDDIFY_TAG (pinned upstream installer, non-interactive)"
+    mdl_watchdog & MDL_WD=$!
+    trap '[[ -n "${MDL_WD:-}" ]] && kill "$MDL_WD" 2>/dev/null' EXIT
     # --no-gui / NO_UI=true are required here: without them, upstream's
     # installer launches a cli-progress/urwid TUI that calls
     # asyncio add_reader() on stdin, which raises
@@ -58,6 +88,7 @@ install_base_hiddify() {
     # run on a throwaway VPS before this flag was added; see
     # AGENT_COORDINATION_VPN.md for the reproduction.
     NO_UI=true bash <(curl -fsSL "https://raw.githubusercontent.com/hiddify/Hiddify-Manager/refs/tags/${HIDDIFY_TAG}/common/download.sh") "$HIDDIFY_TAG" --no-gui
+    kill "$MDL_WD" 2>/dev/null || true; MDL_WD=""
 
     dr_log "Waiting for base panel services to come up..."
     local waited=0 interval=5 max=180 reset_done=0
@@ -70,7 +101,7 @@ install_base_hiddify() {
         # plain `systemctl reset-failed && systemctl start` immediately
         # brought it up healthy. Try that once before falling back to
         # waiting/dying, so this doesn't need manual intervention.
-        if [[ "$reset_done" -eq 0 && "$(systemctl is-failed "$DR_SERVICE_PANEL" 2>/dev/null)" == "failed" ]]; then
+        if [[ "$reset_done" -eq 0 && ( "$(systemctl is-failed "$DR_SERVICE_PANEL" 2>/dev/null)" == "failed" || "$(systemctl is-active "$DR_SERVICE_PANEL" 2>/dev/null)" == "inactive" ) ]]; then
             dr_warn "$DR_SERVICE_PANEL is in 'failed' state (likely systemd start-rate-limit from the installer's own restarts) — resetting and starting once"
             systemctl reset-failed "$DR_SERVICE_PANEL" || true
             systemctl start "$DR_SERVICE_PANEL" || true
