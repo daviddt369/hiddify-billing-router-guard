@@ -161,3 +161,6 @@
 /opt/routing-links/resolve_links.py
 /opt/routing-links/update.sh
 /opt/vpn-watch/vpn_watch.py
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/cabinet.py
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/cabinet/cabinet.html
+/opt/hiddify-manager/cabinet/cabinet.json

@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "yookassa_shop_id": "@@YOOKASSA_SHOP_ID@@",
+  "support_url": "",
+  "brand": "@@PRODUCT_NAME@@"
+}
