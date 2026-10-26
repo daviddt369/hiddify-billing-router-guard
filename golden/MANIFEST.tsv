@@ -122,8 +122,8 @@
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/home/multi.html	644	root:root	b28c902f24030cf7d49fd53b514882d90a25a581306775d2c546d90cd0b620aa	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/home/usage.html	644	root:root	af0803cd9310a60c1919d73e81bc7cf493287465b36c357a3428c6a7f5bac7ac	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/user.py	644	root:root	1bf954b041edce17bd55476de98f75c5c662faa96f332ba1123be4625a7650d2	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/static/css/panel-theme.css	644	root:root	f471f1f67ef336df36b1f4184807fc7a9c61124611dfe49f3842ee1480a51520	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/templates/admin-layout.html	644	root:root	1434923a127cff92377d5479cb0c703d7209e5f75a9f4dd85f27d0e3f0d60a48	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/static/css/panel-theme.css	644	root:root	1806f6a0afdeef9883f58db119f1672be71bf6042c1c861cbdec0ef67bd0b648	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/templates/admin-layout.html	644	root:root	29c50bc515d51bb51480b55724bf2f20916ab0f5b98e209b9a302f8c6e7477b2	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/templates/anti-share-settings.html	644	root:root	5bbcd8b513e4bed4e2702d51dbd4b2b73c85afe5d8341fd71a8d118061416db1	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/templates/business-settings.html	644	root:root	5de0c875cd40158768c6f831a6ff6ead8025a26e3ce44aa2deff8136841b6aef	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/templates/master.html	644	root:root	6b70eb3c434dec7b7f8348104ff6991a54c2dcaa7d448f7a3bc51fad19b0bd35	text
