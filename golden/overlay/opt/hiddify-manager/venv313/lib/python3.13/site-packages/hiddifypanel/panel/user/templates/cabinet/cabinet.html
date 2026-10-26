@@ -15,7 +15,7 @@
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:40px}
 button,input{font:inherit;color:inherit}
-.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px}
 header.top{background:var(--hdr);color:#fff;position:sticky;top:0;z-index:5}
 .bar{display:flex;align-items:center;gap:12px;min-height:56px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem;letter-spacing:.2px}
@@ -28,8 +28,6 @@ header.top{background:var(--hdr);color:#fff;position:sticky;top:0;z-index:5}
 .tab{appearance:none;border:0;background:transparent;color:rgba(255,255,255,.78);padding:12px 14px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
 .tab[aria-selected=true]{color:#fff;border-bottom-color:#fff}
 main{padding-top:16px}
-.grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
-@media (min-width:880px){.grid{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);align-items:start}}
 .col{display:grid;gap:14px;min-width:0}
 .card{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
 .card h2{margin:0 0 4px;font-size:1.12rem}
@@ -64,13 +62,20 @@ main{padding-top:16px}
 .btn{appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);font-weight:800;font-size:1.02rem;cursor:pointer;margin-top:12px;text-decoration:none;text-align:center}
 .btn.sec{background:transparent;color:var(--acc);border:1px solid var(--acc)}
 .btn.small{min-height:44px;width:auto;padding:0 16px;margin:0;font-size:.95rem}
+.btn.top{margin-top:14px}
 .hint{color:var(--mute);font-size:.85rem;margin:8px 0 0}
+.lbl2{color:var(--mute);font-size:.85rem;margin:14px 0 6px}
+.lbl2:first-of-type{margin-top:0}
 .err{display:none;color:var(--bad);font-size:.88rem;margin:6px 0 0}.err.on{display:block}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
 .chip{appearance:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;min-height:44px;cursor:pointer}
 .chip[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:700}
+.rec{background:var(--soft);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+.rec p{margin:0 0 6px}.rec p:last-child{margin:0}
 .app{min-width:0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 8px}
+.app.first{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft)}
 .app .n{font-weight:800}.app .b{background:var(--soft);color:var(--acc);border-radius:999px;font-size:.72rem;font-weight:700;padding:2px 8px;margin-left:6px}
+.app .d{display:block;color:var(--mute);font-size:.82rem;font-weight:400;margin-top:2px}
 details{min-width:0;border:1px solid var(--line);border-radius:12px;padding:0 14px;margin:0 0 8px;background:var(--card)}
 summary{cursor:pointer;font-weight:700;padding:12px 0;min-height:48px;display:flex;align-items:center;gap:10px}
 summary .num{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:50%;background:var(--acc);color:var(--acc-ink);font-size:.82rem;font-weight:800}
@@ -80,7 +85,8 @@ details ol{margin:6px 0 0;padding-left:22px}details li{margin:5px 0}
 .linkbox .field{flex:1;min-width:0}
 .field .mono{flex:1;min-width:0}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qr{display:grid;place-items:center;margin:14px 0 6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.qr{display:grid;place-items:center;margin:14px 0 4px}
 .qr canvas,.qr img{border-radius:12px;background:#fff;padding:10px}
 .timer{color:var(--bad);font-weight:700;font-variant-numeric:tabular-nums}
 .list{display:grid;gap:8px}
@@ -90,7 +96,6 @@ details ol{margin:6px 0 0;padding-left:22px}details li{margin:5px 0}
 .toast.on{opacity:1;transform:translateX(-50%)}
 footer{color:var(--mute);font-size:.82rem;text-align:center;margin:22px 0 0}
 footer a{color:var(--mute)}
-noscript .card{margin-top:16px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -105,89 +110,90 @@ noscript .card{margin-top:16px}
   <nav class="tabs" role="tablist" aria-label="Разделы">
    <button class="tab" type="button" role="tab" data-tab="home" aria-selected="true">Главная</button>
    <button class="tab" type="button" role="tab" data-tab="configs" aria-selected="false">Все конфиги</button>
-   <button class="tab" type="button" role="tab" data-tab="tg" aria-selected="false" id="tab-btn-tg" hidden>Telegram Proxy</button>
-   <button class="tab" type="button" role="tab" data-tab="doh" aria-selected="false">DoH</button>
+   <button class="tab" type="button" role="tab" data-tab="tg" aria-selected="false" id="tab-btn-tg" hidden>TG-прокси</button>
   </nav>
  </div>
 </header>
 
 <main class="wrap">
-<noscript><div class="card"><h2>Нужен JavaScript</h2><p class="sub">Включите JavaScript или откройте <a href="?classic=1">прежнюю страницу</a>.</p></div></noscript>
+<noscript><div class="card"><h2>Нужен JavaScript</h2><p class="sub">Включите JavaScript или откройте страницу с параметром <b>?classic=1</b>.</p></div></noscript>
 
 <section id="tab-home">
- <div class="grid" id="homegrid">
-  <div class="col">
-   <div class="card" id="status">
-    <div class="hello">
-     <div><div style="color:var(--mute);font-size:.85rem">Здравствуйте</div><div class="who" id="who"></div></div>
-     <div style="text-align:right"><div style="font-weight:800;font-size:1.05rem" id="planname"></div><span class="pill ok" id="pill"><i class="dot"></i><span id="pilltxt"></span></span></div>
-    </div>
-    <div class="meters">
-     <div class="meter"><div class="k">Осталось дней</div><div class="v"><span id="days"></span> <small id="dayunit"></small></div><div class="bar-bg"><div class="bar-fg" id="daybar"></div></div><div class="hint" id="until"></div></div>
-     <div class="meter"><div class="k">Осталось трафика</div><div class="v"><span id="gb"></span> <small id="gbtotal"></small></div><div class="bar-bg"><div class="bar-fg" id="gbbar"></div></div><div class="hint" id="reset"></div></div>
-    </div>
-    <div class="meta"><span>Устройств: <b id="devices"></b></span><span id="paidwrap">Оплачено: <b id="paid"></b></span></div>
-    <div class="banner warn" id="banner" hidden></div>
-   </div>
+ <div class="col" id="homecol">
 
-   <div class="card" id="renew">
-    <h2 id="renewtitle">Продлить подписку</h2>
-    <p class="sub" id="renewsub"></p>
-    <div class="plans" id="plans" role="group" aria-label="Тариф"></div>
-    <div id="siteform">
-     <form id="payform" method="post" accept-charset="utf-8">
-      <div class="field"><span class="lbl">Телефон</span><input id="phone" name="cps_phone" aria-label="Телефон, привязанный к Telegram" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67"></div>
-      <div class="err" id="phoneerr" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
-      <input type="hidden" name="customerNumber" id="customer">
-      <input type="hidden" name="sum" id="sum">
-      <input type="hidden" name="shopId" id="shop">
-      <div class="hint" id="phonehint"></div>
-      <button class="btn" type="submit" id="pay">Оплатить <span id="payamt"></span></button>
-     </form>
-    </div>
-    <a class="btn sec" id="paybot" href="#" rel="noopener" hidden>Оплатить в Telegram-боте</a>
-    <div class="hint" id="payhint">Через сайт зачисление обрабатывается дольше, чем через бота, и может произойти не сразу. Оплата проходит на стороне ЮKassa, данные карты здесь не вводятся.</div>
+  <div class="card" id="status">
+   <div class="hello">
+    <div><div style="color:var(--mute);font-size:.85rem">Здравствуйте</div><div class="who" id="who"></div></div>
+    <div style="text-align:right"><div style="font-weight:800;font-size:1.05rem" id="planname"></div><span class="pill ok" id="pill"><i class="dot"></i><span id="pilltxt"></span></span></div>
    </div>
-
-   <div class="card" id="connect">
-    <h2>Подключение</h2>
-    <p class="sub">Три шага. Если уже подключены, этот раздел можно не открывать.</p>
-    <details><summary><span class="num">1</span>Установите приложение</summary><div class="in">
-      <div class="chips" id="platforms" role="group" aria-label="Платформа"></div>
-      <div id="apps"></div>
-    </div></details>
-    <details><summary><span class="num">2</span>Добавьте подписку</summary><div class="in">
-      <div class="linkbox"><div class="field"><span class="mono" id="sublink"></span></div><button class="btn small" id="copy" type="button">Скопировать</button></div>
-      <ol><li>Скопируйте ссылку подписки (кнопка выше) или отсканируйте QR-код.</li><li>В приложении нажмите «+» и вставьте ссылку из буфера обмена.</li><li>Выберите сервер и включите VPN. Не передавайте ссылку другим людям.</li></ol>
-    </div></details>
-    <details id="routing"><summary><span class="num">3</span>Маршрутизация RoscomVPN (Happ, INCY)</summary><div class="in">
-      <p class="sub" style="margin:0 0 8px">Российские сайты открываются напрямую, остальное идёт через VPN.</p>
-      <a class="btn sec" id="imp-happ" style="margin-top:0" hidden>Импортировать в Happ</a>
-      <a class="btn sec" id="imp-incy" hidden>Импортировать в INCY</a>
-      <ol><li>Подтвердите добавление профиля «RoscomVPN».</li><li>Подождите, пока загрузятся геофайлы (до 3 минут).</li><li>В настройках подписки включите маршрутизацию и выберите профиль.</li><li>Выключите и снова включите VPN.</li></ol>
-    </div></details>
-    <details><summary>iPhone: как сменить регион App Store</summary><div class="in"><ol><li>Настройки, ваше имя, «Медиа и покупки», «Просмотреть», «Страна или регион».</li><li>Выберите США и любой адрес из подсказок, способ оплаты «Нет».</li><li>Установите приложение из App Store и верните регион, если нужно.</li></ol></div></details>
-    <details><summary>Если не подключается</summary><div class="in"><ol><li>Обновите подписку в приложении.</li><li>Выберите другой сервер.</li><li>Перезапустите приложение.</li><li>Переключитесь между Wi-Fi и мобильным интернетом.</li></ol></div></details>
+   <div class="meters">
+    <div class="meter"><div class="k">Осталось дней</div><div class="v"><span id="days"></span> <small id="dayunit"></small></div><div class="bar-bg"><div class="bar-fg" id="daybar"></div></div><div class="hint" id="until"></div></div>
+    <div class="meter"><div class="k">Осталось трафика</div><div class="v"><span id="gb"></span> <small id="gbtotal"></small></div><div class="bar-bg"><div class="bar-fg" id="gbbar"></div></div><div class="hint" id="reset"></div></div>
    </div>
+   <div class="meta"><span>Устройств: <b id="devices"></b></span><span id="paidwrap">Оплачено: <b id="paid"></b></span></div>
+   <div class="banner warn" id="banner" hidden></div>
+   <a class="btn top" id="cta" href="#" rel="noopener" hidden>Оплатить в Telegram-боте</a>
   </div>
 
-  <aside class="col">
-   <div class="card">
-    <h2>Ссылка подписки</h2>
-    <p class="sub">Откройте приложение, нажмите «+» и отсканируйте код.</p>
-    <div class="qr" id="qr"></div>
+  <div class="card" id="linkcard">
+   <h2>Ваша ссылка подписки</h2>
+   <p class="sub">Её нужно добавить в приложение (шаги ниже). Не передавайте её другим людям.</p>
+   <div class="lbl2">Для Hiddify и других приложений</div>
+   <div class="linkbox"><div class="field"><span class="mono" id="sublink"></span></div><button class="btn small" id="copy" type="button">Скопировать</button></div>
+   <div id="happbox" hidden>
+    <div class="lbl2">Для Happ и INCY (AUTO и страны)</div>
+    <div class="linkbox"><div class="field"><span class="mono" id="happlink"></span></div><button class="btn small" id="copyhapp" type="button">Скопировать</button></div>
    </div>
-   <div class="card">
-    <h2>Временная ссылка</h2>
-    <p class="sub">Откройте в браузере на другом устройстве. Действует 5 минут, потом станет недоступна.</p>
-    <div id="shortbox"><button class="btn small sec" id="shortbtn" type="button">Создать временную ссылку</button></div>
+   <div class="row">
+    <button class="btn small sec" id="qrbtn" type="button">Показать QR-код</button>
+    <button class="btn small sec" id="shortbtn" type="button">Временная ссылка на 5 минут</button>
    </div>
-   <div class="card" id="supportcard">
-    <h2>Поддержка</h2>
-    <p style="margin:0 0 10px">Не получается подключиться или оплатить? Напишите, ответим в рабочее время.</p>
-    <a class="btn small" id="support" href="#" rel="noopener">Написать в поддержку</a>
-   </div>
-  </aside>
+   <div class="qr" id="qr" hidden></div>
+   <div id="shortbox" class="hint" hidden></div>
+  </div>
+
+  <div class="card" id="connect">
+   <h2>Подключение</h2>
+   <p class="sub">Два шага. Если уже подключены, этот раздел можно не открывать.</p>
+   <details open><summary><span class="num">1</span>Установите приложение</summary><div class="in">
+     <div class="chips" id="platforms" role="group" aria-label="Платформа"></div>
+     <div class="rec" id="rec"></div>
+     <div id="apps"></div>
+   </div></details>
+   <details><summary><span class="num">2</span>Добавьте подписку</summary><div class="in">
+     <ol><li>Скопируйте ссылку подписки (кнопка «Скопировать» выше): первую - для Hiddify и других приложений, вторую (если она есть) - для Happ и INCY. Или отсканируйте QR-код.</li><li>В приложении нажмите «+» и вставьте ссылку из буфера обмена.</li><li>Выберите сервер и включите VPN.</li></ol>
+     <p class="hint">Маршрутизация (российские сайты открываются напрямую) уже внутри подписки: ничего настраивать и импортировать не нужно. В Hiddify при первом запуске выберите страну «Россия».</p>
+   </div></details>
+   <details id="regionhelp"><summary>iPhone: как сменить регион App Store (для Hiddify и Happ)</summary><div class="in"><ol><li>Настройки, ваше имя, «Медиа и покупки», «Просмотреть», «Страна или регион».</li><li>Выберите США и любой адрес из подсказок, способ оплаты «Нет».</li><li>Установите приложение из App Store. Регион можно вернуть, приложение останется.</li></ol><p class="hint">INCY в российском App Store есть, ему регион менять не нужно.</p></div></details>
+   <details><summary>Другие приложения</summary><div class="in"><p style="margin:0">Подписка стандартная, её принимают и другие программы (например V2RayTun, v2rayNG). Они рассчитаны на опытных пользователей: часть из них не показывает отклик серверов или не применяет маршрутизацию. Если что-то не работает, перейдите на INCY, Happ или Hiddify.</p></div></details>
+   <details><summary>Если не подключается</summary><div class="in"><ol><li>Обновите подписку в приложении.</li><li>Выберите другой сервер.</li><li>Если провайдер сильно блокирует соединения, попробуйте Hiddify: у него больше протоколов.</li><li>Перезапустите приложение.</li><li>Переключитесь между Wi-Fi и мобильным интернетом.</li></ol></div></details>
+  </div>
+
+  <div class="card" id="renew">
+   <h2 id="renewtitle">Оплата и продление</h2>
+   <p class="sub" id="renewsub"></p>
+   <a class="btn" id="paybot" href="#" rel="noopener" hidden style="margin-top:0">Оплатить в Telegram-боте</a>
+   <div class="hint" id="bothint" hidden>В боте платёж зачисляется сразу.</div>
+   <details id="sitepay" style="margin-top:14px"><summary id="sitepaysum">Не получается оплатить в боте? Оплатить на сайте</summary><div class="in">
+    <div class="plans" id="plans" role="group" aria-label="Тариф"></div>
+    <form id="payform" method="post" accept-charset="utf-8">
+     <div class="field"><span class="lbl">Телефон</span><input id="phone" name="cps_phone" aria-label="Телефон, привязанный к Telegram" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67"></div>
+     <div class="err" id="phoneerr" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
+     <input type="hidden" name="customerNumber" id="customer">
+     <input type="hidden" name="sum" id="sum">
+     <input type="hidden" name="shopId" id="shop">
+     <div class="hint" id="phonehint"></div>
+     <button class="btn" type="submit" id="pay">Оплатить <span id="payamt"></span></button>
+    </form>
+    <div class="hint">Через сайт платёж обрабатывается вручную и зачисляется дольше, чем через бота. Оплата проходит на стороне ЮKassa, данные карты здесь не вводятся.</div>
+   </div></details>
+  </div>
+
+  <div class="card" id="supportcard">
+   <h2>Поддержка</h2>
+   <p style="margin:0 0 10px">Не получается подключиться или оплатить? Напишите, ответим в рабочее время.</p>
+   <a class="btn small" id="support" href="#" rel="noopener">Написать в поддержку</a>
+  </div>
  </div>
 </section>
 
@@ -195,14 +201,10 @@ noscript .card{margin-top:16px}
  <div class="card"><h2>Все конфиги</h2><p class="sub">Для приложений и ручной настройки. Основной способ - ссылка подписки на главной.</p><div class="list" id="cfglist"><div class="hint">Загрузка…</div></div></div>
 </section>
 <section id="tab-tg" hidden>
- <div class="card"><h2>Telegram Proxy</h2><p class="sub">Прокси для самого Telegram. Нажмите кнопку на телефоне, Telegram предложит включить прокси.</p><div class="list" id="tglist"><div class="hint">Загрузка…</div></div></div>
-</section>
-<section id="tab-doh" hidden>
- <div class="card"><h2>DoH</h2><p class="sub">Защищённый DNS: адрес для настроек браузера или системы.</p>
-  <div class="cfg"><span class="mono" id="doh"></span><button class="btn small sec" id="copydoh" type="button">Скопировать</button></div></div>
+ <div class="card"><h2>TG-прокси</h2><p class="sub">Прокси для самого Telegram. Нажмите кнопку на телефоне, Telegram предложит включить прокси.</p><div class="list" id="tglist"><div class="hint">Загрузка…</div></div></div>
 </section>
 
-<footer>{{ brand }} · работает на <a href="https://github.com/hiddify/Hiddify-Manager" rel="noopener">Hiddify</a> · <a href="?classic=1">прежняя страница</a></footer>
+<footer>{{ brand }} · работает на <a href="https://github.com/hiddify/Hiddify-Manager" rel="noopener">Hiddify</a></footer>
 </main>
 <div class="toast" id="toast"></div>
 <script type="application/json" id="cab-data">{{ cab|tojson }}</script>
@@ -228,52 +230,61 @@ if(D.traffic.unlimited){$('#gb').textContent='∞';$('#gbtotal').textContent='б
 else{$('#gb').textContent=fmtGb(D.traffic.left);$('#gbtotal').textContent='ГБ из '+fmtGb(D.traffic.total);var gp=D.traffic.total?Math.round(D.traffic.left/D.traffic.total*100):0;var gb=$('#gbbar');gb.style.width=Math.min(100,Math.max(gp,D.traffic.left?4:0))+'%';gb.className='bar-fg'+(D.traffic.left===0?' bad':(gp<=15?' warn':''));$('#reset').textContent=D.traffic.reset}
 $('#devices').textContent=D.devices;if(D.paid){$('#paid').textContent=D.paid}else $('#paidwrap').hidden=true;
 if(D.banner){var b=$('#banner');b.hidden=false;b.className='banner '+D.banner.tone;b.textContent=D.banner.text}
-/* the expired / disabled account sees the payment right under the status */
-if(D.expired){var col=$('#homegrid .col');col.insertBefore($('#renew'),$('#status').nextSibling)}
-/* ---- renew ---- */
+/* the account that needs a payment gets the Telegram button right in the status */
+if(D.need_pay){var cta=$('#cta');cta.hidden=false;if(D.pay.bot_url){cta.href=D.pay.bot_url;cta.textContent=D.expired?'Продлить в Telegram-боте':'Оплатить в Telegram-боте'}else{cta.href='#renew';cta.textContent='Перейти к оплате';cta.onclick=function(e){e.preventDefault();$('#sitepay').open=true;$('#renew').scrollIntoView({behavior:'smooth'})}}}
+/* ---- payment: the bot first, the site form folded ---- */
 var sel=0;D.plans.forEach(function(p,i){if(p.current)sel=i});
-$('#renewtitle').textContent=D.plan==='Пробный доступ'?'Выбрать тариф':'Продлить подписку';
-$('#renewsub').textContent=D.plan==='Пробный доступ'?'Пробный доступ заменится выбранным тарифом.':(D.expired?'Оплата за один месяц. После зачисления ссылка заработает сама.':'Выберите тариф. Оставшиеся дни сохранятся.');
+var trialAcc=D.plan==='Пробный доступ';
+$('#renewtitle').textContent=trialAcc?'Выбрать тариф':'Оплата и продление';
+$('#renewsub').textContent=trialAcc?'Пробный доступ заменится выбранным тарифом.':(D.expired?'После оплаты ссылка заработает сама, настройки останутся прежними.':'Оставшиеся дни при продлении сохранятся.');
 function plansUI(){var box=$('#plans');box.innerHTML='';D.plans.forEach(function(p,i){var b=document.createElement('button');b.type='button';b.className='plan';b.setAttribute('aria-pressed',i===sel?'true':'false');
  var l=document.createElement('span'),n=document.createElement('b');n.textContent=p.name;if(p.current){var c=document.createElement('span');c.className='cur';c.textContent='текущий';n.appendChild(c)}l.appendChild(n);if(p.note){var s=document.createElement('small');s.textContent=p.note;l.appendChild(s)}
  var pp=document.createElement('span');pp.className='pp';pp.textContent=p.price+' ₽';b.appendChild(l);b.appendChild(pp);b.onclick=function(){sel=i;plansUI()};box.appendChild(b)});
  if(D.plans[sel]){$('#payamt').textContent=D.plans[sel].price+' ₽';$('#sum').value=D.plans[sel].price}}
-if(!D.plans.length){$('#renew').hidden=true}else{plansUI()}
-var form=$('#payform');
-if(D.pay.shop_id){form.action=D.pay.action;$('#shop').value=D.pay.shop_id;$('#phone').value=D.phone;
+var form=$('#payform'),siteOk=!!(D.pay.shop_id&&D.plans.length);
+if(D.pay.bot_url){var pb=$('#paybot');pb.hidden=false;pb.href=D.pay.bot_url;$('#bothint').hidden=false}
+if(siteOk){plansUI();form.action=D.pay.action;$('#shop').value=D.pay.shop_id;$('#phone').value=D.phone;
  $('#phonehint').textContent=D.phone?'Телефон взят из вашего аккаунта. Платёж по нему находят и зачисляют.':'Укажите телефон, привязанный к Telegram: по нему платёж находят и зачисляют.';
  $('#phone').addEventListener('input',function(){$('#phoneerr').classList.remove('on')});
- form.addEventListener('submit',function(e){var v=($('#phone').value||'').trim(),n=v.replace(/[^0-9]/g,'').length;if(n<10||n>15){e.preventDefault();$('#phoneerr').classList.add('on');$('#phone').focus();return}$('#customer').value=v;if(D.plans[sel])$('#sum').value=D.plans[sel].price})
-}else{$('#siteform').hidden=true;$('#payhint').textContent='Оплата проходит в Telegram-боте.'}
-if(D.pay.bot_url){var pb=$('#paybot');pb.hidden=false;pb.href=D.pay.bot_url;if(!D.pay.shop_id)pb.className='btn'}
-/* ---- connection ---- */
+ form.addEventListener('submit',function(e){var v=($('#phone').value||'').trim(),n=v.replace(/[^0-9]/g,'').length;if(n<10||n>15){e.preventDefault();$('#phoneerr').classList.add('on');$('#phone').focus();return}$('#customer').value=v;if(D.plans[sel])$('#sum').value=D.plans[sel].price});
+ if(!D.pay.bot_url){$('#sitepay').open=true;$('#sitepaysum').textContent='Оплата на сайте'}
+}else{$('#sitepay').hidden=true}
+if(!D.pay.bot_url&&!siteOk){$('#renew').hidden=true}
+/* ---- subscription link ---- */
 $('#sublink').textContent=D.connect.sub_url;
 $('#copy').onclick=function(){copy(D.connect.sub_url,this)};
-if(D.connect.happ){var h=$('#imp-happ');h.hidden=false;h.href=D.connect.happ}
-if(D.connect.incy){var i2=$('#imp-incy');i2.hidden=false;i2.href=D.connect.incy}
-if(!D.connect.happ&&!D.connect.incy){$('#routing').hidden=true}
+var qrDone=false;$('#qrbtn').onclick=function(){var q=$('#qr');q.hidden=!q.hidden;this.textContent=q.hidden?'Показать QR-код':'Скрыть QR-код';
+ if(!q.hidden&&!qrDone&&window.QRCode){qrDone=true;try{new QRCode(q,{text:D.connect.sub_url,width:190,height:190,correctLevel:QRCode.CorrectLevel.M})}catch(e){}}};
+$('#shortbtn').onclick=function(){var b=this;b.disabled=true;fetch(D.connect.short_api,{credentials:'same-origin'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+ var box=$('#shortbox');box.hidden=false;box.innerHTML='';var lb=document.createElement('div');lb.className='linkbox';var f=document.createElement('div');f.className='field';var m=document.createElement('span');m.className='mono';m.textContent=j.full_url;var t=document.createElement('span');t.className='timer';f.appendChild(m);f.appendChild(t);lb.appendChild(f);var cb=document.createElement('button');cb.type='button';cb.className='btn small';cb.textContent='Скопировать';cb.onclick=function(){copy(j.full_url,cb)};lb.appendChild(cb);box.appendChild(lb);
+ var left=j.expire_in||300;(function tick(){t.textContent=('0'+Math.floor(left/60)).slice(-2)+':'+('0'+left%60).slice(-2);if(left--<=0){m.textContent='ссылка истекла';t.textContent='';b.disabled=false;return}setTimeout(tick,1000)})()}).catch(function(){b.disabled=false;toast('Не удалось создать ссылку, попробуйте ещё раз')})};
+/* ---- installation: what to recommend on which platform ---- */
+if(D.connect.happ_link){$('#happbox').hidden=false;$('#happlink').textContent=D.connect.happ_link;$('#copyhapp').onclick=function(){copy(D.connect.happ_link,this)}}
 var PL=[['ios','iPhone / iPad'],['android','Android'],['windows','Windows'],['macos','macOS']];
 var APPS={"hiddify":{"n":"Hiddify","b":"Рекомендуем","d":{"ios":[["App Store","https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=app.hiddify.com"],["APK (GitHub)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk"]],"windows":[["Установщик (.exe)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe"],["Portable (.zip)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip"]],"macos":[["Скачать (.dmg)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg"]]}},"happ":{"n":"Happ","b":"","d":{"ios":[["App Store","https://apps.apple.com/us/app/happ-proxy-utility/id6504287215"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=com.happproxy"],["APK (GitHub)","https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk"]],"windows":[["Установщик (.exe)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe"]],"macos":[["Скачать (.dmg)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg"]]}},"incy":{"n":"INCY","b":"Доступен в App Store России","d":{"ios":[["App Store","https://apps.apple.com/ru/app/incy/id6756943388"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=llc.itdev.incy"],["APK (GitHub)","https://github.com/INCY-DEV/incy-platforms/releases"]],"windows":[["Установщик (.exe)","https://github.com/INCY-DEV/incy-platforms/releases"],["Portable (.zip)","https://github.com/INCY-DEV/incy-platforms/releases"]],"macos":[["App Store","https://apps.apple.com/ru/app/incy/id6756943388"],["DMG (Apple Silicon)","https://github.com/INCY-DEV/incy-platforms/releases"],["DMG (Intel)","https://github.com/INCY-DEV/incy-platforms/releases"]]}}};
+var ORDER={ios:['incy','hiddify','happ'],android:['hiddify','happ','incy'],windows:['hiddify','happ','incy'],macos:['hiddify','happ','incy']};
+var DESC={hiddify:'Больше всего протоколов, всё работает сразу.',happ:'Проще, протоколов меньше.',incy:'Проще, протоколов меньше.'};
+var REC={ios:['<b>Рекомендуем INCY:</b> он есть в российском App Store, менять регион не нужно.','Hiddify и Happ из российского App Store убраны: их можно поставить, только сменив регион (инструкция ниже). У Hiddify протоколов больше, он выручает, если провайдер сильно блокирует.'],
+ other:['<b>Рекомендуем Hiddify:</b> у него больше всего протоколов, всё работает сразу.','Happ и INCY проще, но протоколов у них меньше. Если провайдер сильно блокирует соединения, лучше Hiddify.']};
 var ua=navigator.userAgent||'',plat=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)?'ios':/Android/i.test(ua)?'android':/Macintosh/.test(ua)?'macos':'windows';
 function appsUI(){var c=$('#platforms');c.innerHTML='';PL.forEach(function(p){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p[1];b.setAttribute('aria-pressed',p[0]===plat?'true':'false');b.onclick=function(){plat=p[0];appsUI()};c.appendChild(b)});
- var a=$('#apps');a.innerHTML='';Object.keys(APPS).forEach(function(k){var x=APPS[k],d=document.createElement('div');d.className='app';var l=document.createElement('span'),n=document.createElement('span');n.className='n';n.textContent=x.n;l.appendChild(n);if(x.b&&(k!=='incy'||plat==='ios'||plat==='macos')){var bb=document.createElement('span');bb.className='b';bb.textContent=x.b;l.appendChild(bb)}
- var r=document.createElement('span');r.style.cssText='display:flex;gap:8px;flex-wrap:wrap';x.d[plat].forEach(function(l2,idx){var A=document.createElement('a');A.className='btn small'+(idx?' sec':'');A.href=l2[1];A.rel='noopener';A.target='_blank';A.textContent=l2[0];r.appendChild(A)});d.appendChild(l);d.appendChild(r);a.appendChild(d)})}
+ var r=$('#rec');r.innerHTML='';(REC[plat==='ios'?'ios':'other']).forEach(function(t){var p=document.createElement('p');p.innerHTML=t;r.appendChild(p)});
+ $('#regionhelp').hidden=plat!=='ios';
+ var a=$('#apps');a.innerHTML='';ORDER[plat].forEach(function(k,idx){var x=APPS[k],d=document.createElement('div');d.className='app'+(idx===0?' first':'');var l=document.createElement('span'),n=document.createElement('span');n.className='n';n.textContent=x.n;l.appendChild(n);
+ if(idx===0){var bb=document.createElement('span');bb.className='b';bb.textContent='Рекомендуем';l.appendChild(bb)}
+ var ds=document.createElement('span');ds.className='d';ds.textContent=DESC[k];l.appendChild(ds);
+ var rr=document.createElement('span');rr.style.cssText='display:flex;gap:8px;flex-wrap:wrap';(x.d[plat]||[]).forEach(function(l2,i3){var A=document.createElement('a');A.className='btn small'+(i3?' sec':'');A.href=l2[1];A.rel='noopener';A.target='_blank';
+ var lab=l2[0];if(plat==='ios'&&k!=='incy'&&lab==='App Store')lab='App Store (США)';if(plat==='ios'&&k==='incy'&&lab==='App Store')lab='App Store (Россия)';A.textContent=lab;rr.appendChild(A)});d.appendChild(l);d.appendChild(rr);a.appendChild(d)})}
 appsUI();
-if(window.QRCode){try{new QRCode($('#qr'),{text:D.connect.sub_url,width:190,height:190,correctLevel:QRCode.CorrectLevel.M})}catch(e){}}
-/* temporary short link */
-$('#shortbtn').onclick=function(){var b=this;b.disabled=true;fetch(D.connect.short_api,{credentials:'same-origin'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
- var box=$('#shortbox');box.innerHTML='';var lb=document.createElement('div');lb.className='linkbox';var f=document.createElement('div');f.className='field';var m=document.createElement('span');m.className='mono';m.textContent=j.full_url;var t=document.createElement('span');t.className='timer';f.appendChild(m);f.appendChild(t);lb.appendChild(f);var cb=document.createElement('button');cb.type='button';cb.className='btn small';cb.textContent='Скопировать';cb.onclick=function(){copy(j.full_url,cb)};lb.appendChild(cb);box.appendChild(lb);
- var left=j.expire_in||300;(function tick(){t.textContent=('0'+Math.floor(left/60)).slice(-2)+':'+('0'+left%60).slice(-2);if(left--<=0){m.textContent='ссылка истекла';t.textContent='';return}setTimeout(tick,1000)})()}).catch(function(){b.disabled=false;toast('Не удалось создать ссылку, попробуйте ещё раз')})};
 /* support */
 if(D.support_url){$('#support').href=D.support_url}else{$('#supportcard').hidden=true}
 /* ---- tabs ---- */
 var loaded={};
-function tab(t){['home','configs','tg','doh'].forEach(function(n){$('#tab-'+n).hidden=n!==t});$$('.tab').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-tab')===t?'true':'false')});window.scrollTo(0,0);
+function tab(t){['home','configs','tg'].forEach(function(n){$('#tab-'+n).hidden=n!==t});$$('.tab').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-tab')===t?'true':'false')});window.scrollTo(0,0);
  if(t==='configs'&&!loaded.c){loaded.c=1;fetch(D.connect.configs_api,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(L){var box=$('#cfglist');box.innerHTML='';L.forEach(function(x){var row=document.createElement('div');row.className='cfg';var s=document.createElement('span');s.textContent=x.name+(x.domain&&x.domain!=='ALL'?' · '+x.domain:'');var b=document.createElement('button');b.type='button';b.className='btn small sec';b.textContent='Скопировать';b.onclick=function(){copy(x.link,b,'Скопировать')};row.appendChild(s);row.appendChild(b);box.appendChild(row)})}).catch(function(){$('#cfglist').textContent='Не удалось загрузить список'})}
  if(t==='tg'&&!loaded.t){loaded.t=1;fetch(D.connect.mtproxies_api,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(L){var box=$('#tglist');box.innerHTML='';L.forEach(function(x){var row=document.createElement('div');row.className='cfg';var s=document.createElement('span');s.textContent=x.title;var a=document.createElement('a');a.className='btn small';a.href=x.link;a.textContent='Подключить';row.appendChild(s);row.appendChild(a);box.appendChild(row)})}).catch(function(){$('#tglist').textContent='Не удалось загрузить список'})}}
 $$('.tab').forEach(function(b){b.onclick=function(){tab(b.getAttribute('data-tab'))}});
 if(D.telegram_proxy)$('#tab-btn-tg').hidden=false;
-$('#doh').textContent=D.doh;$('#copydoh').onclick=function(){copy(D.doh,this)};
 /* ---- theme ---- */
 try{var saved=localStorage.getItem('cab-theme');if(saved)document.documentElement.setAttribute('data-theme',saved)}catch(e){}
 $('#theme').onclick=function(){var r=document.documentElement,d=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches),n=d?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('cab-theme',n)}catch(e){}};

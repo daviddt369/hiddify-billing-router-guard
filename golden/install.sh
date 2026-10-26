@@ -129,6 +129,8 @@ if has post; then
     say "stage post"
     "$PYV" -m compileall -q "$(SP)" >/dev/null || die "a Python file of the overlay does not compile"
     "$PYV" "$HERE/translations.py" || say "WARNING: the status texts could not be added to the translation catalogs"
+    # a NEW node gets the default bot texts (instruction, welcome, link texts) where the owner has not written their own
+    if [[ "$FRESH" == 1 ]]; then "$PYV" "$HERE/seed_bot_texts.py" --panel-python "$PYV" || say "WARNING: the default bot texts could not be set"; fi
     systemctl daemon-reload
     if [[ -f /opt/hiddify-manager/scripts/multiloc_ctl.py ]]; then
         (cd /opt/hiddify-manager/hiddify-panel && timeout 300 "$PYV" /opt/hiddify-manager/scripts/multiloc_ctl.py init) || say "WARNING: multiloc_ctl init failed (tables of the routing layer)"

@@ -20,12 +20,7 @@ import re
 from flask import g, render_template, request
 
 CONF_PATH = os.environ.get("CABINET_CONF", "/opt/hiddify-manager/cabinet/cabinet.json")
-DEEPLINK_DIR = os.environ.get("CABINET_DEEPLINK_DIR", "/var/lib/routing-links/last-good")
 YK_ACTION = "https://yookassa.ru/integration/simplepay/payment"
-DEEPLINK_RE = {
-    "happ": re.compile(r"^happ://routing/onadd/[A-Za-z0-9+/]+={0,2}$"),
-    "incy": re.compile(r"^incy://routing/onadd/[A-Za-z0-9+/]+={0,2}$"),
-}
 PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()\-]{8,22}$")
 SHOP_RE = re.compile(r"^[0-9]{3,12}$")
 URL_RE = re.compile(r"^https://[A-Za-z0-9.\-]+(:[0-9]{2,5})?(/[A-Za-z0-9._~%!$&'()*+,;=:@/\-?#]*)?$")
@@ -59,13 +54,14 @@ def _date_ru(d: datetime.date) -> str:
     return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
 
 
-def _read_deeplink(kind: str) -> str:
+def _happ_link(user, user_link: str) -> str:
+    """The dedicated link for Happ / INCY (AUTO and countries; the routing comes with it), the same one the bot gives. Empty when the account does not get it."""
     try:
-        with open(os.path.join(DEEPLINK_DIR, f"{kind}.deeplink"), "r", encoding="utf-8") as f:
-            link = f.read().strip()
-    except OSError:
+        from hiddifypanel.hutils import multiloc
+        link = multiloc.happ_link_for(user, user_link) or ""
+    except Exception:
         return ""
-    return link if len(link) < 16000 and "\n" not in link and DEEPLINK_RE[kind].match(link) else ""
+    return link if URL_RE.match(link) and len(link) < 2000 else ""
 
 
 def _gb(v: float) -> str:
@@ -127,6 +123,8 @@ def build(c: dict) -> dict:
             tone, pill = "warn", "Трафик на исходе"
             banner = {"tone": "warn", "text": f"Трафика осталось мало: {_gb(left_gb)} ГБ из {_gb(limit_gb)}. Когда он закончится, VPN отключится."}
 
+    need_pay = bool(reason) or trial or (not unlimited_days and days <= 3) or bool(not unlimited_gb and limit_gb and left_gb / limit_gb <= 0.1)
+
     until = ""
     if not unlimited_days:
         end = today + datetime.timedelta(days=days)
@@ -153,6 +151,7 @@ def build(c: dict) -> dict:
     bot = c.get("bot")
     bot_url = f"https://t.me/{bot.username}?start={user.uuid}" if bot else ""
     base = hiddify.get_account_panel_link(user, request.host, prefere_path_only=True)
+    user_link = hiddify.get_account_panel_link(user, request.host)  # https, the same address the bot gives
     support = st.get("support_url") or hconfig(ConfigEnum.support_url) or hconfig(ConfigEnum.branding_site) or ""
     if support and not URL_RE.match(support):
         support = ""
@@ -171,9 +170,10 @@ def build(c: dict) -> dict:
         "paid": paid,
         "banner": banner,
         "expired": bool(reason),
+        "need_pay": need_pay,
         "plans": plans,
         "pay": {"shop_id": shop if SHOP_RE.match(shop) and shop != "0" else "", "action": action, "bot_url": bot_url},
-        "connect": {"sub_url": c.get("profile_url", ""), "happ": _read_deeplink("happ"), "incy": _read_deeplink("incy"),
+        "connect": {"sub_url": user_link, "happ_link": _happ_link(user, user_link),
                     "short_api": f"{base}api/v2/user/short/", "configs_api": f"{base}api/v2/user/all-configs/",
                     "mtproxies_api": f"{base}api/v2/user/mtproxies/"},
         "doh": f"https://{request.host}/{g.proxy_path}/dns/dns-query",
