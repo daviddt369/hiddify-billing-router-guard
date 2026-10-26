@@ -1,0 +1,188 @@
+"""Personal cabinet: the page an account (user) opens from its personal link in a browser.
+
+Replaces the stock "Home / All Configs / Telegram Proxy / DoH" page by one page with the tariff, the days and traffic left, the renewal (YooKassa form)
+and the connection instruction. The stock page stays reachable with ?classic=1 and is the automatic fallback if anything here fails.
+
+Settings: /opt/hiddify-manager/cabinet/cabinet.json (read on every request; not part of the repository)
+  enabled            true = every browser visit gets the cabinet; false = only with ?cabinet=1 (preview)
+  yookassa_shop_id   shop number for the pay form; "0" or empty = no site payment (only the bot button)
+  support_url        link of the "write to support" button
+  brand              name shown in the header (default: the panel's branding title or "Чебурнатор")
+  pay_action         where the pay form posts (default: the YooKassa simple payment address)
+"""
+from __future__ import annotations
+
+import datetime
+import json
+import os
+import re
+
+from flask import g, render_template, request
+
+CONF_PATH = os.environ.get("CABINET_CONF", "/opt/hiddify-manager/cabinet/cabinet.json")
+DEEPLINK_DIR = os.environ.get("CABINET_DEEPLINK_DIR", "/var/lib/routing-links/last-good")
+YK_ACTION = "https://yookassa.ru/integration/simplepay/payment"
+DEEPLINK_RE = {
+    "happ": re.compile(r"^happ://routing/onadd/[A-Za-z0-9+/]+={0,2}$"),
+    "incy": re.compile(r"^incy://routing/onadd/[A-Za-z0-9+/]+={0,2}$"),
+}
+PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()\-]{8,22}$")
+SHOP_RE = re.compile(r"^[0-9]{3,12}$")
+URL_RE = re.compile(r"^https://[A-Za-z0-9.\-]+(:[0-9]{2,5})?(/[A-Za-z0-9._~%!$&'()*+,;=:@/\-?#]*)?$")
+UNLIMITED_DAYS = 3650
+UNLIMITED_GB = 100000
+MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+
+
+def load_settings() -> dict:
+    s = {"enabled": False, "yookassa_shop_id": "0", "support_url": "", "brand": "", "pay_action": YK_ACTION}
+    try:
+        with open(CONF_PATH, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            s.update({k: v for k, v in loaded.items() if k in s})
+    except (OSError, ValueError):
+        pass
+    return s
+
+
+def wanted() -> bool:
+    """Should this request get the cabinet instead of the stock page?"""
+    if request.args.get("classic"):
+        return False
+    if request.args.get("cabinet"):
+        return True
+    return bool(load_settings().get("enabled"))
+
+
+def _date_ru(d: datetime.date) -> str:
+    return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def _read_deeplink(kind: str) -> str:
+    try:
+        with open(os.path.join(DEEPLINK_DIR, f"{kind}.deeplink"), "r", encoding="utf-8") as f:
+            link = f.read().strip()
+    except OSError:
+        return ""
+    return link if len(link) < 16000 and "\n" not in link and DEEPLINK_RE[kind].match(link) else ""
+
+
+def _gb(v: float) -> str:
+    return (f"{v:.1f}" if v < 10 and v != int(v) else str(int(round(v)))).replace(".", ",")
+
+
+def build(c: dict) -> dict:
+    """Everything the page shows, computed on the server (the browser only draws it)."""
+    from hiddifypanel.models import ConfigEnum, hconfig
+    from hiddifypanel.models.commercial import CommercialPlan, CommercialSubscription, PaymentProvider
+    from hiddifypanel.panel import hiddify
+
+    st = load_settings()
+    user = c["user"]
+    today = datetime.date.today()
+
+    days = int(user.remaining_days)
+    unlimited_days = days > UNLIMITED_DAYS
+    package_days = int(user.package_days or 0)
+    limit_gb = float(user.usage_limit_GB)
+    used_gb = float(user.current_usage_GB)
+    unlimited_gb = limit_gb >= UNLIMITED_GB
+    left_gb = max(limit_gb - used_gb, 0.0)
+
+    plan = CommercialPlan.query.get(user.plan_id) if getattr(user, "plan_id", None) else None
+    sub = CommercialSubscription.query.filter_by(user_id=user.id).order_by(CommercialSubscription.created_at.desc()).first()
+    # a Telegram trial account: the bot marks it in the account's comment (no subscription row); the comment itself is never shown or sent to the page
+    comment = (getattr(user, "comment", "") or "").lower()
+    trial = plan is None and ("trial" in comment or bool(sub is not None and "trial" in (sub.note or "").lower()))
+    plan_name = "Пробный доступ" if trial else (plan.name if plan else ("Без тарифа" if not sub else "Подписка"))
+
+    reason = c.get("inactive_reason")
+    reset_days = c.get("reset_day", 1000)
+    tone, pill, banner = "ok", "Активна", None
+    if reason:
+        tone, pill = "bad", "Отключена"
+        if reason == "expired":
+            pill = "Закончилась"
+            ago = -days if days < 0 else 0
+            banner = {"tone": "bad", "text": ("Подписка закончилась" + (f" {ago} дн. назад" if ago else " сегодня") +
+                                              ", VPN выключен. Продлите, и подключение заработает снова: ссылка и настройки останутся прежними.")}
+        elif reason == "usage_limit":
+            pill = "Трафик исчерпан"
+            more = f" Либо дождитесь обновления трафика через {reset_days} дн." if 0 < reset_days < 1000 else ""
+            banner = {"tone": "bad", "text": "Трафик по тарифу закончился, VPN выключен. Продлите тариф, чтобы продолжить." + more}
+        elif reason == "max_ips":
+            tone, pill = "warn", "Лишние устройства"
+            banner = {"tone": "warn", "text": "Подключено больше устройств, чем разрешает тариф. Отключите лишние или выберите тариф побольше."}
+        else:
+            banner = {"tone": "bad", "text": "Доступ отключён. Напишите в поддержку."}
+    else:
+        if trial:
+            tone, pill = "warn", "Пробный"
+            banner = {"tone": "warn", "text": f"Пробный доступ: осталось {days} дн. и {_gb(left_gb)} ГБ. Выберите тариф, чтобы не потерять подключение."}
+        elif not unlimited_days and days <= 3:
+            tone, pill = "warn", "Скоро закончится"
+            banner = {"tone": "warn", "text": f"Подписка скоро закончится: осталось {days} дн. Продлите заранее, оставшиеся дни сохранятся."}
+        elif not unlimited_gb and limit_gb and left_gb / limit_gb <= 0.1:
+            tone, pill = "warn", "Трафик на исходе"
+            banner = {"tone": "warn", "text": f"Трафика осталось мало: {_gb(left_gb)} ГБ из {_gb(limit_gb)}. Когда он закончится, VPN отключится."}
+
+    until = ""
+    if not unlimited_days:
+        end = today + datetime.timedelta(days=days)
+        until = ("закончилась " if days < 0 else "до ") + _date_ru(end)
+    paid = ""
+    if sub is not None and not trial and (sub.billing_amount or 0) > 0:
+        paid = f"{sub.billing_amount} ₽, {'ЮKassa' if sub.payment_provider == PaymentProvider.yookassa else str(sub.payment_provider.value)}"
+    elif trial:
+        paid = "бесплатно"
+
+    plans = []
+    for p in CommercialPlan.query.filter_by(enable=True, is_public=True).order_by(CommercialPlan.sort_order, CommercialPlan.price).all():
+        if p.payment_provider != PaymentProvider.yookassa or p.price <= 0:
+            continue
+        plans.append({"name": p.name, "price": int(p.price), "note": p.note or "", "current": bool(plan and plan.id == p.id)})
+
+    name = (user.name or "").strip()
+    phone = name if PHONE_RE.match(name) else ""
+    shop = str(st.get("yookassa_shop_id") or "0")
+    action = st.get("pay_action") or YK_ACTION
+    if not URL_RE.match(action) and not action.startswith("http://127.0.0.1"):
+        action = YK_ACTION
+
+    bot = c.get("bot")
+    bot_url = f"https://t.me/{bot.username}?start={user.uuid}" if bot else ""
+    base = hiddify.get_account_panel_link(user, request.host, prefere_path_only=True)
+    support = st.get("support_url") or hconfig(ConfigEnum.support_url) or hconfig(ConfigEnum.branding_site) or ""
+    if support and not URL_RE.match(support):
+        support = ""
+
+    return {
+        "brand": st.get("brand") or hconfig(ConfigEnum.branding_title) or "Чебурнатор",
+        "who": name or "аккаунт",
+        "phone": phone,
+        "plan": plan_name,
+        "tone": tone,
+        "pill": pill,
+        "days": {"n": max(days, 0), "total": package_days or max(days, 1), "unlimited": unlimited_days, "until": until},
+        "traffic": {"left": round(left_gb, 1), "total": round(limit_gb, 1), "unlimited": unlimited_gb,
+                    "reset": (f"обновится через {reset_days} дн." if 0 < reset_days < 1000 else "")},
+        "devices": f"до {int(user.max_ips or 1)}",
+        "paid": paid,
+        "banner": banner,
+        "expired": bool(reason),
+        "plans": plans,
+        "pay": {"shop_id": shop if SHOP_RE.match(shop) and shop != "0" else "", "action": action, "bot_url": bot_url},
+        "connect": {"sub_url": c.get("profile_url", ""), "happ": _read_deeplink("happ"), "incy": _read_deeplink("incy"),
+                    "short_api": f"{base}api/v2/user/short/", "configs_api": f"{base}api/v2/user/all-configs/",
+                    "mtproxies_api": f"{base}api/v2/user/mtproxies/"},
+        "doh": f"https://{request.host}/{g.proxy_path}/dns/dns-query",
+        "telegram_proxy": bool(c.get("telegram_enable")),
+        "support_url": support,
+        "classic_url": "?classic=1",
+    }
+
+
+def render(c: dict, user_agent=None) -> str:
+    data = build(c)
+    return render_template("cabinet/cabinet.html", cab=data, brand=data["brand"], who=data["who"])
