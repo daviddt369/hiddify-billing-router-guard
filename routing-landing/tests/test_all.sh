@@ -122,6 +122,13 @@ ok=len(scripts)==3 and all(("sha256-"+base64.b64encode(hashlib.sha256(s.encode()
 ok=ok and "form-action https://yookassa.ru" in csp and "<script src" not in t and "script-src \x27sha256" in csp
 sys.exit(0 if ok else 1)
 PYEOF'
+check "CSP form-action also allows the redirect hosts, the page sends its origin to the pay endpoint" '"$PY" - "$W/pay.html" <<PYEOF
+import sys,re,html
+t=open(sys.argv[1],encoding="utf-8").read()
+csp=html.unescape(re.search(r"Content-Security-Policy\" content=\"([^\"]*)\"",t).group(1))
+fa=re.search(r"form-action ([^;]*)",csp).group(1).split()
+sys.exit(0 if fa[0]=="https://yookassa.ru" and "https:" in fa and "<meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">" in t else 1)
+PYEOF'
 check "the inline YooKassa script is byte-identical to the pinned file" '"$PY" - "$W/pay.html" "$YKF" <<PYEOF
 import sys,re
 t=open(sys.argv[1],encoding="utf-8").read()

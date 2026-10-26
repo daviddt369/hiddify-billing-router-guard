@@ -172,11 +172,12 @@ var d=document,f=d.querySelector('.yoomoney-payment-form');if(!f)return;
 var sum=f.querySelector('input[name=sum]'),cn=f.querySelector('input[name=customerNumber]'),ph=f.querySelector('input[name=cps_phone]'),out=f.querySelector('.ym-price-output'),err=d.getElementById('pay-err'),pre=f.getAttribute('data-cn-prefix')||'';
 var btns=[].slice.call(f.querySelectorAll('.plan'));
 function fmt(n){return n.toFixed(2).replace('.',',')+'\u00a0\u20bd';}
-function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;cn.value=pre+b.getAttribute('data-name')+' - '+b.getAttribute('data-label')+' \u20bd';out.textContent=fmt(p);}
+function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;out.textContent=fmt(p);}
+function sync(){cn.value=pre+(ph.value||'').trim();}
 btns.forEach(function(b){b.addEventListener('click',function(){pick(b);});});
 if(btns.length)pick(btns[0]);
-ph.addEventListener('input',function(){err.classList.remove('on');});
-f.addEventListener('submit',function(e){var v=(ph.value||'').replace(/[^0-9+]/g,'');if(!/^\+?[0-9]{10,15}$/.test(v)){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();}},false);
+ph.addEventListener('input',function(){err.classList.remove('on');sync();});
+f.addEventListener('submit',function(e){var n=(ph.value||'').replace(/[^0-9]/g,'').length;if(n<10||n>15){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();return;}sync();},false);
 })();"""
 
 
@@ -323,7 +324,7 @@ def render_pay_forms(form: dict, action: str) -> str:
 </div>
 <div class="ym-customer-info"><input name="cps_phone" class="ym-input" placeholder="{ph}" aria-label="{ph}" type="text" inputmode="tel" autocomplete="tel" value=""></div>
 <div class="pay-err" id="pay-err" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
-<input name="customerNumber" type="hidden" value="{esc(prefix)}{esc(str(first["name"]))} - {price_label(first_price)} \u20bd">
+<input name="customerNumber" type="hidden" value="">
 <div class="ym-payment-btn-block">
 <div class="ym-display-none"><input name="sum" class="ym-input ym-sum-input ym-required-input" type="number" step="any" value="{price_label(first_price).replace(",", ".")}" readonly></div>
 <button type="submit" data-text="Заплатить" class="ym-btn-pay ym-result-price"><span class="ym-text-crop">Заплатить</span> <span class="ym-price-output">{money(first_price)}</span></button>
@@ -333,7 +334,7 @@ def render_pay_forms(form: dict, action: str) -> str:
 
 
 def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: dict,
-          yk_script: str | None = None, pay_action: str | None = None) -> str:
+          yk_script: str | None = None, pay_action: str | None = None, pay_redirect: str | None = None) -> str:
     platforms = cfg["platforms"]
     clients = cfg["clients"]
 
@@ -390,10 +391,21 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
             pay_body += f"""
 <div class="pay-nojs"><a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a></div>"""
         pay_script = f"\n<script>{PAY_JS}</script>\n<script>{yk_script}</script>"
+        # the page is served with "Referrer-Policy: no-referrer", which makes the browser send "Origin: null" and no Referer to the pay endpoint
+        pay_referrer = '\n<meta name="referrer" content="strict-origin-when-cross-origin">'
         form_origin = re.match(r"^(https://[^/]+|http://127\.0\.0\.1:[0-9]+)", action).group(1)
+        # the CSP form-action also applies to the REDIRECTS the pay endpoint answers with (YooKassa sends the browser on to its checkout page on another host):
+        # without them the browser blocks the redirect and the button "does nothing"
+        redirects = pform.get("redirect_origins", ["https:"])
+        if not all(re.match(r"^(https:|https://(\*\.)?[A-Za-z0-9.\-]+)$", o) for o in redirects):
+            raise ValueError("payment.form.redirect_origins: only https: or https://host entries")
+        if pay_redirect:
+            redirects = list(redirects) + [pay_redirect]
+        form_origin = " ".join([form_origin] + list(redirects))
     else:
         pay_body = f"""<a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a>"""
         pay_script = ""
+        pay_referrer = ""
         form_origin = "'none'"
 
     def sha(s: str) -> str:
@@ -410,7 +422,7 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light dark">{pay_referrer}
 <meta name="robots" content="noindex,nofollow">
 <meta http-equiv="Content-Security-Policy" content="{esc(csp)}">
 <meta property="og:title" content="{title}">
@@ -491,6 +503,7 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--yk-script", help="the pinned YooKassa form script (payment.form.script_sha256); without it the page keeps the pay link")
     ap.add_argument("--pay-action", help="TEST ONLY: post the pay form to this address instead of YooKassa")
+    ap.add_argument("--pay-redirect", help="TEST ONLY: one more origin the pay endpoint may redirect to")
     args = ap.parse_args()
 
     with open(args.clients, "r", encoding="utf-8") as f:
@@ -514,7 +527,7 @@ def main() -> int:
     yk = load_yk_script(args.yk_script, (cfg.get("payment") or {}).get("form") or {})
     try:
         page = build(cfg, {"happ": happ_link, "incy": incy_link}, {"happ": happ_profile, "incy": incy_profile}, dyn,
-                     yk_script=yk, pay_action=args.pay_action)
+                     yk_script=yk, pay_action=args.pay_action, pay_redirect=args.pay_redirect)
     except (ValueError, KeyError, TypeError) as exc:
         print(f"build: INVALID PAYMENT CONFIG: {exc}", file=sys.stderr)
         return 3
