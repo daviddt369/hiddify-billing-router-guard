@@ -59,7 +59,7 @@
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/router_diff.py	644	root:root	51ad0ac025477d3c67c68f5fb994717b3f37359eadc6f17b82d2994b409a1115	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/system.py	644	root:root	9c2205eb963bd72a38613fa831ea156d814d2e5a05f6999fc3e9699d9b7ea46a	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/system_metrics.py	644	root:root	3051ce63246f37a398835b9acd160e0e2b279d46c7e52d7641e815cd8b1c77af	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/tg_texts.py	644	root:root	f8d032f5f7cba1eeed59a6e06ef52257b681c0607e263c7575f5e67853a9b4ec	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/tg_texts.py	644	root:root	fbc056de2c3de637ebbf559fef5da6ca31cc3eae8b8889213be792b94a69e762	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/usage_cache.py	644	root:root	6de6f2baf4aca26552a574452114958c5803871338072bfbd43c0e56675e7100	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/usage_stats.py	644	root:root	ae69bb77be6f78696bd87c6c3d046cec400a073ea63896a9ce3bb38bf0333bc7	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/hutils/utils.py	644	root:root	206f466d0fa3e124a3d531e85b84b979782067b2d9fa1633709d8e7f40f3b2ca	text
@@ -107,9 +107,9 @@
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/restapi/v2/user/configs_api.py	644	root:root	2ed4441a6f82249f2d7926707ef9b27ee7bf3c3dba5e80b094f15a17094c6ada	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/restapi/v2/user/info_api.py	644	root:root	5c00d3956d5db5d3bc367b136d049ff984b1867a0f61335d74c143b8d8300c53	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/restapi/v2/web_trial/__init__.py	644	root:root	0400f15d22c2c1117e4747b0bd7e417dbad88b5c30d5c6bb57c87c6c3dd5d279	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/restapi/v2/web_trial/trial.py	644	root:root	f3669e2ca996c9fbd0659940f42b202d49988c83a8caf8f938cf0a03ea316e0d	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/restapi/v2/web_trial/trial.py	644	root:root	0cb486e6aed1b84d06351be56286c1db0074d9c9d979d6c403736dfa042370b1	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/telegrambot/Usage.py	644	root:root	9b0f24f4a524b4146c6e32ef7f667b8a9bba32f92d001ef9a1998261e9b5eb76	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/telegrambot/admin.py	644	root:root	b3913b51a6550416555b953a629b50fb4d0d9540c265ef382d921dabbdb36a6d	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/telegrambot/admin.py	644	root:root	6d71a23fbd9d59cf26cadcea9b3c365377f04e122da314ae560c73f053620e6e	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/common.py	644	root:root	a5884097f17b9db25afeba22335018eb2cdea9f6e6302ba7ee63d63185989738	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/common_bp/login.py	644	root:root	f7bc175de90bcd8d3f400a91a53e52240f46abac1681cf47fbaa3450796b297e	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/hiddify.py	644	root:root	46e1c313f248dbbc0615f7bb91d92bc38b73a69f350c3e07dda167c3bbf102c2	text
