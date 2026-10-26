@@ -30,8 +30,26 @@ fi
 # Best effort: current INCY desktop/android file URLs (page falls back to the releases page).
 "$PY" "$APP/resolve_links.py" "$DATA/dynamic-links.json" || log "WARN: INCY links not refreshed"
 
+# The pay form of the page runs YooKassa's own form script. It is used only when it is exactly the pinned version (sha256 in clients.json,
+# payment.form.script_sha256): a fresh download that matches, else the last good copy, else the page keeps the plain pay link.
+yk_args=()
+if form="$("$PY" -c 'import json,sys;f=(json.load(open(sys.argv[1],encoding="utf-8")).get("payment") or {}).get("form") or {};print(f.get("script_url",""),f.get("script_sha256",""))' "$APP/clients.json" 2>/dev/null)" && [ -n "${form// /}" ]; then
+    read -r cfg_url pin <<<"$form"
+    yk_url="${ROUTING_YK_SCRIPT_URL:-$cfg_url}"
+    if [ -n "$yk_url" ] && curl -fsS --max-time 30 --retry 2 --retry-delay 3 -o "$tmp/yk.js" "$yk_url" 2>/dev/null \
+            && [ "$(sha256sum "$tmp/yk.js" | cut -d' ' -f1)" = "$pin" ]; then
+        cp "$tmp/yk.js" "$LAST/yookassa_form.js"
+        yk_args=(--yk-script "$tmp/yk.js")
+    elif [ -s "$LAST/yookassa_form.js" ] && [ "$(sha256sum "$LAST/yookassa_form.js" | cut -d' ' -f1)" = "$pin" ]; then
+        log "WARN: YooKassa form script not refreshed, using the last good copy"
+        yk_args=(--yk-script "$LAST/yookassa_form.js")
+    else
+        log "WARN: YooKassa form script unavailable or different from the pinned one, the page keeps the pay link"
+    fi
+fi
+
 if ! "$PY" "$APP/build.py" --clients "$APP/clients.json" --happ "$tmp/happ.deeplink" --incy "$tmp/incy.deeplink" \
-        --dynamic "$DATA/dynamic-links.json" --out "$tmp/index.html"; then
+        --dynamic "$DATA/dynamic-links.json" "${yk_args[@]}" --out "$tmp/index.html"; then
     log "ERROR: validation/build failed, keeping current page"
     exit 2
 fi

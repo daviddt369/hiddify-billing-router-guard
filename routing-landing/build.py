@@ -124,6 +124,26 @@ ul.kv li{margin:6px 0}
 .pay{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:18px 16px;margin:30px 0 0}
 .pay h2{margin:0 0 6px;font-size:1.25rem}
 .pay p{margin:0 0 14px;color:var(--mute)}
+.pay-form{display:none}
+.js .pay-form{display:block}
+.js .pay-nojs{display:none}
+.pay-form form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 12px}
+.pay-plans{display:grid;gap:8px;margin:0 0 12px}
+.plan{appearance:none;display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:10px 14px;min-height:54px;font:inherit;cursor:pointer}
+.plan[aria-pressed=true]{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft);background:var(--soft)}
+.plan b{display:block}
+.plan small{display:block;color:var(--mute);font-size:.82rem;font-weight:400}
+.plan .pp{font-weight:700;white-space:nowrap}
+.pay-form .ym-input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.pay-form .sumrow{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 0;color:var(--mute)}
+.pay-form .sumrow b{color:var(--ink);font-size:1.1rem}
+.pay-form .ym-display-none{display:none}
+.pay-err{display:none;color:#b3261e;font-size:.88rem;margin:6px 0 0}
+@media (prefers-color-scheme:dark){.pay-err{color:#ff8a80}}
+.pay-err.on{display:block}
+.pay-form .ym-btn-pay{display:flex;width:100%;min-height:54px;margin-top:12px;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:1.05rem;font-weight:600;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);cursor:pointer}
+.pay-form .hint{margin:8px 0 0}
+.pay-form>.hint:first-child{margin:0 0 12px}
 a{color:var(--acc)}
 """
 
@@ -144,6 +164,19 @@ if(cp){cp.addEventListener('click',function(){var u=location.href.split('#')[0];
 var auto=(m==='happ'||m==='incy')?d.querySelector('[data-auto="'+m+'"]'):null;
 if(auto){var wv=/Telegram|FBAN|FBAV|Instagram|MicroMessenger|; wv\)/i.test(ua)||(isIos&&!/Safari\/|CriOS|FxiOS|EdgiOS/i.test(ua));var seen=false;try{seen=sessionStorage.getItem('ro-'+m)==='1';}catch(e){}
 if(!wv&&!seen){try{sessionStorage.setItem('ro-'+m,'1');}catch(e){}setTimeout(function(){location.href=auto.href;},800);}}
+})();"""
+
+
+PAY_JS = r"""(function(){
+var d=document,f=d.querySelector('.yoomoney-payment-form');if(!f)return;
+var sum=f.querySelector('input[name=sum]'),cn=f.querySelector('input[name=customerNumber]'),ph=f.querySelector('input[name=cps_phone]'),out=f.querySelector('.ym-price-output'),err=d.getElementById('pay-err'),pre=f.getAttribute('data-cn-prefix')||'';
+var btns=[].slice.call(f.querySelectorAll('.plan'));
+function fmt(n){return n.toFixed(2).replace('.',',')+'\u00a0\u20bd';}
+function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;cn.value=pre+b.getAttribute('data-name')+' - '+b.getAttribute('data-label')+' \u20bd';out.textContent=fmt(p);}
+btns.forEach(function(b){b.addEventListener('click',function(){pick(b);});});
+if(btns.length)pick(btns[0]);
+ph.addEventListener('input',function(){err.classList.remove('on');});
+f.addEventListener('submit',function(e){var v=(ph.value||'').replace(/[^0-9+]/g,'');if(!/^\+?[0-9]{10,15}$/.test(v)){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();}},false);
 })();"""
 
 
@@ -229,7 +262,78 @@ def render_region(rh: dict) -> str:
     return "".join(parts)
 
 
-def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: dict) -> str:
+YK_ACTION = "https://yookassa.ru/integration/simplepay/payment"
+SHOP_ID_RE = re.compile(r"^[0-9]{3,12}$")
+# the form posts to this address only; tests may point it at a local echo server
+ACTION_OK = re.compile(r"^(https://[A-Za-z0-9.\-]+(/[A-Za-z0-9._~%\-/]*)?|http://127\.0\.0\.1:[0-9]{2,5}(/[A-Za-z0-9._~%\-/]*)?)$")
+
+
+def money(price: float) -> str:
+    """300 -> '300,00 ₽' (the way YooKassa's own form shows it)."""
+    return f"{price:,.2f}".replace(",", " ").replace(".", ",") + " ₽"
+
+
+def price_label(price: float) -> str:
+    return str(int(price)) if float(price).is_integer() else f"{price:.2f}".replace(".", ",")
+
+
+def load_yk_script(path: str | None, form: dict) -> str | None:
+    """The YooKassa form script (kept byte for byte). Returned only if it is the pinned one; otherwise the page falls back to the pay link."""
+    if not path or not form:
+        return None
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+    except OSError:
+        return None
+    if hashlib.sha256(data).hexdigest() != str(form.get("script_sha256", "")).lower():
+        print("build: WARNING: the YooKassa form script does not match the pinned sha256, using the pay link instead", file=sys.stderr)
+        return None
+    text = data.decode("utf-8")
+    if "</script" in text.lower():
+        return None
+    return text
+
+
+def render_pay_forms(form: dict, action: str) -> str:
+    """The YooKassa 'free sum' form (same fields as the form the cabinet generates: phone, customerNumber, sum, shopId) with tariff buttons that fill the sum."""
+    shop = str(form.get("shop_id", ""))
+    if not SHOP_ID_RE.match(shop):
+        raise ValueError("payment.form.shop_id must be digits")
+    plans = form["plans"]
+    if not plans:
+        raise ValueError("payment.form.plans is empty")
+    prefix = str(form.get("customer_prefix", ""))
+    buttons = []
+    for p in plans:
+        price = float(p["price"])
+        if not (0 < price < 1_000_000):
+            raise ValueError("plan price out of range")
+        name, label = str(p["name"]), price_label(price)
+        note = f"<small>{esc(str(p['note']))}</small>" if p.get("note") else ""
+        buttons.append(
+            f'<button type="button" class="plan" aria-pressed="false" data-name="{esc(name)}" data-price="{label.replace(",", ".")}" data-label="{esc(label)}">'
+            f'<span><b>{esc(name)}</b>{note}</span><span class="pp">{money(price)}</span></button>')
+    first = plans[0]
+    first_price = float(first["price"])
+    ph = esc(form.get("phone_placeholder", "Телефон"))
+    return f"""<form class="yoomoney-payment-form" action="{esc(action)}" method="post" accept-charset="utf-8" data-cn-prefix="{esc(prefix)}">
+<div class="pay-plans" role="group" aria-label="Тариф">
+{"".join(buttons)}
+</div>
+<div class="ym-customer-info"><input name="cps_phone" class="ym-input" placeholder="{ph}" aria-label="{ph}" type="text" inputmode="tel" autocomplete="tel" value=""></div>
+<div class="pay-err" id="pay-err" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
+<input name="customerNumber" type="hidden" value="{esc(prefix)}{esc(str(first["name"]))} - {price_label(first_price)} \u20bd">
+<div class="ym-payment-btn-block">
+<div class="ym-display-none"><input name="sum" class="ym-input ym-sum-input ym-required-input" type="number" step="any" value="{price_label(first_price).replace(",", ".")}" readonly></div>
+<button type="submit" data-text="Заплатить" class="ym-btn-pay ym-result-price"><span class="ym-text-crop">Заплатить</span> <span class="ym-price-output">{money(first_price)}</span></button>
+</div>
+<input name="shopId" type="hidden" value="{esc(shop)}">
+</form>"""
+
+
+def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: dict,
+          yk_script: str | None = None, pay_action: str | None = None) -> str:
     platforms = cfg["platforms"]
     clients = cfg["clients"]
 
@@ -268,11 +372,37 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
     tt = "".join(f"<li>{esc(t)}</li>" for t in cfg["troubleshooting"])
     upd = f" Профиль обновлён {esc(updated)}." if updated else ""
     pay = cfg["payment"]
+    pform = pay.get("form") or {}
+    action = pay_action or pform.get("action") or YK_ACTION
+    if not ACTION_OK.match(action):
+        raise ValueError(f"refusing unsafe payment form action: {action!r}")
+    # shop_id "0" (or empty) = no YooKassa shop configured on this node: keep the plain pay link
+    use_form = bool(pform) and yk_script is not None and str(pform.get("shop_id", "")) not in ("", "0")
+    if use_form:
+        pay_forms = render_pay_forms(pform, action)
+        pay_note = f'<p class="hint">{esc(pform["note"])}</p>' if pform.get("note") else ""
+        pay_body = f"""<div class="pay-form">
+{pay_note}
+{pay_forms}
+<p class="hint">{esc(pform.get("footer", "Оплата проходит на стороне ЮKassa: данные карты на этой странице не вводятся."))}</p>
+</div>"""
+        if pay.get("url"):
+            pay_body += f"""
+<div class="pay-nojs"><a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a></div>"""
+        pay_script = f"\n<script>{PAY_JS}</script>\n<script>{yk_script}</script>"
+        form_origin = re.match(r"^(https://[^/]+|http://127\.0\.0\.1:[0-9]+)", action).group(1)
+    else:
+        pay_body = f"""<a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a>"""
+        pay_script = ""
+        form_origin = "'none'"
 
-    script_hash = base64.b64encode(hashlib.sha256(JS.encode("utf-8")).digest()).decode("ascii")
+    def sha(s: str) -> str:
+        return "'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode("utf-8")).digest()).decode("ascii")
+
+    script_src = sha(JS) + (" " + sha(PAY_JS) + " " + sha(yk_script) if use_form else "")
     csp = (
-        "default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-%s'; "
-        "img-src data:; base-uri 'none'; form-action 'none'" % script_hash
+        "default-src 'none'; style-src 'unsafe-inline'; script-src %s; "
+        "img-src data:; base-uri 'none'; form-action %s" % (script_src, form_origin)
     )
     title = esc(cfg["title"])
     return f"""<!doctype html>
@@ -329,10 +459,10 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 <section class="pay">
 <h2>{esc(pay["title"])}</h2>
 <p>{esc(pay["text"])}</p>
-<a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a>
+{pay_body}
 </section>
 </main>
-<script>{JS}</script>
+<script>{JS}</script>{pay_script}
 </body>
 </html>
 """
@@ -359,6 +489,8 @@ def main() -> int:
     ap.add_argument("--incy", required=True)
     ap.add_argument("--dynamic")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--yk-script", help="the pinned YooKassa form script (payment.form.script_sha256); without it the page keeps the pay link")
+    ap.add_argument("--pay-action", help="TEST ONLY: post the pay form to this address instead of YooKassa")
     args = ap.parse_args()
 
     with open(args.clients, "r", encoding="utf-8") as f:
@@ -379,7 +511,13 @@ def main() -> int:
         print(f"build: INVALID DEEPLINK: {exc}", file=sys.stderr)
         return 2
 
-    page = build(cfg, {"happ": happ_link, "incy": incy_link}, {"happ": happ_profile, "incy": incy_profile}, dyn)
+    yk = load_yk_script(args.yk_script, (cfg.get("payment") or {}).get("form") or {})
+    try:
+        page = build(cfg, {"happ": happ_link, "incy": incy_link}, {"happ": happ_profile, "incy": incy_profile}, dyn,
+                     yk_script=yk, pay_action=args.pay_action)
+    except (ValueError, KeyError, TypeError) as exc:
+        print(f"build: INVALID PAYMENT CONFIG: {exc}", file=sys.stderr)
+        return 3
     atomic_write(args.out, page)
     print(f"build: wrote {args.out} ({len(page)} bytes)")
     return 0
