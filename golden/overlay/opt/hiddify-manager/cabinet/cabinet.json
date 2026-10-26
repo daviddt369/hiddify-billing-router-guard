@@ -2,5 +2,7 @@
   "enabled": true,
   "yookassa_shop_id": "@@YOOKASSA_SHOP_ID@@",
   "support_url": "",
-  "brand": "@@PRODUCT_NAME@@"
+  "brand": "@@PRODUCT_NAME@@",
+  "guide_url": "@@GUIDE_URL@@",
+  "bot_username": "@@BOT_USERNAME@@"
 }

@@ -164,7 +164,7 @@ footer a{color:var(--mute)}
      <ol><li>Скопируйте ссылку подписки (кнопка «Скопировать» выше): первую - для Hiddify и других приложений, вторую (если она есть) - для Happ и INCY. Или отсканируйте QR-код.</li><li>В приложении нажмите «+» и вставьте ссылку из буфера обмена.</li><li>Выберите сервер и включите VPN.</li></ol>
      <p class="hint">Маршрутизация (российские сайты открываются напрямую) уже внутри подписки: ничего настраивать и импортировать не нужно. В Hiddify при первом запуске выберите страну «Россия».</p>
    </div></details>
-   <details id="regionhelp"><summary>iPhone: как сменить регион App Store (для Hiddify и Happ)</summary><div class="in"><ol><li>Настройки, ваше имя, «Медиа и покупки», «Просмотреть», «Страна или регион».</li><li>Выберите США и любой адрес из подсказок, способ оплаты «Нет».</li><li>Установите приложение из App Store. Регион можно вернуть, приложение останется.</li></ol><p class="hint">INCY в российском App Store есть, ему регион менять не нужно.</p></div></details>
+   <details id="regionhelp"><summary>iPhone: как сменить регион App Store (для Hiddify и Happ)</summary><div class="in"><ol><li>Настройки, ваше имя, «Медиа и покупки», «Просмотреть», «Страна или регион».</li><li>Выберите США и любой адрес из подсказок, способ оплаты «Нет».</li><li>Установите приложение из App Store. Регион можно вернуть, приложение останется.</li></ol><p class="hint">INCY в российском App Store есть, ему регион менять не нужно.</p><p class="hint" id="guidewrap" hidden><a id="guide" href="#" target="_blank" rel="noopener noreferrer">Полная инструкция: все шаги и готовые адреса</a></p></div></details>
    <details><summary>Другие приложения</summary><div class="in"><p style="margin:0">Подписка стандартная, её принимают и другие программы (например V2RayTun, v2rayNG). Они рассчитаны на опытных пользователей: часть из них не показывает отклик серверов или не применяет маршрутизацию. Если что-то не работает, перейдите на INCY, Happ или Hiddify.</p></div></details>
    <details><summary>Если не подключается</summary><div class="in"><ol><li>Обновите подписку в приложении.</li><li>Выберите другой сервер.</li><li>Если провайдер сильно блокирует соединения, попробуйте Hiddify: у него больше протоколов.</li><li>Перезапустите приложение.</li><li>Переключитесь между Wi-Fi и мобильным интернетом.</li></ol></div></details>
   </div>
@@ -278,6 +278,8 @@ function appsUI(){var c=$('#platforms');c.innerHTML='';PL.forEach(function(p){va
 appsUI();
 /* support */
 if(D.support_url){$('#support').href=D.support_url}else{$('#supportcard').hidden=true}
+/* full region instruction (the landing page) */
+if(D.guide_url){$('#guide').href=D.guide_url;$('#guidewrap').hidden=false}
 /* ---- tabs ---- */
 var loaded={};
 function tab(t){['home','configs','tg'].forEach(function(n){$('#tab-'+n).hidden=n!==t});$$('.tab').forEach(function(b){b.setAttribute('aria-selected',b.getAttribute('data-tab')===t?'true':'false')});window.scrollTo(0,0);

@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Render the routing landing page (static HTML) from clients.json + RoscomVPN deeplinks.
+"""Render the connection landing page (static HTML) from clients.json.
 
-The deeplinks are validated but never modified: the exact string from the upstream
-DEFAULT.DEEPLINK file is placed into the page's <a href>.
+One instruction for the cabinet, the Telegram bot and this page: install an app, add the subscription (the routing comes with it,
+nothing is imported separately), region help for the iPhone, payment.
 """
 from __future__ import annotations
 
 import argparse
 import base64
-import datetime
 import hashlib
 import html
 import json
@@ -17,38 +16,8 @@ import re
 import sys
 import tempfile
 
-DEEPLINK_RE = {
-    "happ": re.compile(r"^happ://routing/onadd/([A-Za-z0-9+/]+={0,2})$"),
-    "incy": re.compile(r"^incy://routing/onadd/([A-Za-z0-9+/]+={0,2})$"),
-}
-MAX_DEEPLINK_LEN = 16000
+BOT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{3,31}$")
 URL_OK = re.compile(r"^https://[A-Za-z0-9.\-]+(/[A-Za-z0-9._~%!$&'()*+,;=:@/\-?#]*)?$")
-
-
-class DeeplinkError(ValueError):
-    pass
-
-
-def read_deeplink(path: str, scheme: str) -> tuple[str, dict]:
-    """Return (deeplink, decoded profile). Raises DeeplinkError if it is not a sane routing deeplink."""
-    with open(path, "r", encoding="utf-8") as f:
-        raw = f.read()
-    link = raw.strip()
-    if not link or "\n" in link or "\r" in link or len(link) > MAX_DEEPLINK_LEN:
-        raise DeeplinkError(f"{scheme}: unexpected shape (empty, multi-line or too long)")
-    m = DEEPLINK_RE[scheme].match(link)
-    if not m:
-        raise DeeplinkError(f"{scheme}: does not match {scheme}://routing/onadd/<base64>")
-    payload = m.group(1)
-    try:
-        profile = json.loads(base64.b64decode(payload + "=" * (-len(payload) % 4), validate=True))
-    except Exception as exc:  # noqa: BLE001 - any decode problem means "invalid"
-        raise DeeplinkError(f"{scheme}: payload is not base64 JSON ({exc})") from exc
-    if not isinstance(profile, dict) or not profile.get("Name"):
-        raise DeeplinkError(f"{scheme}: profile JSON has no Name")
-    if not any(k in profile for k in ("DirectSites", "ProxySites", "BlockSites", "DirectIp")):
-        raise DeeplinkError(f"{scheme}: profile JSON has no routing rules")
-    return link, profile
 
 
 def esc(s: str) -> str:
@@ -82,6 +51,15 @@ h3{font-size:1.05rem;margin:0}
 .card.focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft)}
 .card p{margin:8px 0 0;color:var(--mute);font-size:.95rem}
 .badge{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--acc);font-size:.75rem;font-weight:600;vertical-align:middle}
+.badge:empty{display:none}
+.apps{display:flex;flex-direction:column}
+.rec{margin:0 0 12px}
+.rec p{margin:6px 0;color:var(--mute);font-size:.95rem}
+.rec p b{color:var(--ink)}
+.js .rec{display:none}
+.js .rec.on{display:block}
+.steps{margin:0 0 8px;padding-left:22px}
+.steps li{margin:6px 0}
 .dl{margin-top:10px}
 .js .dl{display:none}
 .js .dl.on{display:block}
@@ -98,7 +76,13 @@ details ol{margin:0 0 12px;padding-left:22px}
 details li{margin:4px 0}
 .warn{background:var(--warn);border:1px solid var(--warn-line);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:.92rem}
 .warn p{margin:6px 0}
-ul.tt{margin:8px 0;padding-left:22px}
+ul.tt,ol.tt{margin:8px 0;padding-left:22px}
+ol.tt li{margin:5px 0}
+.pay details{background:var(--card)}
+.pay details>.hint{margin:0 0 10px}
+.pay details .pay-form form{border:0;padding:0;margin:0 0 10px;background:transparent}
+.pay .btns{margin:0 0 12px}
+.share{margin:24px 0 0}
 .rt{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .rt-main{flex:1 1 200px;min-width:0}
 .card .sub{margin:4px 0 0;color:var(--mute);font-size:.9rem}
@@ -111,6 +95,7 @@ ul.tt{margin:8px 0;padding-left:22px}
 .ios-only{display:block}
 .js .ios-only{display:none}
 .js[data-plat="ios"] .ios-only{display:block}
+.js .ios-only.force{display:block}
 .region h3{font-size:1.02rem;margin:20px 0 6px}
 .region ol{margin:6px 0 0;padding-left:22px}
 .region li{margin:5px 0}
@@ -153,17 +138,23 @@ var ua=navigator.userAgent||'';
 var isIos=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
 function detect(){if(isIos)return 'ios';if(/Android/i.test(ua))return 'android';if(/Windows/i.test(ua))return 'windows';if(/Macintosh|Mac OS X/i.test(ua))return 'macos';return 'windows';}
 function all(s){return [].slice.call(d.querySelectorAll(s));}
-function show(p){h.setAttribute('data-plat',p);all('.dl').forEach(function(e){e.classList.toggle('on',e.getAttribute('data-p')===p);});all('.chip').forEach(function(e){e.setAttribute('aria-pressed',e.getAttribute('data-p')===p?'true':'false');});}
+function show(p){
+h.setAttribute('data-plat',p);
+all('.dl').forEach(function(e){e.classList.toggle('on',e.getAttribute('data-p')===p);});
+all('.chip').forEach(function(e){e.setAttribute('aria-pressed',e.getAttribute('data-p')===p?'true':'false');});
+all('.rec').forEach(function(e){e.classList.toggle('on',e.getAttribute('data-rec')===(p==='ios'?'ios':'other'));});
+var box=d.getElementById('apps'),ord=((box&&box.getAttribute(p==='ios'?'data-order-ios':'data-order'))||'').split(',');
+ord.forEach(function(id,i){var c=d.getElementById('c-'+id);if(!c)return;c.style.order=i;var b=c.querySelector('.badge');if(b)b.textContent=i===0?'Рекомендуем':'';});
+}
 all('.chip').forEach(function(b){b.addEventListener('click',function(){show(b.getAttribute('data-p'));});});
 show(detect());
 var m=location.pathname.replace(/^\/+|\/+$/g,'');
 var card=m&&d.getElementById('c-'+m);
 if(card){card.classList.add('focus');var s=d.getElementById('s-'+m);if(s)s.open=true;setTimeout(function(){try{card.scrollIntoView({block:'start'});}catch(e){}},60);}
+var rg=(location.hash||'')==='#region'?d.getElementById('region'):null;
+if(rg){rg.classList.add('force');setTimeout(function(){try{rg.scrollIntoView({block:'start'});}catch(e){}},60);}
 var cp=d.getElementById('copy-url');
 if(cp){cp.addEventListener('click',function(){var u=location.href.split('#')[0];function ok(){cp.textContent='Адрес скопирован';}function fb(){var t=d.createElement('textarea');t.value=u;t.setAttribute('readonly','');t.style.position='fixed';t.style.opacity='0';d.body.appendChild(t);t.select();try{d.execCommand('copy');ok();}catch(e){}d.body.removeChild(t);}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u).then(ok,fb);}else{fb();}});}
-var auto=(m==='happ'||m==='incy')?d.querySelector('[data-auto="'+m+'"]'):null;
-if(auto){var wv=/Telegram|FBAN|FBAV|Instagram|MicroMessenger|; wv\)/i.test(ua)||(isIos&&!/Safari\/|CriOS|FxiOS|EdgiOS/i.test(ua));var seen=false;try{seen=sessionStorage.getItem('ro-'+m)==='1';}catch(e){}
-if(!wv&&!seen){try{sessionStorage.setItem('ro-'+m,'1');}catch(e){}setTimeout(function(){location.href=auto.href;},800);}}
 })();"""
 
 
@@ -200,43 +191,6 @@ def render_downloads(client: dict, platforms: list[dict], dyn: dict) -> str:
             f'<div class="btns">{"".join(btns)}</div>{hint_html}</div>'
         )
     return "".join(out)
-
-
-def render_routing_card(c: dict, deeplinks: dict[str, str]) -> str:
-    """One row of section 3: client name + one-line description + action (import button or 'not needed' pill)."""
-    r, none = c.get("routing"), c.get("routing_none")
-    if r:
-        link = deeplinks[r["scheme"]]
-        sub = r["sub"]
-        action = f'<a class="btn" data-auto="{esc(r["scheme"])}" href="{esc(link)}">Открыть в {esc(r["label"])}</a>'
-    elif none:
-        sub = none["sub"]
-        action = f'<span class="pill">{esc(none["pill"])}</span>'
-    else:
-        return ""
-    return (
-        f'<div class="card rt" id="r-{esc(c["id"])}"><div class="rt-main"><h3>{esc(c["name"])}</h3>'
-        f'<p class="sub">{esc(sub)}</p></div>{action}</div>'
-    )
-
-
-def render_after_import(cfg: dict, clients: list[dict]) -> str:
-    items = []
-    for c in clients:
-        ai = (c.get("routing") or {}).get("after_import")
-        if not ai:
-            continue
-        steps = "".join(f"<li>{esc(s)}</li>" for s in ai["steps"])
-        items.append(
-            f'<details open><summary>{esc(c["name"])}</summary>'
-            f'<p class="hint">{esc(ai["prelude"])}</p><ol>{steps}</ol></details>'
-        )
-    if not items:
-        return ""
-    return (
-        f'<div class="important"><h3>{esc(cfg["after_import_title"])}</h3><p>{esc(cfg["after_import_intro"])}</p>'
-        f'{"".join(items)}<p class="hint">{esc(cfg["after_import_note"])}</p></div>'
-    )
 
 
 def render_region(rh: dict) -> str:
@@ -333,8 +287,7 @@ def render_pay_forms(form: dict, action: str) -> str:
 </form>"""
 
 
-def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: dict,
-          yk_script: str | None = None, pay_action: str | None = None, pay_redirect: str | None = None) -> str:
+def build(cfg: dict, dyn: dict, yk_script: str | None = None, pay_action: str | None = None, pay_redirect: str | None = None) -> str:
     platforms = cfg["platforms"]
     clients = cfg["clients"]
 
@@ -345,7 +298,7 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 
     cards = []
     for c in clients:
-        badge = f'<span class="badge">{esc(c["badge"])}</span>' if c.get("badge") else ""
+        badge = f'<span class="badge">{esc(c.get("badge", ""))}</span>'
         cards.append(
             f'<article class="card" id="c-{esc(c["id"])}"><h3>{esc(c["name"])}{badge}</h3>'
             f'<p>{esc(c["note"])}</p>{render_downloads(c, platforms, dyn)}</article>'
@@ -356,22 +309,18 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
         li = "".join(f"<li>{esc(s)}</li>" for s in c["steps"])
         steps.append(f'<details id="s-{esc(c["id"])}"><summary>{esc(c["name"])}</summary><ol>{li}</ol></details>')
 
-    routing_rows = [render_routing_card(c, deeplinks) for c in clients]
-    updated = ""
-    for c in clients:
-        r = c.get("routing")
-        if not r:
-            continue
-        ts = profiles[r["scheme"]].get("LastUpdated")
-        if ts:
-            try:
-                updated = datetime.datetime.fromtimestamp(int(ts), datetime.timezone.utc).strftime("%d.%m.%Y")
-            except (ValueError, OverflowError, OSError):
-                updated = ""
-            break
-
-    tt = "".join(f"<li>{esc(t)}</li>" for t in cfg["troubleshooting"])
-    upd = f" Профиль обновлён {esc(updated)}." if updated else ""
+    tt = "".join(f"<li>{esc(x)}</li>" for x in cfg["troubleshooting"])
+    recs = "".join(
+        f'<div class="rec" data-rec="{esc(k)}"><div class="pl">{esc(r["label"])}</div>'
+        + "".join(f"<p>{('<b>' + esc(x['b']) + '</b> ') if x.get('b') else ''}{esc(x['t'])}</p>" for x in r["lines"])
+        + "</div>"
+        for k, r in cfg["recommend"].items()
+    )
+    ids = {c["id"] for c in clients}
+    for k in ("order", "order_ios"):
+        if set(cfg[k]) != ids or len(cfg[k]) != len(ids):
+            raise ValueError(f"{k} must list every client exactly once")
+    sub_steps = "".join(f"<li>{esc(x)}</li>" for x in cfg["subscription"]["steps"])
     pay = cfg["payment"]
     pform = pay.get("form") or {}
     action = pay_action or pform.get("action") or YK_ACTION
@@ -382,13 +331,13 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
     if use_form:
         pay_forms = render_pay_forms(pform, action)
         pay_note = f'<p class="hint">{esc(pform["note"])}</p>' if pform.get("note") else ""
-        pay_body = f"""<div class="pay-form">
+        site_body = f"""<div class="pay-form">
 {pay_note}
 {pay_forms}
 <p class="hint">{esc(pform.get("footer", "Оплата проходит на стороне ЮKassa: данные карты на этой странице не вводятся."))}</p>
 </div>"""
         if pay.get("url"):
-            pay_body += f"""
+            site_body += f"""
 <div class="pay-nojs"><a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a></div>"""
         pay_script = f"\n<script>{PAY_JS}</script>\n<script>{yk_script}</script>"
         # the page is served with "Referrer-Policy: no-referrer", which makes the browser send "Origin: null" and no Referer to the pay endpoint
@@ -403,10 +352,19 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
             redirects = list(redirects) + [pay_redirect]
         form_origin = " ".join([form_origin] + list(redirects))
     else:
-        pay_body = f"""<a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a>"""
+        site_body = f"""<a class="btn big" href="{esc(safe_url(pay["url"]))}" rel="noopener noreferrer">{esc(pay["button"])}</a>"""
         pay_script = ""
         pay_referrer = ""
         form_origin = "'none'"
+
+    bot_name = str(pay.get("bot_username") or "").lstrip("@")   # "-" (no bot named when the node was installed) simply gives no button
+    bot_btn = (f'<div class="btns"><a class="btn big" href="https://t.me/{esc(bot_name)}" rel="noopener noreferrer">{esc(pay.get("bot_button", "Открыть бота"))}</a></div>'
+               if BOT_NAME_RE.match(bot_name) else "")
+    pay_body = f"""{bot_btn}
+<details class="paysite"><summary>{esc(pay["site_title"])}</summary>
+<p class="hint">{esc(pay["site_text"])}</p>
+{site_body}
+</details>"""
 
     def sha(s: str) -> str:
         return "'sha256-%s'" % base64.b64encode(hashlib.sha256(s.encode("utf-8")).digest()).decode("ascii")
@@ -417,6 +375,7 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
         "img-src data:; base-uri 'none'; form-action %s" % (script_src, form_origin)
     )
     title = esc(cfg["title"])
+    sub = cfg["subscription"]
     return f"""<!doctype html>
 <html lang="ru">
 <head>
@@ -426,7 +385,7 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 <meta name="robots" content="noindex,nofollow">
 <meta http-equiv="Content-Security-Policy" content="{esc(csp)}">
 <meta property="og:title" content="{title}">
-<meta property="og:description" content="Установка приложения, добавление подписки и маршрутизация RoscomVPN.">
+<meta property="og:description" content="{esc(cfg["description"])}">
 <title>{title}</title>
 <style>{CSS}</style>
 </head>
@@ -434,38 +393,38 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 <main>
 <header>
 <h1>{title}</h1>
-<p class="lead">Установите приложение, добавьте подписку и (для Happ и INCY) маршрутизацию RoscomVPN.</p>
+<p class="lead">{esc(cfg["lead"])}</p>
 </header>
-<div class="notice">Персональную ссылку подписки выдаёт бот. Не передавайте её другим людям.</div>
+<div class="notice">{esc(cfg["notice"])}</div>
 
 <section>
 <h2><span class="n">1</span>Установите приложение</h2>
 <div class="chips" role="group" aria-label="Платформа">{chips}</div>
+{recs}
+<div class="apps" id="apps" data-order="{esc(",".join(cfg["order"]))}" data-order-ios="{esc(",".join(cfg["order_ios"]))}">
 {"".join(cards)}
+</div>
 </section>
 
 {render_region(cfg["region_help"])}
 
 <section>
 <h2><span class="n">2</span>Добавьте подписку</h2>
+<ol class="steps">{sub_steps}</ol>
+<p class="hint">{esc(sub["note"])}</p>
+<p class="hint">{esc(sub["per_app"])}</p>
 {"".join(steps)}
 <p class="hint">{esc(cfg["after_steps"])}</p>
 </section>
 
 <section>
-<h2><span class="n">3</span>Маршрутизация RoscomVPN</h2>
-<p class="lead">{esc(cfg["routing_text"])}{upd}</p>
-{"".join(routing_rows)}
-<div class="warn">
-<p><strong>Кнопка не открывает приложение?</strong> Встроенный браузер Telegram часто блокирует такие ссылки. Откройте эту страницу во внешнем браузере (Safari или Chrome): меню «⋯» → «Открыть в браузере» — и нажмите кнопку ещё раз. Приложение должно быть уже установлено.</p>
-<div class="btns"><button type="button" class="btn sec" id="copy-url">Скопировать адрес страницы</button></div>
-</div>
-{render_after_import(cfg, clients)}
+<h2>Другие приложения</h2>
+<p>{esc(cfg["others"])}</p>
 </section>
 
 <section>
 <h2>Если не подключается</h2>
-<ul class="tt">{tt}</ul>
+<ol class="tt">{tt}</ol>
 </section>
 
 <section class="pay">
@@ -473,6 +432,11 @@ def build(cfg: dict, deeplinks: dict[str, str], profiles: dict[str, dict], dyn: 
 <p>{esc(pay["text"])}</p>
 {pay_body}
 </section>
+
+<div class="share">
+<p class="hint">{esc(cfg["share_hint"])}</p>
+<div class="btns"><button type="button" class="btn sec" id="copy-url">Скопировать адрес страницы</button></div>
+</div>
 </main>
 <script>{JS}</script>{pay_script}
 </body>
@@ -497,8 +461,6 @@ def atomic_write(path: str, text: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--clients", required=True)
-    ap.add_argument("--happ", required=True)
-    ap.add_argument("--incy", required=True)
     ap.add_argument("--dynamic")
     ap.add_argument("--out", required=True)
     ap.add_argument("--yk-script", help="the pinned YooKassa form script (payment.form.script_sha256); without it the page keeps the pay link")
@@ -517,17 +479,9 @@ def main() -> int:
         except (OSError, ValueError):
             dyn = {}
 
-    try:
-        happ_link, happ_profile = read_deeplink(args.happ, "happ")
-        incy_link, incy_profile = read_deeplink(args.incy, "incy")
-    except DeeplinkError as exc:
-        print(f"build: INVALID DEEPLINK: {exc}", file=sys.stderr)
-        return 2
-
     yk = load_yk_script(args.yk_script, (cfg.get("payment") or {}).get("form") or {})
     try:
-        page = build(cfg, {"happ": happ_link, "incy": incy_link}, {"happ": happ_profile, "incy": incy_profile}, dyn,
-                     yk_script=yk, pay_action=args.pay_action, pay_redirect=args.pay_redirect)
+        page = build(cfg, dyn, yk_script=yk, pay_action=args.pay_action, pay_redirect=args.pay_redirect)
     except (ValueError, KeyError, TypeError) as exc:
         print(f"build: INVALID PAYMENT CONFIG: {exc}", file=sys.stderr)
         return 3
