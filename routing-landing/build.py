@@ -172,11 +172,13 @@ var d=document,f=d.querySelector('.yoomoney-payment-form');if(!f)return;
 var sum=f.querySelector('input[name=sum]'),cn=f.querySelector('input[name=customerNumber]'),ph=f.querySelector('input[name=cps_phone]'),out=f.querySelector('.ym-price-output'),err=d.getElementById('pay-err'),pre=f.getAttribute('data-cn-prefix')||'';
 var btns=[].slice.call(f.querySelectorAll('.plan'));
 function fmt(n){return n.toFixed(2).replace('.',',')+'\u00a0\u20bd';}
-function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;cn.value=pre+b.getAttribute('data-name')+' - '+b.getAttribute('data-label')+' \u20bd';out.textContent=fmt(p);}
+function norm(v){var t=(v||'').replace(/[^0-9+]/g,''),plus=t.charAt(0)==='+',g=t.replace(/\+/g,'');if(!plus){if(g.length===11&&g.charAt(0)==='8')g='7'+g.slice(1);else if(g.length===10)g='7'+g;}return g?'+'+g:'';}
+function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;out.textContent=fmt(p);}
+function sync(){cn.value=pre+norm(ph.value);}
 btns.forEach(function(b){b.addEventListener('click',function(){pick(b);});});
 if(btns.length)pick(btns[0]);
-ph.addEventListener('input',function(){err.classList.remove('on');});
-f.addEventListener('submit',function(e){var v=(ph.value||'').replace(/[^0-9+]/g,'');if(!/^\+?[0-9]{10,15}$/.test(v)){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();}},false);
+ph.addEventListener('input',function(){err.classList.remove('on');sync();});
+f.addEventListener('submit',function(e){var v=norm(ph.value);if(!/^\+[0-9]{10,15}$/.test(v)){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();return;}ph.value=v;sync();},false);
 })();"""
 
 
@@ -323,7 +325,7 @@ def render_pay_forms(form: dict, action: str) -> str:
 </div>
 <div class="ym-customer-info"><input name="cps_phone" class="ym-input" placeholder="{ph}" aria-label="{ph}" type="text" inputmode="tel" autocomplete="tel" value=""></div>
 <div class="pay-err" id="pay-err" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
-<input name="customerNumber" type="hidden" value="{esc(prefix)}{esc(str(first["name"]))} - {price_label(first_price)} \u20bd">
+<input name="customerNumber" type="hidden" value="">
 <div class="ym-payment-btn-block">
 <div class="ym-display-none"><input name="sum" class="ym-input ym-sum-input ym-required-input" type="number" step="any" value="{price_label(first_price).replace(",", ".")}" readonly></div>
 <button type="submit" data-text="Заплатить" class="ym-btn-pay ym-result-price"><span class="ym-text-crop">Заплатить</span> <span class="ym-price-output">{money(first_price)}</span></button>
