@@ -80,13 +80,15 @@ FX="$W/fx"; mkdir -p "$FX/ok/HAPP" "$FX/ok/INCY" "$FX/garbage/HAPP" "$FX/garbage
 cp "$REAL/happ.txt" "$FX/ok/HAPP/DEFAULT.DEEPLINK"; cp "$REAL/incy.txt" "$FX/ok/INCY/DEFAULT.DEEPLINK"
 echo "<html>rate limited</html>" > "$FX/garbage/HAPP/DEFAULT.DEEPLINK"; cp "$REAL/incy.txt" "$FX/garbage/INCY/DEFAULT.DEEPLINK"
 cp "$REAL/happ.txt" "$FX/missing/HAPP/DEFAULT.DEEPLINK"   # INCY file missing -> 404
+YKF="$HERE/tests/fixtures/yookassa_construct_form.js"
+[ -f "$YKF" ] && cp "$YKF" "$FX/ok/yk.js"; echo "// not the pinned script" > "$FX/ok/yk-other.js"
 PORT=$((20000 + RANDOM % 20000))
 "$PY" -m http.server "$PORT" --bind 127.0.0.1 --directory "$FX" >/dev/null 2>&1 &
 SRV=$!
 trap 'kill "$SRV" 2>/dev/null; taskkill //F //PID "$SRV" >/dev/null 2>&1; true' EXIT
 for _ in 1 2 3 4 5 6 7 8 9 10; do curl -fsS -o /dev/null "http://127.0.0.1:$PORT/ok/HAPP/DEFAULT.DEEPLINK" 2>/dev/null && break; sleep 0.5; done
 APP="$W/app"; mkdir -p "$APP"; cp "$HERE/build.py" "$HERE/resolve_links.py" "$HERE/clients.json" "$APP/"
-export ROUTING_APP_DIR="$APP" ROUTING_DATA_DIR="$APP" PYTHON="$PY" INCY_RELEASES_JSON="$REL"
+export ROUTING_APP_DIR="$APP" ROUTING_DATA_DIR="$APP" PYTHON="$PY" INCY_RELEASES_JSON="$REL" ROUTING_YK_SCRIPT_URL="http://127.0.0.1:$PORT/ok/yk.js"
 run() { ROUTING_SRC_BASE="http://127.0.0.1:$PORT/$1" bash "$HERE/update.sh" >"$W/run.log" 2>&1; echo $?; }
 rc=$(run ok);      check "first run publishes page (rc=0)"         '[ "$rc" = 0 ] && [ -s "$APP/www/index.html" ] && grep -q "page updated" "$W/run.log"'
 cp "$APP/www/index.html" "$W/served.1"
@@ -99,6 +101,58 @@ APP3="$W/code"; DATA3="$W/data"; mkdir -p "$APP3" "$DATA3"; cp "$HERE/build.py" 
 before="$(cd "$APP3" && ls -A | sort | tr '\n' ' ')"
 ROUTING_APP_DIR="$APP3" ROUTING_DATA_DIR="$DATA3" ROUTING_SRC_BASE="http://127.0.0.1:$PORT/ok" bash "$APP3/update.sh" >"$W/run3.log" 2>&1; rc3=$?
 check "split code/data dirs: page lands in DATA, code dir untouched" '[ "$rc3" = 0 ] && [ -s "$DATA3/www/index.html" ] && [ "$(cd "$APP3" && ls -A | sort | tr "\n" " ")" = "$before" ]'
+if [ -f "$YKF" ]; then
+echo "== 4b. the pay form follows the pinned YooKassa script"
+check "update.sh: form page published with the pinned script (last-good kept)" 'grep -q "class=\"yoomoney-payment-form\"" "$APP/www/index.html" && cmp -s "$APP/last-good/yookassa_form.js" "$YKF"'
+rcy=$(ROUTING_YK_SCRIPT_URL="http://127.0.0.1:$PORT/ok/yk-other.js" ROUTING_SRC_BASE="http://127.0.0.1:$PORT/ok" bash "$HERE/update.sh" >"$W/runy.log" 2>&1; echo $?)
+check "a changed script upstream: last good copy is used, the form stays" '[ "$rcy" = 0 ] && grep -q "last good copy" "$W/runy.log" && grep -q "class=\"yoomoney-payment-form\"" "$APP/www/index.html"'
+rm -f "$APP/last-good/yookassa_form.js"
+rcy=$(ROUTING_YK_SCRIPT_URL="http://127.0.0.1:$PORT/ok/yk-other.js" ROUTING_SRC_BASE="http://127.0.0.1:$PORT/ok" bash "$HERE/update.sh" >"$W/runy.log" 2>&1; echo $?)
+check "a changed script and no last good copy: page falls back to the pay link" '[ "$rcy" = 0 ] && ! grep -q "yoomoney-payment-form\"" "$APP/www/index.html" && grep -q "class=\"btn big\" href=\"https://" "$APP/www/index.html"'
+
+echo "== 5. build of the pay form"
+"$PY" "$HERE/build.py" --clients "$HERE/clients.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --out "$W/pay.html" >/dev/null
+check "form: YooKassa action, shop id, phone + customer + sum fields, three tariff buttons" '[ "$(grep -o "<form class=\"yoomoney-payment-form\"" "$W/pay.html" | wc -l)" = 1 ] && grep -q "action=\"https://yookassa.ru/integration/simplepay/payment\" method=\"post\"" "$W/pay.html" && grep -q "name=\"shopId\" type=\"hidden\" value=\"[0-9]*\"" "$W/pay.html" && [ "$(grep -o "class=\"plan\"" "$W/pay.html" | wc -l)" = 3 ] && grep -q "name=\"cps_phone\"" "$W/pay.html" && grep -q "name=\"customerNumber\"" "$W/pay.html" && grep -q "name=\"sum\"" "$W/pay.html"'
+check "CSP: both inline scripts hashed, form-action = YooKassa only, no external script" '"$PY" - "$W/pay.html" <<PYEOF
+import sys,re,hashlib,base64,html
+t=open(sys.argv[1],encoding="utf-8").read()
+csp=html.unescape(re.search(r"Content-Security-Policy\" content=\"([^\"]*)\"",t).group(1))
+scripts=re.findall(r"<script>(.*?)</script>",t,re.S)
+ok=len(scripts)==3 and all(("sha256-"+base64.b64encode(hashlib.sha256(s.encode()).digest()).decode()) in csp for s in scripts)
+ok=ok and "form-action https://yookassa.ru" in csp and "<script src" not in t and "script-src \x27sha256" in csp
+sys.exit(0 if ok else 1)
+PYEOF'
+check "the inline YooKassa script is byte-identical to the pinned file" '"$PY" - "$W/pay.html" "$YKF" <<PYEOF
+import sys,re
+t=open(sys.argv[1],encoding="utf-8").read()
+s=re.findall(r"<script>(.*?)</script>",t,re.S)[2]
+sys.exit(0 if s.encode("utf-8")==open(sys.argv[2],"rb").read() else 1)
+PYEOF'
+check "no-JS fallback link kept next to the form" 'grep -q "<div class=\"pay-nojs\"><a class=\"btn big\" href=\"https://" "$W/pay.html" && grep -q "\.js \.pay-nojs{display:none}" "$W/pay.html"'
+cp "$W/pay.html" "$W/pay.before"
+python_cfg() { "$PY" - "$HERE/clients.json" "$W/bad.json" "$1" <<PYEOF
+import json,sys
+c=json.load(open(sys.argv[1],encoding="utf-8")); f=c["payment"]["form"]
+exec(sys.argv[3])
+json.dump(c,open(sys.argv[2],"w",encoding="utf-8"),ensure_ascii=False)
+PYEOF
+}
+python_cfg 'f["shop_id"]="12ab\"><script>"'
+"$PY" "$HERE/build.py" --clients "$W/bad.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --out "$W/pay.html" >/dev/null 2>&1; rc=$?
+check "bad shop id: refused (rc=3), page unchanged" '[ "$rc" = 3 ] && cmp -s "$W/pay.html" "$W/pay.before"'
+python_cfg 'f["shop_id"]="0"'
+"$PY" "$HERE/build.py" --clients "$W/bad.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --out "$W/pay3.html" >/dev/null 2>&1; rc=$?
+check "shop id 0 (no shop on this node): plain pay link, no form" '[ "$rc" = 0 ] && ! grep -q "yoomoney-payment-form\"" "$W/pay3.html" && grep -q "class=\"btn big\" href=\"https://" "$W/pay3.html"'
+python_cfg 'f["plans"][0]["price"]=-5'
+"$PY" "$HERE/build.py" --clients "$W/bad.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --out "$W/pay.html" >/dev/null 2>&1; rc=$?
+check "negative price: refused (rc=3), page unchanged" '[ "$rc" = 3 ] && cmp -s "$W/pay.html" "$W/pay.before"'
+"$PY" "$HERE/build.py" --clients "$HERE/clients.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --pay-action "javascript:alert(1)" --out "$W/pay.html" >/dev/null 2>&1; rc=$?
+check "unsafe form action: refused (rc=3), page unchanged" '[ "$rc" = 3 ] && cmp -s "$W/pay.html" "$W/pay.before"'
+python_cfg 'f["plans"][0]["name"]="<b>x</b>\" onfocus=\"alert(1)"'
+"$PY" "$HERE/build.py" --clients "$W/bad.json" --happ "$REAL/happ.txt" --incy "$REAL/incy.txt" --yk-script "$YKF" --out "$W/pay2.html" >/dev/null 2>&1
+check "product text is escaped (no injected markup)" '! grep -q "<b>x</b>" "$W/pay2.html" && ! grep -q "onfocus=\"alert" "$W/pay2.html"'
+fi
+
 kill "$SRV" 2>/dev/null || true; taskkill //F //PID "$SRV" >/dev/null 2>&1 || true
 
 echo; echo "RESULT: $PASS passed, $FAIL failed"

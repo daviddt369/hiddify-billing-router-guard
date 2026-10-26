@@ -20,6 +20,7 @@ ap.add_argument("--domain", default="")
 ap.add_argument("--support-handle", default="")
 ap.add_argument("--admin-ip", default="")
 ap.add_argument("--features", default=None)
+ap.add_argument("--yookassa-shop-id", default="0")
 a = ap.parse_args()
 
 INTERACTIVE = not a.yes and sys.stdin.isatty()
@@ -100,6 +101,8 @@ values = {
     "GCORE_EDGE_NET": "203.0.113.0",
     # the secret path of the CDN entrance (the CDN origin has to be told this path); a new random one for every node
     "CDN_XHTTP_PATH": secrets.token_hex(16),
+    # YooKassa shop number for the pay form of the instruction page (0 = no form, only the pay link); set it in /opt/routing-links/clients.json
+    "YOOKASSA_SHOP_ID": re.sub(r"[^0-9]", "", a.yookassa_shop_id) or "0",
 }
 fd = os.open(a.out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
 with os.fdopen(fd, "w", encoding="utf-8") as f:

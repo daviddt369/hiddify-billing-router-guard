@@ -2,15 +2,53 @@
   "title": "Подключение VPN",
   "payment": {
     "title": "Не получается оплатить через бота?",
-    "text": "Оплатить подписку можно на нашем сайте.",
+    "text": "Оплатить подписку можно прямо на этой странице.",
     "button": "Оплатить подписку на сайте",
-    "url": "https://pay.example.com/"
+    "url": "https://pay.example.com/",
+    "form": {
+      "provider": "yookassa",
+      "shop_id": "0",
+      "script_url": "https://yookassa.ru/integration/simplepay/js/yookassa_construct_form.js?v=1.37.0",
+      "script_sha256": "bf94f99f0a4bb3414524001a3b7e6427f0c30ce025b6fe9edbb85d576e84aded",
+      "note": "Выберите тариф, укажите номер телефона, привязанный к Telegram, и нажмите «Заплатить». Платежи через сайт обрабатываются дольше, чем оплата через бота, поэтому зачисление может произойти не сразу.",
+      "phone_placeholder": "Телефон, привязанный к Telegram",
+      "customer_prefix": "обязательно укажите номер телефона TG",
+      "plans": [
+        {
+          "name": "Dual",
+          "price": 300,
+          "note": "3 устройства, 300 ГБ"
+        },
+        {
+          "name": "Family",
+          "price": 500,
+          "note": "5 устройств, 400 ГБ"
+        },
+        {
+          "name": "Business",
+          "price": 600,
+          "note": "8 устройств, 600 ГБ"
+        }
+      ]
+    }
   },
   "platforms": [
-    {"id": "ios", "name": "iPhone / iPad"},
-    {"id": "android", "name": "Android"},
-    {"id": "windows", "name": "Windows"},
-    {"id": "macos", "name": "macOS"}
+    {
+      "id": "ios",
+      "name": "iPhone / iPad"
+    },
+    {
+      "id": "android",
+      "name": "Android"
+    },
+    {
+      "id": "windows",
+      "name": "Windows"
+    },
+    {
+      "id": "macos",
+      "name": "macOS"
+    }
   ],
   "clients": [
     {
@@ -25,18 +63,39 @@
       },
       "downloads": {
         "ios": [
-          {"label": "App Store", "url": "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532", "hint": "Магазин США — как сменить регион, смотрите ниже."}
+          {
+            "label": "App Store",
+            "url": "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532",
+            "hint": "Магазин США — как сменить регион, смотрите ниже."
+          }
         ],
         "android": [
-          {"label": "Google Play", "url": "https://play.google.com/store/apps/details?id=app.hiddify.com"},
-          {"label": "APK (GitHub)", "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk", "secondary": true}
+          {
+            "label": "Google Play",
+            "url": "https://play.google.com/store/apps/details?id=app.hiddify.com"
+          },
+          {
+            "label": "APK (GitHub)",
+            "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk",
+            "secondary": true
+          }
         ],
         "windows": [
-          {"label": "Установщик (.exe)", "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe"},
-          {"label": "Portable (.zip)", "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip", "secondary": true}
+          {
+            "label": "Установщик (.exe)",
+            "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe"
+          },
+          {
+            "label": "Portable (.zip)",
+            "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip",
+            "secondary": true
+          }
         ],
         "macos": [
-          {"label": "Скачать (.dmg)", "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg"}
+          {
+            "label": "Скачать (.dmg)",
+            "url": "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg"
+          }
         ]
       },
       "steps": [
@@ -67,17 +126,34 @@
       },
       "downloads": {
         "ios": [
-          {"label": "App Store", "url": "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215", "hint": "Магазин США — как сменить регион, смотрите ниже."}
+          {
+            "label": "App Store",
+            "url": "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
+            "hint": "Магазин США — как сменить регион, смотрите ниже."
+          }
         ],
         "android": [
-          {"label": "Google Play", "url": "https://play.google.com/store/apps/details?id=com.happproxy"},
-          {"label": "APK (GitHub)", "url": "https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk", "secondary": true}
+          {
+            "label": "Google Play",
+            "url": "https://play.google.com/store/apps/details?id=com.happproxy"
+          },
+          {
+            "label": "APK (GitHub)",
+            "url": "https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk",
+            "secondary": true
+          }
         ],
         "windows": [
-          {"label": "Установщик (.exe)", "url": "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe"}
+          {
+            "label": "Установщик (.exe)",
+            "url": "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe"
+          }
         ],
         "macos": [
-          {"label": "Скачать (.dmg)", "url": "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg"}
+          {
+            "label": "Скачать (.dmg)",
+            "url": "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg"
+          }
         ]
       },
       "steps": [
@@ -108,20 +184,53 @@
       },
       "downloads": {
         "ios": [
-          {"label": "App Store", "url": "https://apps.apple.com/ru/app/incy/id6756943388"}
+          {
+            "label": "App Store",
+            "url": "https://apps.apple.com/ru/app/incy/id6756943388"
+          }
         ],
         "android": [
-          {"label": "Google Play", "url": "https://play.google.com/store/apps/details?id=llc.itdev.incy"},
-          {"label": "APK (GitHub)", "url": "https://github.com/INCY-DEV/incy-platforms/releases", "secondary": true, "dynamic": "incy_android_apk"}
+          {
+            "label": "Google Play",
+            "url": "https://play.google.com/store/apps/details?id=llc.itdev.incy"
+          },
+          {
+            "label": "APK (GitHub)",
+            "url": "https://github.com/INCY-DEV/incy-platforms/releases",
+            "secondary": true,
+            "dynamic": "incy_android_apk"
+          }
         ],
         "windows": [
-          {"label": "Установщик (.exe)", "url": "https://github.com/INCY-DEV/incy-platforms/releases", "dynamic": "incy_windows_setup"},
-          {"label": "Portable (.zip)", "url": "https://github.com/INCY-DEV/incy-platforms/releases", "secondary": true, "dynamic": "incy_windows_portable"}
+          {
+            "label": "Установщик (.exe)",
+            "url": "https://github.com/INCY-DEV/incy-platforms/releases",
+            "dynamic": "incy_windows_setup"
+          },
+          {
+            "label": "Portable (.zip)",
+            "url": "https://github.com/INCY-DEV/incy-platforms/releases",
+            "secondary": true,
+            "dynamic": "incy_windows_portable"
+          }
         ],
         "macos": [
-          {"label": "App Store", "url": "https://apps.apple.com/ru/app/incy/id6756943388"},
-          {"label": "DMG (Apple Silicon)", "url": "https://github.com/INCY-DEV/incy-platforms/releases", "secondary": true, "dynamic": "incy_macos_arm64"},
-          {"label": "DMG (Intel)", "url": "https://github.com/INCY-DEV/incy-platforms/releases", "secondary": true, "dynamic": "incy_macos_intel"}
+          {
+            "label": "App Store",
+            "url": "https://apps.apple.com/ru/app/incy/id6756943388"
+          },
+          {
+            "label": "DMG (Apple Silicon)",
+            "url": "https://github.com/INCY-DEV/incy-platforms/releases",
+            "secondary": true,
+            "dynamic": "incy_macos_arm64"
+          },
+          {
+            "label": "DMG (Intel)",
+            "url": "https://github.com/INCY-DEV/incy-platforms/releases",
+            "secondary": true,
+            "dynamic": "incy_macos_intel"
+          }
         ]
       },
       "steps": [
@@ -171,9 +280,18 @@
       {
         "title": "Шаг 2. Что указать в анкете для США",
         "items": [
-          {"label": "Способ оплаты", "text": "выберите «Нет» (None). Российские карты Visa, Mastercard и «Мир» для магазина США не подойдут."},
-          {"label": "Штат", "text": "выбирайте штат без налога с продаж: Делавэр (Delaware), Монтана (Montana), Орегон (Oregon), Аляска (Alaska) или Нью-Гэмпшир (New Hampshire). В Калифорнии и Нью-Йорке платные приложения дороже на 7–10%."},
-          {"label": "Адрес", "text": "нужен реально существующий адрес в выбранном штате. Можно взять один из готовых вариантов ниже. Индекс (Zip) должен соответствовать штату."}
+          {
+            "label": "Способ оплаты",
+            "text": "выберите «Нет» (None). Российские карты Visa, Mastercard и «Мир» для магазина США не подойдут."
+          },
+          {
+            "label": "Штат",
+            "text": "выбирайте штат без налога с продаж: Делавэр (Delaware), Монтана (Montana), Орегон (Oregon), Аляска (Alaska) или Нью-Гэмпшир (New Hampshire). В Калифорнии и Нью-Йорке платные приложения дороже на 7–10%."
+          },
+          {
+            "label": "Адрес",
+            "text": "нужен реально существующий адрес в выбранном штате. Можно взять один из готовых вариантов ниже. Индекс (Zip) должен соответствовать штату."
+          }
         ]
       }
     ],
@@ -181,21 +299,51 @@
       {
         "title": "Вариант 1 — Делавэр (Delaware)",
         "rows": [
-          ["Улица (Street)", "100 Continental Dr"],
-          ["Город (City)", "Newark"],
-          ["Штат (State)", "Delaware"],
-          ["Индекс (Zip)", "19713"],
-          ["Телефон (Phone)", "302-454-1500"]
+          [
+            "Улица (Street)",
+            "100 Continental Dr"
+          ],
+          [
+            "Город (City)",
+            "Newark"
+          ],
+          [
+            "Штат (State)",
+            "Delaware"
+          ],
+          [
+            "Индекс (Zip)",
+            "19713"
+          ],
+          [
+            "Телефон (Phone)",
+            "302-454-1500"
+          ]
         ]
       },
       {
         "title": "Вариант 2 — Орегон (Oregon)",
         "rows": [
-          ["Улица (Street)", "614 SW 11th Ave"],
-          ["Город (City)", "Portland"],
-          ["Штат (State)", "Oregon"],
-          ["Индекс (Zip)", "97205"],
-          ["Телефон (Phone)", "503-224-3400"]
+          [
+            "Улица (Street)",
+            "614 SW 11th Ave"
+          ],
+          [
+            "Город (City)",
+            "Portland"
+          ],
+          [
+            "Штат (State)",
+            "Oregon"
+          ],
+          [
+            "Индекс (Zip)",
+            "97205"
+          ],
+          [
+            "Телефон (Phone)",
+            "503-224-3400"
+          ]
         ]
       }
     ],
