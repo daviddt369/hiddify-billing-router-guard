@@ -172,13 +172,12 @@ var d=document,f=d.querySelector('.yoomoney-payment-form');if(!f)return;
 var sum=f.querySelector('input[name=sum]'),cn=f.querySelector('input[name=customerNumber]'),ph=f.querySelector('input[name=cps_phone]'),out=f.querySelector('.ym-price-output'),err=d.getElementById('pay-err'),pre=f.getAttribute('data-cn-prefix')||'';
 var btns=[].slice.call(f.querySelectorAll('.plan'));
 function fmt(n){return n.toFixed(2).replace('.',',')+'\u00a0\u20bd';}
-function norm(v){var t=(v||'').replace(/[^0-9+]/g,''),plus=t.charAt(0)==='+',g=t.replace(/\+/g,'');if(!plus){if(g.length===11&&g.charAt(0)==='8')g='7'+g.slice(1);else if(g.length===10)g='7'+g;}return g?'+'+g:'';}
 function pick(b){var p=parseFloat(b.getAttribute('data-price'));btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});sum.value=p;out.textContent=fmt(p);}
-function sync(){cn.value=pre+norm(ph.value);}
+function sync(){cn.value=pre+(ph.value||'').trim();}
 btns.forEach(function(b){b.addEventListener('click',function(){pick(b);});});
 if(btns.length)pick(btns[0]);
 ph.addEventListener('input',function(){err.classList.remove('on');sync();});
-f.addEventListener('submit',function(e){var v=norm(ph.value);if(!/^\+[0-9]{10,15}$/.test(v)){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();return;}ph.value=v;sync();},false);
+f.addEventListener('submit',function(e){var n=(ph.value||'').replace(/[^0-9]/g,'').length;if(n<10||n>15){e.preventDefault();e.stopImmediatePropagation();err.classList.add('on');ph.focus();return;}sync();},false);
 })();"""
 
 

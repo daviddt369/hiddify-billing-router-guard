@@ -11,7 +11,7 @@
       "script_url": "https://yookassa.ru/integration/simplepay/js/yookassa_construct_form.js?v=1.37.0",
       "script_sha256": "bf94f99f0a4bb3414524001a3b7e6427f0c30ce025b6fe9edbb85d576e84aded",
       "note": "Выберите тариф, укажите номер телефона, привязанный к Telegram, и нажмите «Заплатить». Платежи через сайт обрабатываются дольше, чем оплата через бота, поэтому зачисление может произойти не сразу.",
-      "phone_placeholder": "Телефон, привязанный к Telegram",
+      "phone_placeholder": "Телефон, привязанный к Telegram (+7 999 123-45-67)",
       "customer_prefix": "",
       "plans": [
         {

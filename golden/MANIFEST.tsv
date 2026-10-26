@@ -153,11 +153,11 @@
 /opt/hiddify-manager/xray/configs/05_inbounds_09_cdn_xhttp.json.j2	600	root:root	c0c91d5c4544659be7877b42fa2aad31f0e4748b2ee266c05caaac954187cc3a	text
 /opt/hiddify-manager/xray/configs/05_inbounds_30_locations.json.j2	600	root:root	4fb8de1cb1245aeb943720bc81614e705309b09096033fa8ce57f1defdaec5c3	text
 /opt/hiddify-manager/xray/configs/06_outbounds.json.j2	600	root:root	0924d3d9cacdbcea5032e9920077c601a368a9d14f60bf026bc1f0c5d4b484f1	text
-/opt/routing-links/build.py	644	root:root	5c4b6f438da7a1079820852c96d9ef23e2eb8e61d1fdad8cd1a2be7dee075a31	text
+/opt/routing-links/build.py	644	root:root	95946e8ccf679eae4af10c9760ff5a69cc62ad0ea19fb85a3d03db238d4a8b50	text
 /opt/routing-links/cert-common.sh	644	root:root	7fc26e3ce05a1ee2deffc766e00ad2bbd9693419884afbb36383a08a990bea91	text
 /opt/routing-links/cert-issue.sh	755	root:root	8a1cdcf4825005ab968af8a2c6c2589070b43e5baf6acacbfabbc51bd67b73a7	text
 /opt/routing-links/cert-maintain.sh	755	root:root	b873f1e40504a2c791e9c5a0f693c82ed875e083bdf0cbf8487820b9a05b7da0	text
-/opt/routing-links/clients.json	644	root:root	6d8a07f53f69ec9f584869196364b14b06d252b8a169e5668f2baba39e7579cc	text
+/opt/routing-links/clients.json	644	root:root	619375d11bc0ea3912113ed9f4df722f4b488684a8e29ed83f40d23a7d82b58c	text
 /opt/routing-links/resolve_links.py	644	root:root	38be82ebadbb3ebd420cd0a6bcb4909c383f348613a46989e252acba17b68227	text
 /opt/routing-links/update.sh	755	root:root	836d67ff8581cf8a86a7917e77897e543e0ac3973a34038f9731e2ac1e31e2dc	text
 /opt/vpn-watch/vpn_watch.py	755	root:root	5fc0dc5b2bc737086d7df7e1c1009bc4c9d78e9381ef47f383ff65401338f969	text
