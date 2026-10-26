@@ -116,8 +116,8 @@
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/init_db.py	644	root:root	f6a6acfa091ae9d5c2bef02493421cee8eb02deb4a2cb232c2343eb6b5d7ae01	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/run_commander.py	644	root:root	43c45009a3de4042e722d22b83efd7fe010a1c2262cb06c203857f4467e87525	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/usage.py	644	root:root	eabe661d02fb4ab630629eb4fe1c4ffe3317d64d5bbcbe9f577414078a091bc0	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/cabinet.py	644	root:root	8bd997295fc309150896a9b69bf91feb886192adf9859e2d693066423d5f05c6	text
-/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/cabinet/cabinet.html	644	root:root	96c713e58be43f19425ffe0bf6c7ac49209511f9481224dea5b6cba242c681a0	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/cabinet.py	644	root:root	98b099769dc013f73b5bd219d5749962f18e517dbd8defd146938ab8ae17a43f	text
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/cabinet/cabinet.html	644	root:root	ed42e6af13f13c7c289a41220fc2d2a26b45849762b5a069dc6c3575d78289ad	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/home/home.html	644	root:root	77007cb5f7360ed1c70f32f1340ea82838efc50a16c5c12adc4698a61f1ef20b	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/home/multi.html	644	root:root	b28c902f24030cf7d49fd53b514882d90a25a581306775d2c546d90cd0b620aa	text
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/home/usage.html	644	root:root	af0803cd9310a60c1919d73e81bc7cf493287465b36c357a3428c6a7f5bac7ac	text

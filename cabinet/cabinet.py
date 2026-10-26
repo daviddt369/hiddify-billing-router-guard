@@ -127,6 +127,8 @@ def build(c: dict) -> dict:
             tone, pill = "warn", "Трафик на исходе"
             banner = {"tone": "warn", "text": f"Трафика осталось мало: {_gb(left_gb)} ГБ из {_gb(limit_gb)}. Когда он закончится, VPN отключится."}
 
+    need_pay = bool(reason) or trial or (not unlimited_days and days <= 3) or bool(not unlimited_gb and limit_gb and left_gb / limit_gb <= 0.1)
+
     until = ""
     if not unlimited_days:
         end = today + datetime.timedelta(days=days)
@@ -171,6 +173,7 @@ def build(c: dict) -> dict:
         "paid": paid,
         "banner": banner,
         "expired": bool(reason),
+        "need_pay": need_pay,
         "plans": plans,
         "pay": {"shop_id": shop if SHOP_RE.match(shop) and shop != "0" else "", "action": action, "bot_url": bot_url},
         "connect": {"sub_url": c.get("profile_url", ""), "happ": _read_deeplink("happ"), "incy": _read_deeplink("incy"),
