@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh routing landing page from upstream RoscomVPN deeplinks
+Description=Rebuild the connection landing page (INCY links, pay form script)
 After=network-online.target
 Wants=network-online.target
 

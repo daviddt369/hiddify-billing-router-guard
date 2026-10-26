@@ -18,7 +18,7 @@ install -m 644 -o "${OWNER%%:*}" -g "${OWNER##*:}" "$SRC/cabinet.py" "$P/panel/u
 install -m 644 -o "${OWNER%%:*}" -g "${OWNER##*:}" "$SRC/cabinet.html" "$P/panel/user/templates/cabinet/cabinet.html"
 install -d -m 755 /opt/hiddify-manager/cabinet
 if [ ! -f /opt/hiddify-manager/cabinet/cabinet.json ]; then
-    printf '{\n  "enabled": false,\n  "yookassa_shop_id": "0",\n  "support_url": "",\n  "brand": ""\n}\n' > /opt/hiddify-manager/cabinet/cabinet.json
+    printf '{\n  "enabled": false,\n  "yookassa_shop_id": "0",\n  "support_url": "",\n  "guide_url": "",\n  "bot_username": "",\n  "brand": ""\n}\n' > /opt/hiddify-manager/cabinet/cabinet.json
     echo "created /opt/hiddify-manager/cabinet/cabinet.json (enabled=false: the cabinet is shown only with ?cabinet=1)"
 fi
 

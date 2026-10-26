@@ -5,41 +5,52 @@ const vm = require('vm');
 
 const html = fs.readFileSync(process.argv[2], 'utf8');
 const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
-const HAPP = /href="(happ:\/\/routing\/onadd\/[^"]+)"/.exec(html)[1];
-const INCY = /href="(incy:\/\/routing\/onadd\/[^"]+)"/.exec(html)[1];
+const ORDER = /data-order="([^"]*)"/.exec(html)[1];
+const ORDER_IOS = /data-order-ios="([^"]*)"/.exec(html)[1];
+const PLATS = ['ios', 'android', 'windows', 'macos'];
+const APPS = ['hiddify', 'happ', 'incy'];
 
-function run({ ua, touch = 0, path, session = {} }) {
-  const out = { platform: null, navigated: null, focused: null, opened: null };
+function run({ ua, touch = 0, path, hash = '' }) {
+  const out = { platform: null, navigated: null, focused: null, regionForced: false, order: {}, badges: {}, rec: null, detailsOpened: null };
   const mkEl = (attrs = {}) => ({
-    dataset: attrs, _attrs: { ...attrs }, classList: { toggle(c, on) { if (c === 'on' && on) out.platform = attrs.p; }, add(c) { if (c === 'focus') out.focused = attrs.id; } },
-    getAttribute(k) { return this._attrs[k] ?? null; }, setAttribute(k, v) { this._attrs[k] = v; }, addEventListener() {},
+    _attrs: { ...attrs }, getAttribute(k) { return this._attrs[k] ?? null; }, setAttribute(k, v) { this._attrs[k] = v; }, addEventListener() {},
   });
-  const dl = ['ios', 'android', 'windows', 'macos'].map(p => mkEl({ p, 'data-p': p }));
-  const chips = ['ios', 'android', 'windows', 'macos'].map(p => mkEl({ p, 'data-p': p }));
-  const autoEls = { happ: Object.assign(mkEl({}), { href: HAPP }), incy: Object.assign(mkEl({}), { href: INCY }) };
+  const dl = PLATS.map(p => Object.assign(mkEl({ 'data-p': p }), { classList: { toggle(c, on) { if (c === 'on' && on) out.platform = p; } } }));
+  const chips = PLATS.map(p => mkEl({ 'data-p': p }));
+  const recs = ['ios', 'other'].map(k => Object.assign(mkEl({ 'data-rec': k }), { classList: { toggle(c, on) { if (c === 'on' && on) out.rec = k; } } }));
+  const apps = mkEl({ 'data-order': ORDER, 'data-order-ios': ORDER_IOS });
+  const card = id => {
+    const badge = { textContent: 'static' };
+    out.badges[id] = badge;
+    return Object.assign(mkEl({ id }), { style: { set order(v) { out.order[id] = v; } }, classList: { add(c) { if (c === 'focus') out.focused = id; } }, querySelector: s => (s === '.badge' ? badge : null), scrollIntoView() {} });
+  };
+  const cards = Object.fromEntries(APPS.map(a => ['c-' + a, card(a)]));
+  const region = { classList: { add(c) { if (c === 'force') out.regionForced = true; } }, scrollIntoView() {} };
   const m = path.replace(/^\/+|\/+$/g, '');
-  const store = { ...session };
   const ctx = {
     document: {
       documentElement: { className: '', _a: {}, setAttribute(k, v) { this._a[k] = v; } },
-      querySelectorAll: s => (s === '.dl' ? dl : s === '.chip' ? chips : []),
-      querySelector: s => { const k = /data-auto="(\w+)"/.exec(s); return k ? autoEls[k[1]] : null; },
+      querySelectorAll: s => (s === '.dl' ? dl : s === '.chip' ? chips : s === '.rec' ? recs : []),
+      querySelector: () => null,
       getElementById: id => {
         if (id === 'copy-url') return null;
-        if (id.startsWith('c-') && ['hiddify', 'happ', 'incy'].includes(id.slice(2))) return Object.assign(mkEl({ id }), { scrollIntoView() {} });
-        if (id.startsWith('s-')) return { open: false };
+        if (id === 'apps') return apps;
+        if (id === 'region') return region;
+        if (cards[id]) return cards[id];
+        if (id.startsWith('s-') && APPS.includes(id.slice(2))) { const d = { open: false }; Object.defineProperty(d, 'open', { set(v) { out.detailsOpened = id; }, get() { return false; } }); return d; }
         return null;
       },
       createElement: () => ({}), body: { appendChild() {}, removeChild() {} },
     },
     navigator: { userAgent: ua, maxTouchPoints: touch },
-    location: { pathname: path, get href() { return 'https://x' + path; }, set href(v) { out.navigated = v; } },
-    sessionStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; } },
+    location: { pathname: path, hash, get href() { return 'https://x' + path; }, set href(v) { out.navigated = v; } },
+    sessionStorage: { getItem: () => null, setItem() {} },
     setTimeout: fn => { fn(); return 0; },
   };
   vm.runInNewContext(script, ctx);
-  out.opened = out.navigated === HAPP ? 'happ' : out.navigated === INCY ? 'incy' : null;
+  void m;
   out.dataPlat = ctx.document.documentElement._a['data-plat'] || null;
+  out.badgeText = Object.fromEntries(Object.entries(out.badges).map(([k, v]) => [k, v.textContent]));
   return out;
 }
 
@@ -63,29 +74,45 @@ function t(name, got, want) {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`);
 }
 const pick = (r, ...k) => Object.fromEntries(k.map(x => [x, r[x]]));
+const first = r => Object.entries(r.order).sort((x, y) => x[1] - y[1])[0][0];
 
-t('iPhone Safari /happ -> ios, auto-opens happ', pick(run({ ua: UA.iphoneSafari, path: '/happ' }), 'platform', 'opened'), { platform: 'ios', opened: 'happ' });
-t('iPhone Chrome /incy -> ios, auto-opens incy', pick(run({ ua: UA.iphoneChrome, path: '/incy' }), 'platform', 'opened'), { platform: 'ios', opened: 'incy' });
-t('iOS in-app webview (no Safari token) /happ -> NO auto-open', pick(run({ ua: UA.iphoneWebview, path: '/happ' }), 'platform', 'opened'), { platform: 'ios', opened: null });
-t('iOS UA with Telegram token /happ -> NO auto-open', run({ ua: UA.iphoneTelegramUA, path: '/happ' }).opened, null);
+t('iPhone Safari -> ios', run({ ua: UA.iphoneSafari, path: '/' }).platform, 'ios');
+t('iPhone Chrome -> ios', run({ ua: UA.iphoneChrome, path: '/' }).platform, 'ios');
+t('iOS in-app webview -> ios', run({ ua: UA.iphoneWebview, path: '/' }).platform, 'ios');
+t('iOS UA with Telegram token -> ios', run({ ua: UA.iphoneTelegramUA, path: '/' }).platform, 'ios');
 t('iPadOS "desktop" Safari with touch -> ios', run({ ua: UA.ipadDesktopSafari, touch: 5, path: '/' }).platform, 'ios');
-t('Android Chrome /happ -> android, auto-opens happ', pick(run({ ua: UA.androidChrome, path: '/happ' }), 'platform', 'opened'), { platform: 'android', opened: 'happ' });
-t('Android WebView (; wv) /incy -> NO auto-open', pick(run({ ua: UA.androidWebview, path: '/incy' }), 'platform', 'opened'), { platform: 'android', opened: null });
-t('Windows Chrome / -> windows, no auto-open on root', pick(run({ ua: UA.winChrome, path: '/' }), 'platform', 'opened'), { platform: 'windows', opened: null });
-t('Windows Chrome /incy -> auto-opens incy', run({ ua: UA.winChrome, path: '/incy' }).opened, 'incy');
+t('Android Chrome -> android', run({ ua: UA.androidChrome, path: '/' }).platform, 'android');
+t('Android WebView -> android', run({ ua: UA.androidWebview, path: '/' }).platform, 'android');
+t('Windows Chrome -> windows', run({ ua: UA.winChrome, path: '/' }).platform, 'windows');
 t('Mac Safari (no touch) -> macos', run({ ua: UA.macSafari, path: '/' }).platform, 'macos');
 t('Linux Firefox -> falls back to windows', run({ ua: UA.linuxFirefox, path: '/' }).platform, 'windows');
-t('/hiddify focuses hiddify card, never auto-opens', pick(run({ ua: UA.androidChrome, path: '/hiddify' }), 'focused', 'opened'), { focused: 'c-hiddify', opened: null });
-t('trailing slash /happ/ still focuses + opens', pick(run({ ua: UA.androidChrome, path: '/happ/' }), 'focused', 'opened'), { focused: 'c-happ', opened: 'happ' });
-t('second visit in same session -> no repeated auto-open', run({ ua: UA.androidChrome, path: '/happ', session: { 'ro-happ': '1' } }).opened, null);
-t('unknown path /xyz -> no focus, no auto-open', pick(run({ ua: UA.androidChrome, path: '/xyz' }), 'focused', 'opened'), { focused: null, opened: null });
+
+// one instruction as in the cabinet: INCY first on the iPhone, Hiddify first on the other platforms; the "Рекомендуем" badge follows the first app
+t('iPhone: INCY goes first and carries the badge', [first(run({ ua: UA.iphoneSafari, path: '/' })), run({ ua: UA.iphoneSafari, path: '/' }).badgeText], ['incy', { hiddify: '', happ: '', incy: 'Рекомендуем' }]);
+t('Android: Hiddify goes first and carries the badge', [first(run({ ua: UA.androidChrome, path: '/' })), run({ ua: UA.androidChrome, path: '/' }).badgeText], ['hiddify', { hiddify: 'Рекомендуем', happ: '', incy: '' }]);
+t('Windows: Hiddify first', first(run({ ua: UA.winChrome, path: '/' })), 'hiddify');
+t('iPhone shows the iOS recommendation, the others the general one', [run({ ua: UA.iphoneSafari, path: '/' }).rec, run({ ua: UA.macSafari, path: '/' }).rec], ['ios', 'other']);
+
+// short links only scroll to the card of the app and open its steps: nothing opens an app or navigates away
+for (const a of APPS) {
+  const r = run({ ua: UA.androidChrome, path: '/' + a });
+  t(`/${a} focuses the card and opens its steps, never navigates`, pick(r, 'focused', 'detailsOpened', 'navigated'), { focused: a, detailsOpened: 's-' + a, navigated: null });
+}
+t('trailing slash /happ/ still focuses', run({ ua: UA.androidChrome, path: '/happ/' }).focused, 'happ');
+t('unknown path /xyz -> no focus', pick(run({ ua: UA.androidChrome, path: '/xyz' }), 'focused', 'navigated'), { focused: null, navigated: null });
+t('the root page never navigates', run({ ua: UA.iphoneSafari, path: '/' }).navigated, null);
+
+// the full region instruction (linked from the cabinet and the bot) opens by #region on every platform
+t('#region on Android forces the region help open', run({ ua: UA.androidChrome, path: '/', hash: '#region' }).regionForced, true);
+t('#region on Windows forces the region help open', run({ ua: UA.winChrome, path: '/', hash: '#region' }).regionForced, true);
+t('no hash: the region help is not forced', run({ ua: UA.androidChrome, path: '/' }).regionForced, false);
 
 // the iOS-only region help is shown through <html data-plat="ios"> (see CSS .js[data-plat="ios"] .ios-only)
 t('iPhone -> data-plat=ios (region help becomes visible)', run({ ua: UA.iphoneSafari, path: '/' }).dataPlat, 'ios');
 t('iPad desktop-UA with touch -> data-plat=ios', run({ ua: UA.ipadDesktopSafari, touch: 5, path: '/' }).dataPlat, 'ios');
 t('Android -> data-plat=android (region help stays hidden)', run({ ua: UA.androidChrome, path: '/' }).dataPlat, 'android');
 t('Windows -> data-plat=windows', run({ ua: UA.winChrome, path: '/' }).dataPlat, 'windows');
-t('the page CSS hides .ios-only unless data-plat=ios (and shows it without JS)', [/\.ios-only\{display:block\}/.test(html), /\.js \.ios-only\{display:none\}/.test(html), /\.js\[data-plat="ios"\] \.ios-only\{display:block\}/.test(html)], [true, true, true]);
+t('the page CSS hides .ios-only unless data-plat=ios or forced (and shows it without JS)', [/\.ios-only\{display:block\}/.test(html), /\.js \.ios-only\{display:none\}/.test(html), /\.js\[data-plat="ios"\] \.ios-only\{display:block\}/.test(html), /\.js \.ios-only\.force\{display:block\}/.test(html)], [true, true, true, true]);
 
 console.log(`JS RESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

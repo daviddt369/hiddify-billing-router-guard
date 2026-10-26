@@ -1,11 +1,13 @@
-# routing-landing — «Подключение VPN» + импорт маршрутизации RoscomVPN
+# routing-landing — «Подключение VPN»: единая инструкция (как в личном кабинете и в боте)
 
 Статический лендинг для inline-кнопок Telegram-бота. Работает на RU-ноде за HAProxy/nginx Hiddify.
 Это **обезличенная копия** исходников: вместо реальных значений стоят `routing.example.com` (адрес лендинга), `panel.example.com` (домен панели, которому лендинг отдаваться не должен)
 и `https://pay.example.com/` (ссылка оплаты в `clients.json`). Свои значения задаются в `clients.json` и переменных `ROUTING_HOST` / `ROUTING_GUARD_HOST`.
 
 Боевой адрес: `https://routing.example.com/` (+ короткие `/happ`, `/incy`, `/hiddify` — открывают ту же
-страницу, прокрученную к нужному клиенту; на `/happ` и `/incy` ещё и пробуют открыть приложение).
+страницу, прокрученную к карточке нужного приложения; ничего автоматически не открывается). Полная инструкция по смене региона App Store
+на США — `https://routing.example.com/#region` (на ссылку ведут личный кабинет и бот; на не-iPhone блок раскрывается по этому якорю).
+Страница больше не импортирует маршрутизацию: она уже внутри подписки (для Happ/INCY — по второй ссылке `/happ/`).
 
 ## Как это устроено на ноде
 
@@ -27,12 +29,10 @@
 | keep-marker (см. «Патч Hiddify») | `/opt/routing-links/keep-ssl/routing.example.com` |
 | юниты | `/etc/systemd/system/routing-links-{update,cert}.{service,timer}` |
 
-* `routing-links-update.timer` — каждые 6 ч: качает `HAPP/DEFAULT.DEEPLINK` и `INCY/DEFAULT.DEEPLINK`
-  (raw.githubusercontent.com/hydraponique/roscomvpn-routing), валидирует (строгий regex + base64 → JSON с правилами),
-  собирает страницу `build.py` и **атомарно** подменяет `index.html`. Любой сбой → остаётся последняя рабочая
-  страница (rc 1 = не скачалось, rc 2 = не прошло валидацию). Deeplink подставляется байт-в-байт.
-  Ссылки на файлы INCY (Windows/macOS/APK) подбирает `resolve_links.py` через GitHub API; только URL вида
-  `https://github.com/INCY-DEV/incy-platforms/releases/download/…`.
+* `routing-links-update.timer` — каждые 6 ч: подбирает актуальные ссылки на файлы INCY (`resolve_links.py` через GitHub API; только URL
+  вида `https://github.com/INCY-DEV/incy-platforms/releases/download/…`), берёт закреплённый скрипт формы ЮKassa, собирает страницу `build.py`
+  и **атомарно** подменяет `index.html`. Любой сбой → остаётся последняя рабочая страница (rc 2 = не прошла сборка/проверка конфига).
+  Профили маршрутизации RoscomVPN страница больше не скачивает.
 * `routing-links-cert.timer` — каждые 5 мин: (1) сторож `guard_check`, (2) раз в сутки `acme.sh --renew`,
   (3) `cert_sync` — вернуть сертификат в `ssl/`, если его там нет, и штатно `systemctl reload hiddify-haproxy`.
 
@@ -64,11 +64,14 @@
 
 ## Содержимое страницы (clients.json)
 
-* Раздел 3 «Маршрутизация RoscomVPN»: три одинаковые плашки (Hiddify — метка «Импорт не нужен», Happ/INCY — кнопка импорта),
-  затем блок «Важно: после импорта выберите профиль в настройках» с шагами для Happ и INCY.
-  Источники шагов — официальная документация: Happ (`happ.su/main/ru/dev-docs/routing`: профиль привязан к ПОДПИСКЕ,
-  изменения применяются только после переподключения, красный «!» = геофайлы не загрузились за 3 мин) и INCY
-  (`docs.incy.cc/routing/`). Названия пунктов меню в самих приложениях не сверялись — на странице есть оговорка.
+* Раздел 1 «Установите приложение»: переключатель платформы, текст-рекомендация (на iPhone — INCY: он есть в российском App Store;
+  на остальных — Hiddify: больше протоколов) и три карточки приложений; порядок и метка «Рекомендуем» зависят от платформы
+  (`order` / `order_ios` в `clients.json`, переставляет скрипт страницы).
+* Раздел 2 «Добавьте подписку»: общие шаги, пояснение про две ссылки (основная — Hiddify и другие; «для Happ и INCY» — им; обе в «Личном кабинете»
+  бота), «маршрутизация уже внутри подписки», шаги по приложениям (раскрываются по `/happ`, `/incy`, `/hiddify`).
+* «Другие приложения» (V2RayTun и т. п. — для опытных), «Если не подключается» (при сильных блокировках — Hiddify).
+* Оплата: сначала Telegram-бот (кнопка, если задан `payment.bot_url`), форма ЮKassa на сайте свёрнута под «Не получается оплатить в боте?».
+* Кнопка «Скопировать адрес страницы» осталась и как метка для сторожа: `deploy/cert-common.sh` ищет в ответе чужого домена `id="copy-url"`.
 * «Регион США» (адреса, шаги, штаты без налога) виден только на iPhone/iPad (`html[data-plat=ios]`, на других платформах
   скрыт; без JS виден всем). Сторонняя ссылка на «генератор адресов» из исходного текста намеренно не включена.
 * Оплата: заголовок + крупная кнопка внизу страницы (`payment` в clients.json).
@@ -100,12 +103,12 @@ rm -f /opt/hiddify-manager/ssl/routing.example.com.crt* && systemctl reload hidd
 ## Тесты (локально, без обращения к ноде)
 
 ```bash
-bash tests/test_all.sh <dir с happ.txt и incy.txt> <incy_rel.json>   # сборка, негативные кейсы, update.sh, resolve_links
-node tests/test_js.js <path/to/index.html>                           # платформа и автооткрытие по User-Agent
+bash tests/test_all.sh <incy_rel.json>                               # сборка, негативные кейсы, update.sh, resolve_links
+node tests/test_js.js <path/to/index.html>                           # платформа, порядок приложений, якорь #region, короткие ссылки (ничего не открывается)
 bash tests/test_cert.sh                                              # cert_sync + тормоз штормов (заглушки systemctl/pgrep)
 bash tests/test_guard.sh                                             # сторож (заглушки curl/nginx/systemctl)
 ```
-На 2026-10-10: 29 + 20 + 17 + 8 PASS. Реальный импорт на телефоне в тесты не входит — проверяется руками.
+На 2026-10-26: 36 + 28 (JS) + 17 + 8 PASS. Открытие страницы на реальном телефоне в тесты не входит — проверяется руками.
 
 ## Оплата на странице (ЮKassa)
 

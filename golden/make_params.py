@@ -21,6 +21,7 @@ ap.add_argument("--support-handle", default="")
 ap.add_argument("--admin-ip", default="")
 ap.add_argument("--features", default=None)
 ap.add_argument("--yookassa-shop-id", default="0")
+ap.add_argument("--bot-username", default="", help="Telegram bot username without @ (the cabinet and the instruction page link to it); empty = not named yet")
 a = ap.parse_args()
 
 INTERACTIVE = not a.yes and sys.stdin.isatty()
@@ -77,6 +78,8 @@ name = ask("Название продукта в панели", a.name or "Че�
 domain = ask("Домен этого сервера (A-запись уже указывает сюда; Enter - пока без домена)", a.domain, lambda v: bool(HOST_RE.match(v.lower())))
 domain = domain.lower()
 handle = ask("Контакт поддержки в Telegram, без @", a.support_handle or "support", lambda v: bool(HANDLE_RE.match(v)), allow_empty=False)
+BOT_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{3,31}$")
+bot_username = ask("Имя вашего Telegram-бота без @, если он уже создан (Enter - пропустить, имя подтянется само)", (a.bot_username or "").lstrip("@"), lambda v: bool(BOT_RE.match(v)))
 admin_ip = ask("Ваш IP, который fail2ban не должен банить (Enter - пропустить)", a.admin_ip or ssh_client_ip(), lambda v: bool(IP_RE.match(v)))
 if a.features is not None:
     features = a.features
@@ -93,6 +96,8 @@ values = {
     "ADMIN_IP_2": "198.51.100.2",
     "ADMIN_IP_3": "198.51.100.3",
     "ROUTING_HOST": f"routing.{domain}" if domain else "routing.invalid",
+    # the full "change the region" instruction lives on the routing landing (optional feature); "none" = no such page, the cabinet shows no link
+    "GUIDE_URL": f"https://routing.{domain}/#region" if domain and "routing_links" in features.split() else "none",
     "BRAND_DOMAIN": domain or "domain.invalid",
     "PRODUCT_NAME": name,
     "SUPPORT_HANDLE": handle,
@@ -102,6 +107,8 @@ values = {
     # the secret path of the CDN entrance (the CDN origin has to be told this path); a new random one for every node
     "CDN_XHTTP_PATH": secrets.token_hex(16),
     # YooKassa shop number for the pay form of the instruction page (0 = no form, only the pay link); set it in /opt/routing-links/clients.json
+    # the bot the cabinet and the instruction page send people to; "-" = not named yet (the cabinet then asks Telegram itself, the page shows no bot button)
+    "BOT_USERNAME": bot_username or "-",
     "YOOKASSA_SHOP_ID": re.sub(r"[^0-9]", "", a.yookassa_shop_id) or "0",
 }
 fd = os.open(a.out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)

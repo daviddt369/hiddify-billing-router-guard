@@ -7,6 +7,8 @@ Settings: /opt/hiddify-manager/cabinet/cabinet.json (read on every request; not 
   enabled            true = every browser visit gets the cabinet; false = only with ?cabinet=1 (preview)
   yookassa_shop_id   shop number for the pay form; "0" or empty = no site payment (only the bot button)
   support_url        link of the "write to support" button
+  bot_username       username of the Telegram bot for the "pay in the bot" link (without @). Empty or "-" = taken from the running bot / asked from Telegram once
+  guide_url          link of the full instruction how to change the App Store region (the routing landing page, "#region"); empty or not https = no link
   brand              name shown in the header (default: the panel's branding title or "Чебурнатор")
   pay_action         where the pay form posts (default: the YooKassa simple payment address)
 """
@@ -16,6 +18,8 @@ import datetime
 import json
 import os
 import re
+import threading
+import time
 
 from flask import g, render_template, request
 
@@ -24,13 +28,15 @@ YK_ACTION = "https://yookassa.ru/integration/simplepay/payment"
 PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()\-]{8,22}$")
 SHOP_RE = re.compile(r"^[0-9]{3,12}$")
 URL_RE = re.compile(r"^https://[A-Za-z0-9.\-]+(:[0-9]{2,5})?(/[A-Za-z0-9._~%!$&'()*+,;=:@/\-?#]*)?$")
+BOT_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{3,31}$")
+_bot_name = {"name": "", "tried": 0.0}
 UNLIMITED_DAYS = 3650
 UNLIMITED_GB = 100000
 MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
 
 
 def load_settings() -> dict:
-    s = {"enabled": False, "yookassa_shop_id": "0", "support_url": "", "brand": "", "pay_action": YK_ACTION}
+    s = {"enabled": False, "yookassa_shop_id": "0", "support_url": "", "guide_url": "", "bot_username": "", "brand": "", "pay_action": YK_ACTION}
     try:
         with open(CONF_PATH, "r", encoding="utf-8") as f:
             loaded = json.load(f)
@@ -39,6 +45,29 @@ def load_settings() -> dict:
     except (OSError, ValueError):
         pass
     return s
+
+
+def _fetch_bot_name(bot) -> None:
+    try:
+        name = str(bot.get_me().username or "")
+    except Exception:  # noqa: BLE001 - the bot button is optional, never an error of the page
+        name = ""
+    if BOT_NAME_RE.match(name):
+        _bot_name["name"] = name
+
+
+def _bot_username(bot, st: dict) -> str:
+    """The username the "pay in the bot" link needs. The panel keeps it empty in the web process (the bot runs elsewhere), so: the setting, else the bot object,
+    else Telegram is asked once in the background (never in the request: the page does not wait; the button shows from the next visit on, retried every 10 minutes)."""
+    if not bot:
+        return ""
+    for name in (str(st.get("bot_username") or "").lstrip("@"), str(getattr(bot, "username", "") or ""), _bot_name["name"]):
+        if BOT_NAME_RE.match(name):
+            return name
+    if time.time() - _bot_name["tried"] > 600:
+        _bot_name["tried"] = time.time()
+        threading.Thread(target=_fetch_bot_name, args=(bot,), daemon=True).start()
+    return ""
 
 
 def wanted() -> bool:
@@ -149,12 +178,16 @@ def build(c: dict) -> dict:
         action = YK_ACTION
 
     bot = c.get("bot")
-    bot_url = f"https://t.me/{bot.username}?start={user.uuid}" if bot else ""
+    bot_name = _bot_username(bot, st)
+    bot_url = f"https://t.me/{bot_name}?start={user.uuid}" if bot_name else ""
     base = hiddify.get_account_panel_link(user, request.host, prefere_path_only=True)
     user_link = hiddify.get_account_panel_link(user, request.host)  # https, the same address the bot gives
     support = st.get("support_url") or hconfig(ConfigEnum.support_url) or hconfig(ConfigEnum.branding_site) or ""
     if support and not URL_RE.match(support):
         support = ""
+    guide = str(st.get("guide_url") or "")
+    if guide and not URL_RE.match(guide):
+        guide = ""
 
     return {
         "brand": st.get("brand") or hconfig(ConfigEnum.branding_title) or "Чебурнатор",
@@ -179,6 +212,7 @@ def build(c: dict) -> dict:
         "doh": f"https://{request.host}/{g.proxy_path}/dns/dns-query",
         "telegram_proxy": bool(c.get("telegram_enable")),
         "support_url": support,
+        "guide_url": guide,
         "classic_url": "?classic=1",
     }
 
