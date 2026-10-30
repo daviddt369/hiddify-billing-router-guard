@@ -96,8 +96,8 @@ values = {
     "ADMIN_IP_2": "198.51.100.2",
     "ADMIN_IP_3": "198.51.100.3",
     "ROUTING_HOST": f"routing.{domain}" if domain else "routing.invalid",
-    # the full "change the region" instruction lives on the routing landing (optional feature); "none" = no such page, the cabinet shows no link
-    "GUIDE_URL": f"https://routing.{domain}/#region" if domain and "routing_links" in features.split() else "none",
+    # the full "change the region" instruction is inside the cabinet itself; "none" = no separate page to link to (an outside page, e.g. the optional routing landing, can be named here)
+    "GUIDE_URL": "none",
     "BRAND_DOMAIN": domain or "domain.invalid",
     "PRODUCT_NAME": name,
     "SUPPORT_HANDLE": handle,
