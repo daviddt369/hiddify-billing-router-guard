@@ -29,7 +29,7 @@ block = "<!-- region-guide:start --><div class=\"rg\">" + "".join(parts) + "</di
 t = open(dst, encoding="utf-8", newline="").read().replace("\r\n", "\n")
 m = re.search(r'(<details id="regionhelp"><summary>)(.*?)(</summary><div class="in">)(.*?)(<p class="hint" id="guidewrap".*?</p>)(</div></details>)', t, re.S)
 assert m, "regionhelp block not found"
-summary = "iPhone: как сменить регион App Store (подробная инструкция)"
+summary = "iPhone и iPad: как сменить регион App Store (нужно для всех приложений)"
 t = t[:m.start()] + m.group(1) + summary + m.group(3) + block + m.group(5) + m.group(6) + t[m.end():]
 css = ".rg h4{margin:14px 0 4px;font-size:.95rem}.rg ul{margin:6px 0 0;padding-left:20px}.rg li{margin:5px 0}.rg .adr{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}.rg dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:6px 0 0}.rg dt{color:var(--mute)}.rg dd{margin:0;font-weight:600;word-break:break-word}\n"
 if ".rg h4" not in t:
