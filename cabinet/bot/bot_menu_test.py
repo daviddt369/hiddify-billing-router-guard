@@ -101,7 +101,7 @@ with app.test_request_context("/"):
     import re
     hrefs = re.findall(r'href="([^"]+)"', text)
     allowed = ("https://apps.apple.com/", "https://play.google.com/", "https://github.com/hiddify/")
-    check("instruction mentions the cabinet, INCY first on iPhone, only app-store links (and the region guide page), no markdown stars", "Личный кабинет" in text and text.index("INCY") < text.index("Hiddify") and "**" not in text and bool(hrefs) and all(h.startswith(allowed) or h.endswith("/#region") for h in hrefs), str(hrefs))
+    check("instruction mentions the cabinet, Hiddify recommended first, every iPhone app from the US App Store (no ru store link), only app-store links (and the region guide page), no markdown stars", "Личный кабинет" in text and text.index("Hiddify") < text.index("INCY") and "apps.apple.com/ru/" not in text and "apps.apple.com/us/app/incy/" in text and "**" not in text and bool(hrefs) and all(h.startswith(allowed) or h.endswith("/#region") for h in hrefs), str(hrefs))
     check("instruction has no template leftovers (@@, [[GUIDE]])", "@@" not in text and "[[" not in text and "]]" not in text)
     w = Usage._telegram_welcome_message()
     check("welcome message points to the cabinet and has no external link", "Личный кабинет" in w and "http" not in w, w[:80])
