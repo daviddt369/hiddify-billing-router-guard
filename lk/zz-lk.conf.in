@@ -84,6 +84,9 @@ server {
         proxy_read_timeout 120s;
     }
 
+    # extra locations of this host (the geo-file mirror)
+    include /opt/hiddify-manager/nginx/conf.d/lk-extra/*.locations;
+
     location / {
         return 404;
     }
