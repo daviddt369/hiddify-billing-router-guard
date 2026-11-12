@@ -338,6 +338,24 @@ def check_backups(cfg):
     return out
 
 
+def check_backup_markers(cfg):
+    """backup_markers: [{"name":..., "file": "/var/lib/vpn-backup/x.ok", "max_age_h": 30, "label": "..."}].
+    A backup job touches its marker file ONLY after a verified success (systemd ExecStartPost), so a missing or stale marker means
+    "the backup did not run or failed" - this is what protects against a silently dead backup (found 2026-11-12: the PC-side pull had been dead for 7 weeks unnoticed)."""
+    out = []
+    for m in cfg.get("backup_markers", []):
+        name = m["name"]
+        label = m.get("label", name)
+        limit = float(m.get("max_age_h", 30))
+        try:
+            age_h = (time.time() - os.path.getmtime(m["file"])) / 3600
+        except OSError:
+            out.append(R(f"backupjob:{name}", False, CRIT, f"{label}: нет отметки об успешном запуске ({m['file']}) - бэкап не выполнялся или падал"))
+            continue
+        out.append(R(f"backupjob:{name}", age_h <= limit, CRIT, f"{label}: последний успешный запуск {age_h:.1f} ч назад (допустимо не более {limit:g}) - проверьте journalctl -u <служба бэкапа>"))
+    return out
+
+
 def public_listeners(ignore_ports=(), ignore_procs=(), ephemeral=()):
     rc, so = sh(["ss", "-Htulnp"])
     res = {}
@@ -845,7 +863,7 @@ def run_fast(cfg, mon, learn=False):
         res += check_director(cfg, mon.state)
         res += check_backups(cfg)
     res += check_wireguard(cfg, mon.state)
-    res += check_system(cfg) + check_certs(cfg)
+    res += check_system(cfg) + check_certs(cfg) + check_backup_markers(cfg)
     res += check_ports(cfg, mon.state, learn) + check_egress(cfg) + check_fingerprints(cfg, mon.state) + check_db_setting(cfg) + check_tcp_targets(cfg)
     return res
 

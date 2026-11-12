@@ -1,0 +1,9 @@
+# mirror of the routing geo files: the two files of the last release that passed the check (cheb_geo_update.py). Included by the lk host block (zz-lk.conf) through
+# `include .../lk-extra/*.locations`. The path carries a random token: the files are public data, the token only keeps scanners and strangers from using the node as a mirror.
+location ~ ^/@@TOKEN@@/(geoip|geosite)\.dat$ {
+    if ($lk_plain) { return 404; }
+    alias @@WWW@@/$1.dat;
+    default_type application/octet-stream;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Cache-Control "public, max-age=3600" always;
+}

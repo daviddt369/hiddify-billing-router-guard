@@ -1,119 +1,168 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-palette="purple">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark light">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex,nofollow">
 <title>{{ brand }}: личный кабинет</title>
 <style>
-:root{--bg:#f3f4fa;--card:#fff;--ink:#171a2b;--mute:#626a80;--line:#e3e6f0;--acc:#3b3bd6;--acc-ink:#fff;--soft:#ecedfd;--hdr:#2f2fb7;--ok:#0f7b46;--ok-bg:#e4f6ec;--warn:#8a5a00;--warn-bg:#fff3d1;--bad:#b3261e;--bad-bg:#fdeceb;--shadow:0 1px 2px rgba(23,26,43,.06),0 6px 20px rgba(23,26,43,.05)}
-:root[data-theme=dark]{--bg:#0e1020;--card:#171a30;--ink:#eceefb;--mute:#9aa1bd;--line:#272b49;--acc:#7b7bff;--acc-ink:#0b0c1c;--soft:#1e2247;--hdr:#1b1d4a;--ok:#4cc38a;--ok-bg:#123324;--warn:#f0c15a;--warn-bg:#3a2e0e;--bad:#ff8a80;--bad-bg:#3b1815;--shadow:none}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1020;--card:#171a30;--ink:#eceefb;--mute:#9aa1bd;--line:#272b49;--acc:#7b7bff;--acc-ink:#0b0c1c;--soft:#1e2247;--hdr:#1b1d4a;--ok:#4cc38a;--ok-bg:#123324;--warn:#f0c15a;--warn-bg:#3a2e0e;--bad:#ff8a80;--bad-bg:#3b1815;--shadow:none}}
+:root{--acc-rgb:140,255,46;--glow2-rgb:30,130,50;--bg:#050a06;--card:#0d1610;--card2:#132218;--ink:#ffffff;--mute:#d6e1d8;--line:rgba(var(--acc-rgb),.20);--acc:#8cff2e;--acc-ink:#04100a;--soft:rgba(var(--acc-rgb),.10);--hdr:#050a06;--ok:#a6ff63;--ok-bg:rgba(var(--acc-rgb),.16);--warn:#ffd861;--warn-bg:rgba(255,210,74,.15);--bad:#ffa39b;--bad-bg:rgba(255,120,110,.16);--glow:0 0 0 1px rgba(var(--acc-rgb),.06),0 14px 44px rgba(0,0,0,.5);--field:rgba(255,255,255,.05);--nav:rgba(13,22,16,.94)}
+:root[data-palette=purple]{--acc-rgb:154,151,255;--glow2-rgb:70,50,160;--bg:#0a0b1c;--card:#12142b;--card2:#191c3a;--mute:#d3d6ee;--acc:#9a97ff;--acc-ink:#0a0b1c;--hdr:#0a0b1c;--ok:#8fe3ab;--ok-bg:rgba(143,227,171,.14);--nav:rgba(18,20,43,.94)}
+:root[data-palette=amber]{--acc-rgb:255,194,51;--glow2-rgb:120,80,10;--bg:#0b0a06;--card:#15120a;--card2:#1e1a0d;--mute:#e6dfc9;--acc:#ffc233;--acc-ink:#1a1200;--hdr:#0b0a06;--ok:#9fe3a8;--ok-bg:rgba(159,227,168,.14);--nav:rgba(21,18,10,.94)}
+:root[data-theme=light]{--bg:#f3f8f1;--card:#ffffff;--card2:#f2f8ee;--ink:#07120a;--mute:#2b3a2e;--line:#cfe0ca;--acc:#46a600;--acc-ink:#04100a;--soft:#e6f5da;--hdr:#ffffff;--ok:#12631b;--ok-bg:#dcf4cf;--warn:#6f4a00;--warn-bg:#fff0c2;--bad:#9d211a;--bad-bg:#fde3e0;--glow:0 1px 2px rgba(0,0,0,.06),0 10px 28px rgba(0,0,0,.07);--field:#f1f6ef;--nav:rgba(255,255,255,.96)}
+:root[data-theme=light][data-palette=purple]{--acc:#4b47d6;--acc-ink:#ffffff;--soft:#ecebff;--line:#d6d5f5;--bg:#f4f4fc;--card2:#f1f0fd;--ink:#0b0c1c;--mute:#33375a;--field:#f1f1fb;--ok:#14653a;--ok-bg:#dcf3e3;--hdr:#ffffff}
+:root[data-theme=light][data-palette=purple] .bar-bg{background:#dddcf3}
+:root[data-theme=light][data-palette=purple] .btn.sec{border-color:#8683e8}
+:root[data-theme=light][data-palette=amber]{--acc:#f2b300;--acc-ink:#1a1200;--soft:#fff3cf;--line:#eadbb0;--bg:#fbf8ef;--card2:#fdf6e0;--ink:#171204;--mute:#4a4128;--field:#faf4e2;--ok:#14653a;--ok-bg:#dcf3e3;--hdr:#ffffff}
+:root[data-theme=light][data-palette=amber] .bar-bg{background:#efe6c8}
+:root[data-theme=light][data-palette=amber] .btn.sec{border-color:#d9a400}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Lato,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:40px}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font:16px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding-bottom:110px;background:radial-gradient(900px 520px at 88% -8%,rgba(var(--acc-rgb),.13),transparent 62%),radial-gradient(760px 560px at -12% 34%,rgba(var(--glow2-rgb),.20),transparent 62%),var(--bg);background-attachment:fixed}
+:root[data-theme=light] body{background:var(--bg)}
 button,input{font:inherit;color:inherit}
 .wrap{max-width:760px;margin:0 auto;padding:0 16px}
-header.top{background:var(--hdr);color:#fff;position:sticky;top:0;z-index:5}
-.bar{display:flex;align-items:center;gap:12px;min-height:56px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem;letter-spacing:.2px}
-.logo{width:28px;height:28px;border-radius:8px;background:#fff;display:grid;place-items:center}
-.logo svg{width:18px;height:18px}
+header.top{background:var(--hdr);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.bar{display:flex;align-items:center;gap:12px;min-height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.2rem;letter-spacing:-.2px}
+.logo{width:32px;height:32px;border-radius:10px;background:var(--acc);display:grid;place-items:center;box-shadow:0 0 20px rgba(var(--acc-rgb),.35)}
+.logo svg{width:19px;height:19px}
 .grow{flex:1}
-.ibtn{appearance:none;border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:10px;min-width:40px;height:40px;cursor:pointer;display:inline-grid;place-items:center;padding:0 12px;font-weight:700}
-.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{appearance:none;border:0;background:transparent;color:rgba(255,255,255,.78);padding:12px 14px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
-.tab[aria-selected=true]{color:#fff;border-bottom-color:#fff}
-main{padding-top:16px}
-.col{display:grid;gap:14px;min-width:0}
-.card{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
-.card h2{margin:0 0 4px;font-size:1.12rem}
-.card .sub{margin:0 0 12px;color:var(--mute)}
-.hello{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.who{font-weight:800;font-size:1.1rem;word-break:break-all}
-.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;font-weight:700;font-size:.85rem}
+.ibtn{appearance:none;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:12px;min-width:42px;height:42px;cursor:pointer;display:inline-grid;place-items:center;padding:0 12px;font-weight:800}
+.tabs{display:flex;gap:6px;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:30;background:var(--nav);border:1px solid var(--line);border-radius:22px;padding:6px;box-shadow:0 10px 40px rgba(0,0,0,.55);max-width:736px;margin:0 auto}
+.tab{appearance:none;border:0;background:transparent;color:var(--mute);padding:12px 10px;font-weight:800;cursor:pointer;white-space:nowrap;flex:1;border-radius:16px;text-align:center}
+.tab[aria-selected=true]{background:var(--acc);color:var(--acc-ink)}
+main{padding-top:18px}
+.col{display:grid;gap:16px;min-width:0}
+.card{min-width:0;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--glow)}
+.card h2{margin:0 0 6px;font-size:1.3rem;font-weight:900;letter-spacing:-.3px}
+.card .sub{margin:0 0 14px;color:var(--mute)}
+.kicker{color:var(--acc);font-weight:800;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase}
+:root[data-theme=light] .kicker{color:var(--ok)}
+.kicker:before{content:"> "}
+.who{font-weight:900;font-size:1.6rem;line-height:1.2;word-break:break-all;margin:4px 0 10px;letter-spacing:-.3px}
+.heroline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.planname{font-weight:800;color:var(--ink)}
+.pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:5px 13px;font-weight:800;font-size:.86rem;border:1px solid currentColor}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.bad{background:var(--bad-bg);color:var(--bad)}
 .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
-.meters{display:grid;grid-template-columns:1fr;gap:14px;margin-top:16px}
-@media (min-width:520px){.meters{grid-template-columns:1fr 1fr}}
-.meter{background:var(--soft);border-radius:14px;padding:14px}
-.meter .k{color:var(--mute);font-size:.85rem}
-.meter .v{font-size:1.9rem;font-weight:800;line-height:1.15;margin:2px 0}
-.meter .v small{font-size:.9rem;font-weight:700;color:var(--mute)}
-.bar-bg{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
-.bar-fg{height:100%;border-radius:99px;background:var(--acc);transition:width .35s}
-.bar-fg.warn{background:#e0a100}.bar-fg.bad{background:var(--bad)}
-.meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;color:var(--mute);font-size:.9rem}
-.meta b{color:var(--ink)}
-.banner{border-radius:12px;padding:12px 14px;margin:14px 0 0;font-weight:600}
+.bigdays{margin:2px 0 4px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bigdays .num{font-size:3.3rem;font-weight:900;line-height:1;letter-spacing:-1px;color:var(--ink)}
+.bigdays .u{font-size:1.15rem;font-weight:800;color:var(--mute)}
+.klabel{color:var(--mute);font-size:.88rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.bar-bg{height:10px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:10px}
+:root[data-theme=light] .bar-bg{background:#d9e6d4}
+.bar-fg{height:100%;border-radius:99px;background:var(--acc);transition:width .35s;box-shadow:0 0 14px rgba(var(--acc-rgb),.5)}
+.bar-fg.warn{background:#ffc531;box-shadow:none}.bar-fg.bad{background:#ff7b70;box-shadow:none}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{min-width:0;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--glow)}
+#paidwrap{grid-column:1/-1}#paidwrap .v{font-size:1.25rem}
+.tile .v{font-size:1.7rem;font-weight:900;line-height:1.15;margin:6px 0 2px;letter-spacing:-.4px}
+.tile .v small{font-size:.9rem;font-weight:700;color:var(--mute);letter-spacing:0}
+.banner{border-radius:14px;padding:13px 15px;margin:16px 0 0;font-weight:700;border:1px solid currentColor}
 .banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}
-.plans{display:grid;gap:8px;margin:6px 0 12px}
-.plan{appearance:none;display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 14px;min-height:56px;cursor:pointer}
-.plan[aria-pressed=true]{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft);background:var(--soft)}
-.plan b{display:block}.plan small{display:block;color:var(--mute);font-size:.82rem}
-.plan .pp{font-weight:800;white-space:nowrap}
-.plan .cur{font-size:.72rem;font-weight:700;color:var(--acc);margin-left:6px}
-.field{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:0 12px;min-height:48px}
-.field input{flex:1;border:0;background:transparent;outline:0;min-width:0}
-.field .lbl{color:var(--mute);font-size:.85rem}
-.btn{appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);font-weight:800;font-size:1.02rem;cursor:pointer;margin-top:12px;text-decoration:none;text-align:center}
-.btn.sec{background:transparent;color:var(--acc);border:1px solid var(--acc)}
-.btn.small{min-height:44px;width:auto;padding:0 16px;margin:0;font-size:.95rem}
-.btn.top{margin-top:14px}
-.hint{color:var(--mute);font-size:.85rem;margin:8px 0 0}
-.lbl2{color:var(--mute);font-size:.85rem;margin:14px 0 6px}
+.plans{display:grid;gap:10px;margin:6px 0 14px}
+.plan{appearance:none;display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--field);border-radius:16px;padding:12px 16px;min-height:60px;cursor:pointer;color:var(--ink)}
+.plan[aria-pressed=true]{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft),0 0 22px rgba(var(--acc-rgb),.18);background:var(--soft)}
+.plan b{display:block}.plan small{display:block;color:var(--mute);font-size:.84rem}
+.plan .pp{font-weight:900;white-space:nowrap;font-size:1.05rem}
+.plan .cur{font-size:.72rem;font-weight:800;color:var(--acc);margin-left:6px}
+:root[data-theme=light] .plan .cur{color:var(--ok)}
+.field{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--field);border-radius:14px;padding:0 14px;min-height:50px}
+.field input{flex:1;border:0;background:transparent;outline:0;min-width:0;color:var(--ink)}
+.field .lbl{color:var(--mute);font-size:.88rem}
+.btn{appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:0;border-radius:15px;background:var(--acc);color:var(--acc-ink);font-weight:900;font-size:1.04rem;cursor:pointer;margin-top:14px;text-decoration:none;text-align:center;box-shadow:0 0 26px rgba(var(--acc-rgb),.28)}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid rgba(var(--acc-rgb),.55);box-shadow:none}
+:root[data-theme=light] .btn.sec{border-color:#7fbf45}
+.btn.small{min-height:46px;width:auto;padding:0 18px;margin:0;font-size:.97rem}
+.btn.top{margin-top:16px}
+.herobtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.herobtns .btn{width:auto;flex:1 1 170px;margin:0}
+.hint{color:var(--mute);font-size:.9rem;margin:8px 0 0}
+.lbl2{color:var(--mute);font-size:.9rem;font-weight:700;margin:16px 0 7px}
 .lbl2:first-of-type{margin-top:0}
-.err{display:none;color:var(--bad);font-size:.88rem;margin:6px 0 0}.err.on{display:block}
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
-.chip{appearance:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;min-height:44px;cursor:pointer}
-.chip[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:700}
-.rec{background:var(--soft);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+.err{display:none;color:var(--bad);font-size:.9rem;margin:6px 0 0}.err.on{display:block}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:999px;padding:9px 16px;min-height:46px;cursor:pointer;font-weight:700}
+.chip[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:900}
+.rec{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:0 0 12px}
 .rec p{margin:0 0 6px}.rec p:last-child{margin:0}
-.app{min-width:0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 8px}
-.app.first{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft)}
-.app .n{font-weight:800}.app .b{background:var(--soft);color:var(--acc);border-radius:999px;font-size:.72rem;font-weight:700;padding:2px 8px;margin-left:6px}
-.app .d{display:block;color:var(--mute);font-size:.82rem;font-weight:400;margin-top:2px}
-details{min-width:0;border:1px solid var(--line);border-radius:12px;padding:0 14px;margin:0 0 8px;background:var(--card)}
-summary{cursor:pointer;font-weight:700;padding:12px 0;min-height:48px;display:flex;align-items:center;gap:10px}
-summary .num{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:50%;background:var(--acc);color:var(--acc-ink);font-size:.82rem;font-weight:800}
-details .in{padding:0 0 14px}
-details ol{margin:6px 0 0;padding-left:22px}details li{margin:5px 0}
+.app{min-width:0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);background:var(--field);border-radius:16px;padding:14px 16px;margin:0 0 10px}
+.app.first{border-color:var(--acc);box-shadow:0 0 0 2px var(--soft),0 0 22px rgba(var(--acc-rgb),.16)}
+.app .n{font-weight:900;font-size:1.05rem}.app .b{background:var(--acc);color:var(--acc-ink);border-radius:999px;font-size:.72rem;font-weight:900;padding:3px 10px;margin-left:8px}
+.app .d{display:block;color:var(--mute);font-size:.88rem;font-weight:400;margin-top:3px}
+details{min-width:0;border:1px solid var(--line);border-radius:16px;padding:0 16px;margin:0 0 10px;background:var(--field)}
+summary{cursor:pointer;font-weight:800;padding:13px 0;min-height:50px;display:flex;align-items:center;gap:11px}
+summary .num{display:inline-grid;place-items:center;min-width:28px;height:28px;border-radius:50%;background:var(--acc);color:var(--acc-ink);font-size:.86rem;font-weight:900}
+details .in{padding:0 0 16px}
+details ol{margin:6px 0 0;padding-left:22px}details li{margin:6px 0}
+.rg h4{margin:16px 0 4px;font-size:1rem}.rg ul{margin:6px 0 0;padding-left:20px}.rg li{margin:6px 0}.rg .adr{border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:10px 0}.rg dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:6px 0 0}.rg dt{color:var(--mute)}.rg dd{margin:0;font-weight:700;word-break:break-word}
 .linkbox{display:flex;gap:8px;align-items:center}
 .linkbox .field{flex:1;min-width:0}
 .field .mono{flex:1;min-width:0}
-.mono{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.qr{display:grid;place-items:center;margin:14px 0 4px}
-.qr canvas,.qr img{border-radius:12px;background:#fff;padding:10px}
-.timer{color:var(--bad);font-weight:700;font-variant-numeric:tabular-nums}
-.list{display:grid;gap:8px}
-.cfg{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.qr{display:grid;place-items:center;margin:16px 0 4px}
+.qr canvas,.qr img{border-radius:14px;background:#fff;padding:10px}
+.timer{color:var(--bad);font-weight:800;font-variant-numeric:tabular-nums}
+.list{display:grid;gap:10px}
+.cfg{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);background:var(--field);border-radius:14px;padding:11px 15px}
 .cfg span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);background:#171a2b;color:#fff;border-radius:12px;padding:12px 16px;max-width:92vw;opacity:0;pointer-events:none;transition:.25s;z-index:20}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(30px);background:#fff;color:#04100a;font-weight:700;border-radius:14px;padding:13px 17px;max-width:92vw;opacity:0;pointer-events:none;transition:.25s;z-index:40}
 .toast.on{opacity:1;transform:translateX(-50%)}
-footer{color:var(--mute);font-size:.82rem;text-align:center;margin:22px 0 0}
+footer{color:var(--mute);font-size:.86rem;text-align:center;margin:26px 0 0}
 footer a{color:var(--mute)}
 [hidden]{display:none!important}
+#status{padding:16px}
+.toprow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.who{font-size:1.25rem;margin:2px 0 0;line-height:1.2}
+.planline{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:8px 0 0}
+.until{color:var(--mute);font-size:.92rem}
+.bar-bg.thin{height:6px;margin-top:8px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.stat{min-width:0;background:var(--field);border:1px solid var(--line);border-radius:14px;padding:10px 10px 12px}
+.stat .sv{font-weight:900;font-size:1.3rem;line-height:1.15;letter-spacing:-.3px}
+.stat .sv small{font-size:.74rem;font-weight:700;color:var(--mute);letter-spacing:0}
+.stat .sl{color:var(--mute);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.herobtns{margin-top:14px}
+.herobtns .btn{min-height:48px;font-size:1rem}
+#status{order:0}#linkcard{order:2}#renew{order:3}#connect{order:4}#supportcard{order:5}
+#linkcard,#supportcard{padding:16px}
+details.card.acc{padding:0 16px}
+details.card.acc>summary{padding:16px 0;min-height:56px;font-size:1.1rem;font-weight:900}
+summary{list-style:none}summary::-webkit-details-marker{display:none}
+summary::after{content:"+";margin-left:auto;padding-left:10px;font-weight:900;font-size:1.2rem;color:var(--acc)}
+details[open]>summary::after{content:"\2013"}
+:root[data-theme=light] summary::after{color:var(--ok)}
+details.card.acc>.in{padding:0 0 16px}
+.opt .btn{margin-top:0}
+.optnote{color:var(--ok);font-weight:800;font-size:.9rem;margin:6px 0 0;text-align:center}
+.opt2{margin:14px 0 0;padding:0;border:0;background:transparent}
+.opt2>summary{border:1px solid rgba(var(--acc-rgb),.55);border-radius:15px;padding:12px 16px;min-height:60px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 10px}
+.opt2>summary>span:first-child{font-weight:900;font-size:1.02rem}
+.opt2 .optnote2{color:var(--mute);font-size:.85rem;font-weight:600;flex-basis:100%;order:3}
+.opt2>summary::after{order:2}
+.opt2>.in{padding:14px 0 0}
+@media (min-width:900px){.tabs{left:50%;right:auto;width:736px;transform:translateX(-50%)}}
 </style>
 </head>
 <body>
 <header class="top">
  <div class="wrap">
   <div class="bar">
-   <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="#2f2fb7"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span>{{ brand }}</div>
+   <div class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="#04100a"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span>{{ brand }}</div>
    <span class="grow"></span>
    <button class="ibtn" id="theme" type="button" aria-label="Тема">◐</button>
   </div>
-  <nav class="tabs" role="tablist" aria-label="Разделы">
-   <button class="tab" type="button" role="tab" data-tab="home" aria-selected="true">Главная</button>
-   <button class="tab" type="button" role="tab" data-tab="configs" aria-selected="false">Все конфиги</button>
-   <button class="tab" type="button" role="tab" data-tab="tg" aria-selected="false" id="tab-btn-tg" hidden>TG-прокси</button>
-  </nav>
  </div>
 </header>
+<nav class="tabs" role="tablist" aria-label="Разделы">
+ <button class="tab" type="button" role="tab" data-tab="home" aria-selected="true">Главная</button>
+ <button class="tab" type="button" role="tab" data-tab="configs" aria-selected="false">Все конфиги</button>
+ <button class="tab" type="button" role="tab" data-tab="tg" aria-selected="false" id="tab-btn-tg" hidden>TG-прокси</button>
+</nav>
 
 <main class="wrap">
 <noscript><div class="card"><h2>Нужен JavaScript</h2><p class="sub">Включите JavaScript или откройте страницу с параметром <b>?classic=1</b>.</p></div></noscript>
@@ -122,22 +171,28 @@ footer a{color:var(--mute)}
  <div class="col" id="homecol">
 
   <div class="card" id="status">
-   <div class="hello">
-    <div><div style="color:var(--mute);font-size:.85rem">Здравствуйте</div><div class="who" id="who"></div></div>
-    <div style="text-align:right"><div style="font-weight:800;font-size:1.05rem" id="planname"></div><span class="pill ok" id="pill"><i class="dot"></i><span id="pilltxt"></span></span></div>
+   <div class="toprow">
+    <div><div class="kicker">Здравствуйте</div><div class="who" id="who"></div></div>
+    <span class="pill ok" id="pill"><i class="dot"></i><span id="pilltxt"></span></span>
    </div>
-   <div class="meters">
-    <div class="meter"><div class="k">Осталось дней</div><div class="v"><span id="days"></span> <small id="dayunit"></small></div><div class="bar-bg"><div class="bar-fg" id="daybar"></div></div><div class="hint" id="until"></div></div>
-    <div class="meter"><div class="k">Осталось трафика</div><div class="v"><span id="gb"></span> <small id="gbtotal"></small></div><div class="bar-bg"><div class="bar-fg" id="gbbar"></div></div><div class="hint" id="reset"></div></div>
-   </div>
-   <div class="meta"><span>Устройств: <b id="devices"></b></span><span id="paidwrap">Оплачено: <b id="paid"></b></span></div>
+   <div class="planline"><span class="planname" id="planname"></span><span class="until" id="until"></span></div>
+   <div class="bar-bg thin"><div class="bar-fg" id="daybar"></div></div>
    <div class="banner warn" id="banner" hidden></div>
-   <a class="btn top" id="cta" href="#" rel="noopener" hidden>Оплатить в Telegram-боте</a>
+   <div class="stats">
+    <div class="stat"><div class="sv"><span id="days"></span> <small id="dayunit"></small></div><div class="sl">осталось</div></div>
+    <div class="stat"><div class="sv"><span id="gb"></span> <small id="gbtotal"></small></div><div class="sl">трафик, ГБ</div><div class="bar-bg thin"><div class="bar-fg" id="gbbar"></div></div></div>
+    <div class="stat"><div class="sv" id="devices"></div><div class="sl">устройства</div></div>
+   </div>
+   <span id="paid" hidden></span><span id="paidwrap" hidden></span><span id="reset" hidden></span><a id="cta" href="#" hidden></a>
+   <div class="herobtns">
+    <a class="btn sec" id="goconnect" href="#linkcard">Подключить устройство</a>
+    <a class="btn" id="goextend" href="#renew">Продлить</a>
+   </div>
   </div>
 
   <div class="card" id="linkcard">
    <h2>Ваша ссылка подписки</h2>
-   <p class="sub">Её нужно добавить в приложение (шаги ниже). Не передавайте её другим людям.</p>
+   <p class="sub">Добавьте её в приложение (инструкция ниже). Не передавайте другим людям.</p>
    <div class="lbl2">Для Hiddify и других приложений</div>
    <div class="linkbox"><div class="field"><span class="mono" id="sublink"></span></div><button class="btn small" id="copy" type="button">Скопировать</button></div>
    <div id="happbox" hidden>
@@ -152,9 +207,10 @@ footer a{color:var(--mute)}
    <div id="shortbox" class="hint" hidden></div>
   </div>
 
-  <div class="card" id="connect">
-   <h2>Подключение</h2>
-   <p class="sub">Два шага. Если уже подключены, этот раздел можно не открывать.</p>
+  <details class="card acc" id="connect">
+   <summary>Инструкция: как подключиться</summary>
+   <div class="in">
+   <p class="sub">Если приложение уже настроено, этот раздел можно не открывать.</p>
    <details open><summary><span class="num">1</span>Установите приложение</summary><div class="in">
      <div class="chips" id="platforms" role="group" aria-label="Платформа"></div>
      <div class="rec" id="rec"></div>
@@ -164,30 +220,34 @@ footer a{color:var(--mute)}
      <ol><li>Скопируйте ссылку подписки (кнопка «Скопировать» выше): первую - для Hiddify и других приложений, вторую (если она есть) - для Happ и INCY. Или отсканируйте QR-код.</li><li>В приложении нажмите «+» и вставьте ссылку из буфера обмена.</li><li>Выберите сервер и включите VPN.</li></ol>
      <p class="hint">Маршрутизация (российские сайты открываются напрямую) уже внутри подписки: ничего настраивать и импортировать не нужно. В Hiddify при первом запуске выберите страну «Россия».</p>
    </div></details>
-   <details id="regionhelp"><summary>iPhone: как сменить регион App Store (для Hiddify и Happ)</summary><div class="in"><ol><li>Настройки, ваше имя, «Медиа и покупки», «Просмотреть», «Страна или регион».</li><li>Выберите США и любой адрес из подсказок, способ оплаты «Нет».</li><li>Установите приложение из App Store. Регион можно вернуть, приложение останется.</li></ol><p class="hint">INCY в российском App Store есть, ему регион менять не нужно.</p><p class="hint" id="guidewrap" hidden><a id="guide" href="#" target="_blank" rel="noopener noreferrer">Полная инструкция: все шаги и готовые адреса</a></p></div></details>
+   <details id="regionhelp"><summary>iPhone и iPad: как сменить регион App Store (нужно для всех приложений)</summary><div class="in"><!-- region-guide:start --><div class="rg"><p class="hint" style="margin:0 0 8px">На iPhone и iPad Hiddify, Happ и INCY сейчас есть только в App Store США, поэтому сначала нужно сменить страну или регион в Apple Account. Это займёт около пяти минут. Если приложение уже установлено, менять регион не нужно.</p><h4>Шаг 1. Смена региона в настройках iPhone</h4><ol><li>Откройте приложение «Настройки».</li><li>Нажмите на своё имя в самом верху экрана.</li><li>Выберите «Медиаматериалы и покупки» (в некоторых версиях iOS — «Контент и покупки»), затем «Просмотреть».</li><li>Подтвердите вход по Face ID или Touch ID.</li><li>Нажмите «Страна/регион», затем «Изменить страну или регион».</li><li>Прокрутите список вниз и выберите «Соединённые Штаты».</li><li>Прочитайте положения и условия Apple и нажмите «Принять» в правом верхнем углу.</li></ol><h4>Если в настройках не получается — смена через сайт</h4><ol><li>Откройте Safari и перейдите на сайт appleid.apple.com.</li><li>Войдите под своей учётной записью Apple.</li><li>Перейдите в раздел «Персональные данные».</li><li>Выберите пункт «Страна/регион».</li><li>Нажмите «Изменить страну/регион» и укажите США.</li></ol><h4>Шаг 2. Что указать в анкете для США</h4><ul><li><b>Способ оплаты:</b> выберите «Нет» (None). Российские карты Visa, Mastercard и «Мир» для магазина США не подойдут.</li><li><b>Штат:</b> выбирайте штат без налога с продаж: Делавэр (Delaware), Монтана (Montana), Орегон (Oregon), Аляска (Alaska) или Нью-Гэмпшир (New Hampshire). В Калифорнии и Нью-Йорке платные приложения дороже на 7–10%.</li><li><b>Адрес:</b> нужен реально существующий адрес в выбранном штате. Можно взять один из готовых вариантов ниже. Индекс (Zip) должен соответствовать штату.</li></ul><div class="adr"><b>Вариант 1 — Делавэр (Delaware)</b><dl><dt>Улица (Street)</dt><dd>100 Continental Dr</dd><dt>Город (City)</dt><dd>Newark</dd><dt>Штат (State)</dt><dd>Delaware</dd><dt>Индекс (Zip)</dt><dd>19713</dd><dt>Телефон (Phone)</dt><dd>302-454-1500</dd></dl></div><div class="adr"><b>Вариант 2 — Орегон (Oregon)</b><dl><dt>Улица (Street)</dt><dd>614 SW 11th Ave</dd><dt>Город (City)</dt><dd>Portland</dd><dt>Штат (State)</dt><dd>Oregon</dd><dt>Индекс (Zip)</dt><dd>97205</dd><dt>Телефон (Phone)</dt><dd>503-224-3400</dd></dl></div><p style="margin:8px 0 0">Внимательно перенесите данные в соответствующие поля, затем нажмите «Далее» и «Готово». После этого откройте App Store и установите приложение.</p><div class="hint" style="margin-top:10px"><p style="margin:4px 0">Смене региона могут мешать активные подписки, деньги на балансе Apple Account и участие в семейной группе.</p><p style="margin:4px 0">Apple может запросить действительный платёжный адрес и способ оплаты выбранной страны.</p></div></div><!-- region-guide:end --><p class="hint" id="guidewrap" hidden><a id="guide" href="#" target="_blank" rel="noopener noreferrer">Полная инструкция: все шаги и готовые адреса</a></p></div></details>
    <details><summary>Другие приложения</summary><div class="in"><p style="margin:0">Подписка стандартная, её принимают и другие программы (например V2RayTun, v2rayNG). Они рассчитаны на опытных пользователей: часть из них не показывает отклик серверов или не применяет маршрутизацию. Если что-то не работает, перейдите на INCY, Happ или Hiddify.</p></div></details>
    <details><summary>Если не подключается</summary><div class="in"><ol><li>Обновите подписку в приложении.</li><li>Выберите другой сервер.</li><li>Если провайдер сильно блокирует соединения, попробуйте Hiddify: у него больше протоколов.</li><li>Перезапустите приложение.</li><li>Переключитесь между Wi-Fi и мобильным интернетом.</li></ol></div></details>
-  </div>
+  </div></details>
 
-  <div class="card" id="renew">
-   <h2 id="renewtitle">Оплата и продление</h2>
-   <p class="sub" id="renewsub"></p>
-   <a class="btn" id="paybot" href="#" rel="noopener" hidden style="margin-top:0">Оплатить в Telegram-боте</a>
-   <div class="hint" id="bothint" hidden>В боте платёж зачисляется сразу.</div>
-   <details id="sitepay" style="margin-top:14px"><summary id="sitepaysum">Не получается оплатить в боте? Оплатить на сайте</summary><div class="in">
-    <div class="plans" id="plans" role="group" aria-label="Тариф"></div>
-    <form id="payform" method="post" accept-charset="utf-8">
-     <div class="field"><span class="lbl">Телефон</span><input id="phone" name="cps_phone" aria-label="Телефон, привязанный к Telegram" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67"></div>
-     <div class="err" id="phoneerr" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
-     <input type="hidden" name="customerNumber" id="customer">
-     <input type="hidden" name="sum" id="sum">
-     <input type="hidden" name="shopId" id="shop">
-     <div class="hint" id="phonehint"></div>
-     <button class="btn" type="submit" id="pay">Оплатить <span id="payamt"></span></button>
-    </form>
-    <div class="hint">Через сайт платёж обрабатывается вручную и зачисляется дольше, чем через бота. Оплата проходит на стороне ЮKassa, данные карты здесь не вводятся.</div>
-   </div></details>
-  </div>
+  <details class="card acc" id="renew">
+   <summary id="renewtitle">Оплата и продление</summary>
+   <div class="in">
+    <p class="sub" id="renewsub"></p>
+    <div class="opt">
+     <a class="btn" id="paybot" href="#" rel="noopener" hidden style="margin-top:0">Оплатить в Telegram-боте</a>
+     <div class="optnote" id="bothint" hidden>Зачисление сразу</div>
+    </div>
+    <details id="sitepay" class="opt2"><summary id="sitepaysum"><span>Оплатить на сайте</span><span class="optnote2">зачисление в течение суток</span></summary><div class="in">
+     <div class="plans" id="plans" role="group" aria-label="Тариф"></div>
+     <form id="payform" method="post" accept-charset="utf-8">
+      <div class="field"><span class="lbl">Телефон</span><input id="phone" name="cps_phone" aria-label="Телефон, привязанный к Telegram" inputmode="tel" autocomplete="tel" placeholder="+7 999 123-45-67"></div>
+      <div class="err" id="phoneerr" role="alert">Укажите номер телефона, привязанный к Telegram.</div>
+      <input type="hidden" name="customerNumber" id="customer">
+      <input type="hidden" name="sum" id="sum">
+      <input type="hidden" name="shopId" id="shop">
+      <div class="hint" id="phonehint"></div>
+      <button class="btn" type="submit" id="pay">Оплатить <span id="payamt"></span></button>
+     </form>
+     <div class="hint">Зачисление в течение суток: платёж через сайт обрабатывается вручную. Оплата проходит на стороне ЮKassa, данные карты здесь не вводятся.</div>
+    </div></details>
+   </div>
+  </details>
 
   <div class="card" id="supportcard">
    <h2>Поддержка</h2>
@@ -227,11 +287,11 @@ if(D.days.unlimited){$('#days').textContent='∞';$('#dayunit').textContent='';$
 else{$('#days').textContent=D.days.n;$('#dayunit').textContent=plural(D.days.n);$('#until').textContent=D.days.until;
  var dp=D.days.total?Math.round(D.days.n/D.days.total*100):0;var db=$('#daybar');db.style.width=Math.min(100,Math.max(dp,D.days.n?4:0))+'%';db.className='bar-fg'+(D.days.n===0?' bad':(D.days.n<=3?' warn':''))}
 if(D.traffic.unlimited){$('#gb').textContent='∞';$('#gbtotal').textContent='без лимита';$('#gbbar').style.width='100%';$('#reset').textContent=''}
-else{$('#gb').textContent=fmtGb(D.traffic.left);$('#gbtotal').textContent='ГБ из '+fmtGb(D.traffic.total);var gp=D.traffic.total?Math.round(D.traffic.left/D.traffic.total*100):0;var gb=$('#gbbar');gb.style.width=Math.min(100,Math.max(gp,D.traffic.left?4:0))+'%';gb.className='bar-fg'+(D.traffic.left===0?' bad':(gp<=15?' warn':''));$('#reset').textContent=D.traffic.reset}
+else{$('#gb').textContent=fmtGb(D.traffic.left);$('#gbtotal').textContent='/ '+fmtGb(D.traffic.total);var gp=D.traffic.total?Math.round(D.traffic.left/D.traffic.total*100):0;var gb=$('#gbbar');gb.style.width=Math.min(100,Math.max(gp,D.traffic.left?4:0))+'%';gb.className='bar-fg'+(D.traffic.left===0?' bad':(gp<=15?' warn':''));$('#reset').textContent=D.traffic.reset}
 $('#devices').textContent=D.devices;if(D.paid){$('#paid').textContent=D.paid}else $('#paidwrap').hidden=true;
 if(D.banner){var b=$('#banner');b.hidden=false;b.className='banner '+D.banner.tone;b.textContent=D.banner.text}
 /* the account that needs a payment gets the Telegram button right in the status */
-if(D.need_pay){var cta=$('#cta');cta.hidden=false;if(D.pay.bot_url){cta.href=D.pay.bot_url;cta.textContent=D.expired?'Продлить в Telegram-боте':'Оплатить в Telegram-боте'}else{cta.href='#renew';cta.textContent='Перейти к оплате';cta.onclick=function(e){e.preventDefault();$('#sitepay').open=true;$('#renew').scrollIntoView({behavior:'smooth'})}}}
+if(D.need_pay){$('#goextend').textContent=D.expired?'Продлить':(D.plan==='Пробный доступ'?'Выбрать тариф':'Оплатить')}
 /* ---- payment: the bot first, the site form folded ---- */
 var sel=0;D.plans.forEach(function(p,i){if(p.current)sel=i});
 var trialAcc=D.plan==='Пробный доступ';
@@ -247,9 +307,15 @@ if(siteOk){plansUI();form.action=D.pay.action;$('#shop').value=D.pay.shop_id;$('
  $('#phonehint').textContent=D.phone?'Телефон взят из вашего аккаунта. Платёж по нему находят и зачисляют.':'Укажите телефон, привязанный к Telegram: по нему платёж находят и зачисляют.';
  $('#phone').addEventListener('input',function(){$('#phoneerr').classList.remove('on')});
  form.addEventListener('submit',function(e){var v=($('#phone').value||'').trim(),n=v.replace(/[^0-9]/g,'').length;if(n<10||n>15){e.preventDefault();$('#phoneerr').classList.add('on');$('#phone').focus();return}$('#customer').value=v;if(D.plans[sel])$('#sum').value=D.plans[sel].price});
- if(!D.pay.bot_url){$('#sitepay').open=true;$('#sitepaysum').textContent='Оплата на сайте'}
+ if(!D.pay.bot_url){$('#sitepay').open=true;$('#sitepaysum').firstChild.textContent='Оплатить на сайте'}
 }else{$('#sitepay').hidden=true}
 if(!D.pay.bot_url&&!siteOk){$('#renew').hidden=true}
+if($('#renew').hidden)$('#goextend').hidden=true;
+/* the layout follows the state of the account */
+if(D.need_pay){$('#renew').style.order=1;$('#renew').open=true}
+if(D.plan==='Пробный доступ'){$('#connect').open=true}
+$('#goextend').onclick=function(e){e.preventDefault();$('#renew').open=true;$('#renew').scrollIntoView({behavior:'smooth'})};
+$('#goconnect').onclick=function(e){e.preventDefault();$('#connect').open=true;$('#linkcard').scrollIntoView({behavior:'smooth'})};
 /* ---- subscription link ---- */
 $('#sublink').textContent=D.connect.sub_url;
 $('#copy').onclick=function(){copy(D.connect.sub_url,this)};
@@ -261,15 +327,14 @@ $('#shortbtn').onclick=function(){var b=this;b.disabled=true;fetch(D.connect.sho
 /* ---- installation: what to recommend on which platform ---- */
 if(D.connect.happ_link){$('#happbox').hidden=false;$('#happlink').textContent=D.connect.happ_link;$('#copyhapp').onclick=function(){copy(D.connect.happ_link,this)}}
 var PL=[['ios','iPhone / iPad'],['android','Android'],['windows','Windows'],['macos','macOS']];
-var APPS={"hiddify":{"n":"Hiddify","b":"Рекомендуем","d":{"ios":[["App Store","https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=app.hiddify.com"],["APK (GitHub)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk"]],"windows":[["Установщик (.exe)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe"],["Portable (.zip)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip"]],"macos":[["Скачать (.dmg)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg"]]}},"happ":{"n":"Happ","b":"","d":{"ios":[["App Store","https://apps.apple.com/us/app/happ-proxy-utility/id6504287215"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=com.happproxy"],["APK (GitHub)","https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk"]],"windows":[["Установщик (.exe)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe"]],"macos":[["Скачать (.dmg)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg"]]}},"incy":{"n":"INCY","b":"Доступен в App Store России","d":{"ios":[["App Store","https://apps.apple.com/ru/app/incy/id6756943388"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=llc.itdev.incy"],["APK (GitHub)","https://github.com/INCY-DEV/incy-platforms/releases"]],"windows":[["Установщик (.exe)","https://github.com/INCY-DEV/incy-platforms/releases"],["Portable (.zip)","https://github.com/INCY-DEV/incy-platforms/releases"]],"macos":[["App Store","https://apps.apple.com/ru/app/incy/id6756943388"],["DMG (Apple Silicon)","https://github.com/INCY-DEV/incy-platforms/releases"],["DMG (Intel)","https://github.com/INCY-DEV/incy-platforms/releases"]]}}};
-var ORDER={ios:['incy','hiddify','happ'],android:['hiddify','happ','incy'],windows:['hiddify','happ','incy'],macos:['hiddify','happ','incy']};
-var DESC={hiddify:'Больше всего протоколов, всё работает сразу.',happ:'Проще, протоколов меньше.',incy:'Проще, протоколов меньше.'};
-var REC={ios:['<b>Рекомендуем INCY:</b> он есть в российском App Store, менять регион не нужно.','Hiddify и Happ из российского App Store убраны: их можно поставить, только сменив регион (инструкция ниже). У Hiddify протоколов больше, он выручает, если провайдер сильно блокирует.'],
- other:['<b>Рекомендуем Hiddify:</b> у него больше всего протоколов, всё работает сразу.','Happ и INCY проще, но протоколов у них меньше. Если провайдер сильно блокирует соединения, лучше Hiddify.']};
+var APPS={"hiddify":{"n":"Hiddify","b":"","d":{"ios":[["App Store (США)","https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=app.hiddify.com"],["APK (GitHub)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk"]],"windows":[["Установщик (.exe)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe"],["Portable (.zip)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip"]],"macos":[["Скачать (.dmg)","https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg"]]}},"happ":{"n":"Happ","b":"","d":{"ios":[["App Store (США)","https://apps.apple.com/us/app/happ-proxy-utility/id6504287215"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=com.happproxy"],["APK (GitHub)","https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk"]],"windows":[["Установщик (.exe)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe"]],"macos":[["Скачать (.dmg)","https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg"]]}},"incy":{"n":"INCY","b":"","d":{"ios":[["App Store (США)","https://apps.apple.com/us/app/incy/id6756943388"]],"android":[["Google Play","https://play.google.com/store/apps/details?id=llc.itdev.incy"],["APK (GitHub)","https://github.com/INCY-DEV/incy-platforms/releases"]],"windows":[["Установщик (.exe)","https://github.com/INCY-DEV/incy-platforms/releases"],["Portable (.zip)","https://github.com/INCY-DEV/incy-platforms/releases"]],"macos":[["App Store (США)","https://apps.apple.com/us/app/incy/id6756943388"],["DMG (Apple Silicon)","https://github.com/INCY-DEV/incy-platforms/releases"],["DMG (Intel)","https://github.com/INCY-DEV/incy-platforms/releases"]]}}};
+var ORDER={"ios":["hiddify","happ","incy"],"android":["hiddify","happ","incy"],"windows":["hiddify","happ","incy"],"macos":["hiddify","happ","incy"]};
+var DESC={"hiddify":"Больше всего протоколов, всё работает сразу.","happ":"Проще, протоколов меньше.","incy":"Проще, протоколов меньше."};
+var REC={"ios":["<b>Рекомендуем Hiddify:</b> у него больше всего протоколов, всё работает сразу.","Hiddify, Happ и INCY на iPhone и iPad ставятся только из App Store США: сначала смените регион (подробная инструкция ниже), потом установите приложение. Happ и INCY проще, но протоколов у них меньше."],"other":["<b>Рекомендуем Hiddify:</b> у него больше всего протоколов, всё работает сразу.","Happ и INCY проще, но протоколов у них меньше. Если провайдер сильно блокирует соединения, лучше Hiddify."]};
 var ua=navigator.userAgent||'',plat=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)?'ios':/Android/i.test(ua)?'android':/Macintosh/.test(ua)?'macos':'windows';
 function appsUI(){var c=$('#platforms');c.innerHTML='';PL.forEach(function(p){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=p[1];b.setAttribute('aria-pressed',p[0]===plat?'true':'false');b.onclick=function(){plat=p[0];appsUI()};c.appendChild(b)});
  var r=$('#rec');r.innerHTML='';(REC[plat==='ios'?'ios':'other']).forEach(function(t){var p=document.createElement('p');p.innerHTML=t;r.appendChild(p)});
- $('#regionhelp').hidden=plat!=='ios';
+ $('#regionhelp').hidden=plat!=='ios';$('#regionhelp').open=plat==='ios';
  var a=$('#apps');a.innerHTML='';ORDER[plat].forEach(function(k,idx){var x=APPS[k],d=document.createElement('div');d.className='app'+(idx===0?' first':'');var l=document.createElement('span'),n=document.createElement('span');n.className='n';n.textContent=x.n;l.appendChild(n);
  if(idx===0){var bb=document.createElement('span');bb.className='b';bb.textContent='Рекомендуем';l.appendChild(bb)}
  var ds=document.createElement('span');ds.className='d';ds.textContent=DESC[k];l.appendChild(ds);
@@ -289,7 +354,7 @@ $$('.tab').forEach(function(b){b.onclick=function(){tab(b.getAttribute('data-tab
 if(D.telegram_proxy)$('#tab-btn-tg').hidden=false;
 /* ---- theme ---- */
 try{var saved=localStorage.getItem('cab-theme');if(saved)document.documentElement.setAttribute('data-theme',saved)}catch(e){}
-$('#theme').onclick=function(){var r=document.documentElement,d=r.getAttribute('data-theme')==='dark'||(!r.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme:dark)').matches),n=d?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('cab-theme',n)}catch(e){}};
+$('#theme').onclick=function(){var r=document.documentElement,d=r.getAttribute('data-theme')!=='light',n=d?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('cab-theme',n)}catch(e){}};
 })();
 </script>
 {% endraw %}

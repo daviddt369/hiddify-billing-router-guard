@@ -1,0 +1,10 @@
+[Unit]
+Description=VPN Ru Node: hourly check of the exit-node backups in the cloud
+
+[Timer]
+OnCalendar=*-*-* *:17:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

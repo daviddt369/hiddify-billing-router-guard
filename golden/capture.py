@@ -80,7 +80,7 @@ print(f"captured {len(manifest)} files; not on the node: {len(missing)} {missing
 IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 OK_IP = re.compile(r"^(127\.|10\.|192\.168\.|0\.0\.0\.0|255\.|1\.1\.1\.1$|1\.0\.0\.1$|8\.8\.8\.8$|8\.8\.4\.4$|9\.9\.9\.9$|77\.88\.8\.[18]$|169\.254\.|1\.2\.3\.\d$|5\.6\.7\.8$|13\.0\.0\.|135\.0\.0\.0$|172\.(1[6-9]|2\d|3[01])\.|203\.0\.113\.|198\.51\.100\.)")
 TOKEN = re.compile(r"[A-Za-z0-9+/=_\-]{16,}")
-BENIGN = re.compile(r"^(Environment|ExecStart|StateDirectory|JobRunning|TimeoutStart|RandomizedDelay|OnUnit|ExecStartPre|requirepass|COLLATE|usage_|current_|pinned|Ed25519|X25519|com/|routing/onadd|INSTALL|roles_|roles=|after_this|rocessing|ExecStop)")
+BENIGN = re.compile(r"^(Environment|ExecStart|StateDirectory|JobRunning|TimeoutStart|RandomizedDelay|OnUnit|ExecStartPre|requirepass|COLLATE|usage_|current_|pinned|Ed25519|X25519|com/|routing/onadd|INSTALL|roles_|roles=|after_this|rocessing|ExecStop|StartLimit)")
 
 
 def entropy(t):

@@ -1,0 +1,318 @@
+{
+ "platforms": [
+  [
+   "ios",
+   "iPhone / iPad"
+  ],
+  [
+   "android",
+   "Android"
+  ],
+  [
+   "windows",
+   "Windows"
+  ],
+  [
+   "macos",
+   "macOS"
+  ]
+ ],
+ "apps": {
+  "hiddify": {
+   "name": "Hiddify",
+   "downloads": {
+    "ios": [
+     [
+      "App Store (США)",
+      "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532",
+      ""
+     ]
+    ],
+    "android": [
+     [
+      "Google Play",
+      "https://play.google.com/store/apps/details?id=app.hiddify.com",
+      ""
+     ],
+     [
+      "APK (GitHub)",
+      "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Android-universal.apk",
+      ""
+     ]
+    ],
+    "windows": [
+     [
+      "Установщик (.exe)",
+      "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Setup-x64.exe",
+      ""
+     ],
+     [
+      "Portable (.zip)",
+      "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-Windows-Portable-x64.zip",
+      ""
+     ]
+    ],
+    "macos": [
+     [
+      "Скачать (.dmg)",
+      "https://github.com/hiddify/hiddify-app/releases/latest/download/Hiddify-MacOS.dmg",
+      ""
+     ]
+    ]
+   }
+  },
+  "happ": {
+   "name": "Happ",
+   "downloads": {
+    "ios": [
+     [
+      "App Store (США)",
+      "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
+      ""
+     ]
+    ],
+    "android": [
+     [
+      "Google Play",
+      "https://play.google.com/store/apps/details?id=com.happproxy",
+      ""
+     ],
+     [
+      "APK (GitHub)",
+      "https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk",
+      ""
+     ]
+    ],
+    "windows": [
+     [
+      "Установщик (.exe)",
+      "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe",
+      ""
+     ]
+    ],
+    "macos": [
+     [
+      "Скачать (.dmg)",
+      "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.macOS.universal.dmg",
+      ""
+     ]
+    ]
+   }
+  },
+  "incy": {
+   "name": "INCY",
+   "downloads": {
+    "ios": [
+     [
+      "App Store (США)",
+      "https://apps.apple.com/us/app/incy/id6756943388",
+      ""
+     ]
+    ],
+    "android": [
+     [
+      "Google Play",
+      "https://play.google.com/store/apps/details?id=llc.itdev.incy",
+      ""
+     ],
+     [
+      "APK (GitHub)",
+      "https://github.com/INCY-DEV/incy-platforms/releases",
+      "incy_android_apk"
+     ]
+    ],
+    "windows": [
+     [
+      "Установщик (.exe)",
+      "https://github.com/INCY-DEV/incy-platforms/releases",
+      "incy_windows_setup"
+     ],
+     [
+      "Portable (.zip)",
+      "https://github.com/INCY-DEV/incy-platforms/releases",
+      "incy_windows_portable"
+     ]
+    ],
+    "macos": [
+     [
+      "App Store (США)",
+      "https://apps.apple.com/us/app/incy/id6756943388",
+      ""
+     ],
+     [
+      "DMG (Apple Silicon)",
+      "https://github.com/INCY-DEV/incy-platforms/releases",
+      "incy_macos_arm64"
+     ],
+     [
+      "DMG (Intel)",
+      "https://github.com/INCY-DEV/incy-platforms/releases",
+      "incy_macos_intel"
+     ]
+    ]
+   }
+  }
+ },
+ "desc": {
+  "hiddify": "Больше всего протоколов, всё работает сразу.",
+  "happ": "Проще, протоколов меньше.",
+  "incy": "Проще, протоколов меньше."
+ },
+ "order": {
+  "ios": [
+   "hiddify",
+   "happ",
+   "incy"
+  ],
+  "android": [
+   "hiddify",
+   "happ",
+   "incy"
+  ],
+  "windows": [
+   "hiddify",
+   "happ",
+   "incy"
+  ],
+  "macos": [
+   "hiddify",
+   "happ",
+   "incy"
+  ]
+ },
+ "recommend": {
+  "ios": [
+   {
+    "b": "Рекомендуем Hiddify:",
+    "t": "у него больше всего протоколов, всё работает сразу."
+   },
+   {
+    "t": "Hiddify, Happ и INCY на iPhone и iPad ставятся только из App Store США: сначала смените регион (подробная инструкция ниже), потом установите приложение. Happ и INCY проще, но протоколов у них меньше."
+   }
+  ],
+  "other": [
+   {
+    "b": "Рекомендуем Hiddify:",
+    "t": "у него больше всего протоколов, всё работает сразу."
+   },
+   {
+    "t": "Happ и INCY проще, но протоколов у них меньше. Если провайдер сильно блокирует соединения, лучше Hiddify."
+   }
+  ]
+ },
+ "steps": [
+  "Скопируйте ссылку подписки: в личном кабинете (кнопка «Скопировать») или со страницы после регистрации. Ссылка для Hiddify и других приложений основная; ссылка «для Happ и INCY» (если она есть в кабинете) нужна только им.",
+  "В приложении нажмите «+» и вставьте ссылку из буфера обмена.",
+  "Выберите сервер и включите VPN."
+ ],
+ "trouble": [
+  "Обновите подписку в приложении.",
+  "Выберите другой сервер.",
+  "Если провайдер сильно блокирует соединения, попробуйте Hiddify: у него больше протоколов.",
+  "Перезапустите приложение.",
+  "Переключитесь между Wi-Fi и мобильным интернетом."
+ ],
+ "note": "Маршрутизация (российские сайты открываются напрямую) уже внутри подписки: ничего настраивать и импортировать не нужно. В Hiddify при первом запуске выберите страну «Россия».",
+ "region_help": {
+  "title": "Нет приложения в App Store? Смените регион на США",
+  "intro": "На iPhone и iPad Hiddify, Happ и INCY сейчас есть только в App Store США, поэтому сначала нужно сменить страну или регион в Apple Account. Это займёт около пяти минут. Если приложение уже установлено, менять регион не нужно.",
+  "blocks": [
+   {
+    "title": "Шаг 1. Смена региона в настройках iPhone",
+    "steps": [
+     "Откройте приложение «Настройки».",
+     "Нажмите на своё имя в самом верху экрана.",
+     "Выберите «Медиаматериалы и покупки» (в некоторых версиях iOS — «Контент и покупки»), затем «Просмотреть».",
+     "Подтвердите вход по Face ID или Touch ID.",
+     "Нажмите «Страна/регион», затем «Изменить страну или регион».",
+     "Прокрутите список вниз и выберите «Соединённые Штаты».",
+     "Прочитайте положения и условия Apple и нажмите «Принять» в правом верхнем углу."
+    ]
+   },
+   {
+    "title": "Если в настройках не получается — смена через сайт",
+    "steps": [
+     "Откройте Safari и перейдите на сайт appleid.apple.com.",
+     "Войдите под своей учётной записью Apple.",
+     "Перейдите в раздел «Персональные данные».",
+     "Выберите пункт «Страна/регион».",
+     "Нажмите «Изменить страну/регион» и укажите США."
+    ]
+   },
+   {
+    "title": "Шаг 2. Что указать в анкете для США",
+    "items": [
+     {
+      "label": "Способ оплаты",
+      "text": "выберите «Нет» (None). Российские карты Visa, Mastercard и «Мир» для магазина США не подойдут."
+     },
+     {
+      "label": "Штат",
+      "text": "выбирайте штат без налога с продаж: Делавэр (Delaware), Монтана (Montana), Орегон (Oregon), Аляска (Alaska) или Нью-Гэмпшир (New Hampshire). В Калифорнии и Нью-Йорке платные приложения дороже на 7–10%."
+     },
+     {
+      "label": "Адрес",
+      "text": "нужен реально существующий адрес в выбранном штате. Можно взять один из готовых вариантов ниже. Индекс (Zip) должен соответствовать штату."
+     }
+    ]
+   }
+  ],
+  "addresses": [
+   {
+    "title": "Вариант 1 — Делавэр (Delaware)",
+    "rows": [
+     [
+      "Улица (Street)",
+      "100 Continental Dr"
+     ],
+     [
+      "Город (City)",
+      "Newark"
+     ],
+     [
+      "Штат (State)",
+      "Delaware"
+     ],
+     [
+      "Индекс (Zip)",
+      "19713"
+     ],
+     [
+      "Телефон (Phone)",
+      "302-454-1500"
+     ]
+    ]
+   },
+   {
+    "title": "Вариант 2 — Орегон (Oregon)",
+    "rows": [
+     [
+      "Улица (Street)",
+      "614 SW 11th Ave"
+     ],
+     [
+      "Город (City)",
+      "Portland"
+     ],
+     [
+      "Штат (State)",
+      "Oregon"
+     ],
+     [
+      "Индекс (Zip)",
+      "97205"
+     ],
+     [
+      "Телефон (Phone)",
+      "503-224-3400"
+     ]
+    ]
+   }
+  ],
+  "after_addresses": "Внимательно перенесите данные в соответствующие поля, затем нажмите «Далее» и «Готово». После этого откройте App Store и установите приложение.",
+  "warnings": [
+   "Смене региона могут мешать активные подписки, деньги на балансе Apple Account и участие в семейной группе.",
+   "Apple может запросить действительный платёжный адрес и способ оплаты выбранной страны."
+  ]
+ }
+}

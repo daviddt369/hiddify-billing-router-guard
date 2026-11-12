@@ -164,3 +164,13 @@
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/cabinet.py
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/user/templates/cabinet/cabinet.html
 /opt/hiddify-manager/cabinet/cabinet.json
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/__init__.py
+/opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/subwatch.py
+/opt/vpn-db-backup/db-daily-backup.sh
+/opt/vpn-db-backup/common-dr.sh
+/etc/systemd/system/hiddify-db-daily-backup.service
+/etc/systemd/system/hiddify-db-daily-backup.timer
+/etc/systemd/system/hiddify-dr-backup.service.d/marker.conf
+/opt/vpn-db-backup/nodes-backup-check.sh
+/etc/systemd/system/vpn-nodes-backup-check.service
+/etc/systemd/system/vpn-nodes-backup-check.timer
