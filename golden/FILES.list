@@ -166,3 +166,7 @@
 /opt/hiddify-manager/cabinet/cabinet.json
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/__init__.py
 /opt/hiddify-manager/.venv313/lib/python3.13/site-packages/hiddifypanel/panel/commercial/subwatch.py
+/opt/vpn-db-backup/db-daily-backup.sh
+/opt/vpn-db-backup/common-dr.sh
+/etc/systemd/system/hiddify-db-daily-backup.service
+/etc/systemd/system/hiddify-db-daily-backup.timer

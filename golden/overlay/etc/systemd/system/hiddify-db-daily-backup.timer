@@ -1,0 +1,10 @@
+[Unit]
+Description=VPN Ru Node daily database-only backup (every day 05:10 server time)
+
+[Timer]
+OnCalendar=*-*-* 05:10:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
