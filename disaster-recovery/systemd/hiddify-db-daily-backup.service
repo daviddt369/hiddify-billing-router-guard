@@ -2,10 +2,19 @@
 Description=VPN Ru Node daily database-only backup (dump, age-encrypt, Selectel db-daily/)
 After=network-online.target mysql.service mariadb.service
 Wants=network-online.target
+# a failed run (cloud or database unavailable) is retried every 30 minutes, at most 4 times in 12 hours
+StartLimitIntervalSec=43200
+StartLimitBurst=4
 
 [Service]
 Type=oneshot
 ExecStart=/bin/bash /root/hiddify-billing-router-guard/disaster-recovery/db-daily-backup.sh
+# the marker is touched ONLY after the script exited 0 (it verifies the uploaded size itself); vpn-watch alerts when the marker gets old
+ExecStartPost=/usr/bin/touch /var/lib/vpn-backup/db-daily.ok
+StateDirectory=vpn-backup
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=1800
 WorkingDirectory=/root/hiddify-billing-router-guard
 User=root
 StandardOutput=journal

@@ -11,9 +11,10 @@
 /etc/systemd/system/hiddify-anti-share-prune.service	644	root:root	2dc11fe2e76283970145f43bfa6157ba4c8a2ae665e5177bbb0dfe407c8b7f94	text
 /etc/systemd/system/hiddify-anti-share-prune.timer	644	root:root	d1d12db36817f897b81e458065ebeb4a161cdd6a34aca02fb397323d74455c9b	text
 /etc/systemd/system/hiddify-cli.service.d/20-panel-dependency.conf	644	root:root	c1399a30ef511bbdbb948b137112d37d0323e1ce8206458d396463108d380a3e	text
-/etc/systemd/system/hiddify-db-daily-backup.service	644	root:root	742fa919b996ad958053f68c1ad9dbdb25b4fa57aeb96e99df3c020ec52330e1	text
+/etc/systemd/system/hiddify-db-daily-backup.service	644	root:root	9034674846dd65524f4a4e5f990b12f1da41963393ba222bcee66ec221cca6e1	text
 /etc/systemd/system/hiddify-db-daily-backup.timer	644	root:root	742eca26db16b5d06132508e7b1ede2fb19b692f38b83f15bc19348902b91044	text
 /etc/systemd/system/hiddify-dr-backup.service	644	root:root	483e33f314ff5a7afcbeea1d1f7671972fb67284e1c2ba80da80219fa5d88b41	text
+/etc/systemd/system/hiddify-dr-backup.service.d/marker.conf	644	root:root	7f75b97463d0a0d13208bf5552c6d295976f6083e2e9aa854c54c607b7bba289	text
 /etc/systemd/system/hiddify-dr-backup.timer	644	root:root	0dd5bb300f8753d8be6aa4e07e375617e08a7bf9455abdfa0b35e001246cfdff	text
 /etc/systemd/system/hiddify-panel-background-tasks.service.d/override.conf	600	root:root	b71889671a3306446428decfe7267a38167041b911b6b94e00966b711325c827	text
 /etc/systemd/system/hiddify-panel.service.d/override.conf	600	root:root	fa72798a5177591e013587d4fa6e4b36e76001d0b7d9fc445ed02600cb9a8271	text
@@ -169,4 +170,4 @@
 /opt/routing-links/update.sh	755	root:root	f69eeece1ae0f1a9f1c4ea539f5db881067e59df7ed3d89ac4fc0415b631a750	text
 /opt/vpn-db-backup/common-dr.sh	644	root:root	cb6ef50e21112e557d9e61eb22a3ed2048102755b1a4c63427ae2c4e34c7ccf9	text
 /opt/vpn-db-backup/db-daily-backup.sh	700	root:root	422104e0a50f82a460da7a12afa694719bd108b5c3a011f5f20bfdc7877b151a	text
-/opt/vpn-watch/vpn_watch.py	755	root:root	5fc0dc5b2bc737086d7df7e1c1009bc4c9d78e9381ef47f383ff65401338f969	text
+/opt/vpn-watch/vpn_watch.py	755	root:root	05ed2c29435d52cc0f0a471f34b48bf58b25b27c0cb45cd0ff618f3d2f7f2d55	text
