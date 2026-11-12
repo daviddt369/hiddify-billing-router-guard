@@ -25,6 +25,8 @@
 /etc/systemd/system/routing-links-update.service	644	root:root	1b696b0ae1b66edb41003032597f20af6ac06eb4e6a36f8b87f4950621dd8c7e	text
 /etc/systemd/system/routing-links-update.timer	644	root:root	bea609dc9c6941b1e4d3a3cea856e2a1ad1fd1d0eb2822101e4d65dd73bc38f4	text
 /etc/systemd/system/vpn-chrome-probe.service	644	root:root	cd7767ca33516841f84b86358cf2f2a73adcf9c961ab72d0ed602f1f762ae2ed	text
+/etc/systemd/system/vpn-nodes-backup-check.service	644	root:root	a7871d743b032f32b7bbcd76131a24ceef354fea08d5c3a3f9e50d117007714e	text
+/etc/systemd/system/vpn-nodes-backup-check.timer	644	root:root	0f46600726aacf76ddf8705da0d0e53b1bc7ca923404ff7a1581280b0638b634	text
 /etc/systemd/system/vpn-watch-nodes.service	644	root:root	353565e0298c1fbf85d4e4e15b27c9751e83fd6555c69a953a868b5ba8b5a270	text
 /etc/systemd/system/vpn-watch-nodes.timer	644	root:root	bc322a680d930780777c29b4249c23ec9919174b98254436089f43f4c4d70ef6	text
 /etc/systemd/system/vpn-watch.service	644	root:root	24fcaf97b015089d38f2b2d1b8e2197627a205c0a51acf85d9ad255273b89d49	text
@@ -170,4 +172,5 @@
 /opt/routing-links/update.sh	755	root:root	f69eeece1ae0f1a9f1c4ea539f5db881067e59df7ed3d89ac4fc0415b631a750	text
 /opt/vpn-db-backup/common-dr.sh	644	root:root	cb6ef50e21112e557d9e61eb22a3ed2048102755b1a4c63427ae2c4e34c7ccf9	text
 /opt/vpn-db-backup/db-daily-backup.sh	700	root:root	422104e0a50f82a460da7a12afa694719bd108b5c3a011f5f20bfdc7877b151a	text
+/opt/vpn-db-backup/nodes-backup-check.sh	700	root:root	5fb96caaa9491a7d29969c631c51cbf05d0fb6456b90b74bf082ef2966aea205	text
 /opt/vpn-watch/vpn_watch.py	755	root:root	05ed2c29435d52cc0f0a471f34b48bf58b25b27c0cb45cd0ff618f3d2f7f2d55	text

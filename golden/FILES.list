@@ -171,3 +171,6 @@
 /etc/systemd/system/hiddify-db-daily-backup.service
 /etc/systemd/system/hiddify-db-daily-backup.timer
 /etc/systemd/system/hiddify-dr-backup.service.d/marker.conf
+/opt/vpn-db-backup/nodes-backup-check.sh
+/etc/systemd/system/vpn-nodes-backup-check.service
+/etc/systemd/system/vpn-nodes-backup-check.timer
